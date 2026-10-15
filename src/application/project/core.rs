@@ -126,6 +126,7 @@ impl ProjectService {
     }
 
     pub(super) async fn load_core(&self, relative: PathBuf) -> Result<()> {
+        let _refresh = APPLICATION.file_watch.lock_refresh().await;
         let _permit = self.reads.acquire().await?;
         let started = Instant::now();
         let result = INFRASTRUCTURE

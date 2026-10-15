@@ -10,21 +10,61 @@ static LOCAL_CHANGES: LazyLock<Mutex<LocalChanges>> =
     LazyLock::new(|| Mutex::new(LocalChanges::default()));
 const DELIVERY_GRACE: Duration = Duration::from_secs(1);
 
-pub(super) fn register(root: PathBuf, pending: &Arc<Mutex<FileChanges>>) {
+pub(super) fn register(root: PathBuf, original_root: PathBuf, pending: &Arc<Mutex<FileChanges>>) {
     let mut state = LOCAL_CHANGES
         .lock()
         .unwrap_or_else(|error| error.into_inner());
     state
         .subscriptions
-        .retain(|(_, pending)| pending.strong_count() > 0);
-    state.subscriptions.push((root, Arc::downgrade(pending)));
+        .retain(|(_, _, pending)| pending.strong_count() > 0);
+    state
+        .subscriptions
+        .push((root, original_root, Arc::downgrade(pending)));
 }
 
 fn prune(state: &mut LocalChanges) {
     let now = Instant::now();
-    state
-        .changes
-        .retain(|change| change.expires.is_none_or(|expires| expires > now));
+    let mut reconcile = Vec::new();
+    state.changes.retain(|change| {
+        let expired = change.expires.is_some_and(|expires| expires <= now);
+        if expired && change.suppressed_events {
+            reconcile.extend(change.paths.iter().cloned());
+        }
+        !expired
+    });
+    // Path filtering cannot distinguish a delayed native event from an external writer.
+    // Recheck suppressed paths after IO and the grace period have both ended.
+    for (root, original_root, pending) in &state.subscriptions {
+        let paths: Vec<_> = reconcile
+            .iter()
+            .filter_map(|path| {
+                path.strip_prefix(root)
+                    .ok()
+                    .map(|relative| original_root.join(relative))
+            })
+            .collect();
+        if paths.is_empty() {
+            continue;
+        }
+        if let Some(pending) = pending.upgrade() {
+            let mut pending = pending.lock().unwrap_or_else(|error| error.into_inner());
+            pending.event_count = pending.event_count.saturating_add(paths.len() as u64);
+            if !pending.rescan {
+                pending.paths.extend(paths);
+                if pending.paths.len() > 4096 {
+                    pending.rescan = true;
+                    pending.paths.clear();
+                }
+            }
+        }
+    }
+}
+
+pub(super) fn reconcile_expired() {
+    let mut state = LOCAL_CHANGES
+        .lock()
+        .unwrap_or_else(|error| error.into_inner());
+    prune(&mut state);
 }
 
 // Register synchronously before IO starts; native callbacks use the same lock.
@@ -39,10 +79,14 @@ pub(super) fn excludes(path: &Path) -> bool {
         .lock()
         .unwrap_or_else(|error| error.into_inner());
     prune(&mut state);
-    state
-        .changes
-        .iter()
-        .any(|change| change.paths.iter().any(|local| path.starts_with(local)))
+    let mut excluded = false;
+    for change in &mut state.changes {
+        if change.paths.iter().any(|local| path.starts_with(local)) {
+            change.suppressed_events = true;
+            excluded = true;
+        }
+    }
+    excluded
 }
 
 fn apply_begin(paths: Vec<PathBuf>) -> u64 {
@@ -61,6 +105,7 @@ fn apply_begin(paths: Vec<PathBuf>) -> u64 {
         id,
         paths,
         expires: None,
+        suppressed_events: false,
     });
     id
 }
@@ -82,8 +127,8 @@ fn apply_finish(id: u64, failed: bool) {
         state
             .subscriptions
             .iter()
-            .filter(|(root, _)| paths.iter().any(|path| path.starts_with(root)))
-            .filter_map(|(_, pending)| pending.upgrade())
+            .filter(|(root, _, _)| paths.iter().any(|path| path.starts_with(root)))
+            .filter_map(|(_, _, pending)| pending.upgrade())
             .collect::<Vec<_>>()
     };
     // Partial IO may already have produced filtered events; reconcile the disk on failure.

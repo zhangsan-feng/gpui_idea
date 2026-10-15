@@ -34,6 +34,7 @@ impl FileSystem {
                 let pending = pending.clone();
                 let root = watched_root.clone();
                 async move {
+                    local_changes::reconcile_expired();
                     if let Some(changes) = core::take_changes(&pending) {
                         EVENT_BUS.refresh_data_context(root, changes);
                     }

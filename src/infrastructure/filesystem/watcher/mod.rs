@@ -20,13 +20,14 @@ struct LocalChange {
     id: u64,
     paths: Vec<PathBuf>,
     expires: Option<Instant>,
+    suppressed_events: bool,
 }
 
 #[derive(Default)]
 struct LocalChanges {
     next_id: u64,
     changes: Vec<LocalChange>,
-    subscriptions: Vec<(PathBuf, Weak<Mutex<FileChanges>>)>,
+    subscriptions: Vec<(PathBuf, PathBuf, Weak<Mutex<FileChanges>>)>,
 }
 
 pub(crate) struct LocalChangeGuard {

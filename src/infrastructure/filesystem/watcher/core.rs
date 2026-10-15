@@ -9,7 +9,7 @@ use std::{
 pub(super) fn start(root: PathBuf) -> Result<FileSubscription> {
     let canonical_root = root.canonicalize().context("无法监听项目目录")?;
     let pending = Arc::new(Mutex::new(FileChanges::default()));
-    local_changes::register(canonical_root.clone(), &pending);
+    local_changes::register(canonical_root.clone(), root.clone(), &pending);
     let events = pending.clone();
     let watched_root = canonical_root.clone();
     let mut watcher = notify::recommended_watcher(move |result: notify::Result<Event>| {
