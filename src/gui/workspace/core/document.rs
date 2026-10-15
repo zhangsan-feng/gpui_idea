@@ -94,10 +94,11 @@ impl Workspace {
                     Ok(opened) => {
                         let initialization = Instant::now();
                         let editor = cx.new(|cx| EditorState::new(window, cx)
-                            .language("plaintext")
+                            .language(crate::component::code_editor::language_for_path(file.relative_path()))
                             .soft_wrap(false)
                             .tab_size(TabSize { tab_size: 4, hard_tabs: false })
                             .default_value(opened.initial_text));
+                        crate::component::code_editor::attach_completions(&editor, file.relative_path(), window, cx);
                         let path = opened.snapshot.path.clone();
                         if let Some(view) = this.pending_file_views.remove(&path) {
                             editor.update(cx, |state, cx| {

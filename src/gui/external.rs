@@ -7,6 +7,7 @@ use gpui_kit::{
 };
 
 pub fn open_workspace(cx: &mut App) -> Result<()> {
+    crate::component::code_editor::init(cx)?;
     tracing::info!("main window opening: title=GPUI Editor");
     let minimum_size = size(px(1200.), px(700.));
     let saved_view = DATA_CONTEXT

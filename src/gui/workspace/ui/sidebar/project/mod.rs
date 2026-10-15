@@ -62,6 +62,29 @@ impl Workspace {
     ) -> Div {
         let palette = ProjectTreePalette::from_theme(cx.theme());
         let root_menu_view = cx.entity().downgrade();
+        let started = std::time::Instant::now();
+        let tree = uniform_list(
+            "project-tree",
+            self.tree_rows.len(),
+            cx.processor(|this, range: Range<usize>, _, cx| {
+                range
+                    .filter_map(|index| this.tree_rows.get(index).cloned())
+                    .map(|row| this.tree_row(row, cx))
+                    .collect::<Vec<_>>()
+            }),
+        )
+        .with_sizing_behavior(ListSizingBehavior::Auto)
+        .flex_1()
+        .min_h_0()
+        .min_w_0()
+        .h_full()
+        .track_scroll(&self.project_tree_scroll);
+        let tree = super::super::diagnostics::MeasuredWorkspace::new(
+            "tree",
+            tree.into_any_element(),
+            self.window_diagnostics.clone(),
+            started,
+        );
         v_flex()
             .size_full()
             .min_h_0()
@@ -76,24 +99,7 @@ impl Workspace {
                     .min_h_0()
                     .w_full()
                     .items_stretch()
-                    .child(
-                        uniform_list(
-                            "project-tree",
-                            self.tree_rows.len(),
-                            cx.processor(|this, range: Range<usize>, _, cx| {
-                                range
-                                    .filter_map(|index| this.tree_rows.get(index).cloned())
-                                    .map(|row| this.tree_row(row, cx))
-                                    .collect::<Vec<_>>()
-                            }),
-                        )
-                        .with_sizing_behavior(ListSizingBehavior::Auto)
-                        .flex_1()
-                        .min_h_0()
-                        .min_w_0()
-                        .h_full()
-                        .track_scroll(&self.project_tree_scroll),
-                    )
+                    .child(tree)
                     .child(
                         div()
                             .id("project-tree-scrollbar")

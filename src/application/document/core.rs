@@ -72,6 +72,7 @@ impl DocumentService {
         if let Some(snapshot) = DATA_CONTEXT.documents.snapshot(&path) {
             let buffer = snapshot.text.clone();
             let initial_text = tokio::task::spawn_blocking(move || buffer.to_string()).await?;
+            crate::application::lifecycle::warm_language_server_document(snapshot.clone());
             return Ok(OpenedDocument {
                 snapshot,
                 initial_text,
@@ -79,6 +80,7 @@ impl DocumentService {
         }
         let loaded = INFRASTRUCTURE.filesystem.read_document(root, path).await?;
         let snapshot = DATA_CONTEXT.documents.insert(loaded.document);
+        crate::application::lifecycle::warm_language_server_document(snapshot.clone());
         Ok(OpenedDocument {
             snapshot,
             initial_text: loaded.initial_text,

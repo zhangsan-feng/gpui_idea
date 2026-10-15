@@ -1,5 +1,6 @@
 mod external;
 mod history;
+mod language_server;
 pub mod logging;
 mod runtime;
 mod projects;
@@ -22,6 +23,7 @@ pub(crate) struct InfrastructureContext {
     pub(crate) terminal: terminal::TerminalStore,
     pub(crate) history: history::HistoryStore,
     pub(crate) filesystem: filesystem::FileSystem,
+    pub(crate) language_servers: language_server::LanguageServers,
     runtime: OnceLock<runtime::AppRuntime>,
 }
 
@@ -33,6 +35,7 @@ impl InfrastructureContext {
             terminal: terminal::TerminalStore::new(),
             history: history::HistoryStore::new(history::HistoryStore::default_path()),
             filesystem: filesystem::FileSystem::new(),
+            language_servers: language_server::LanguageServers::new(),
             runtime: OnceLock::new(),
         }
     }

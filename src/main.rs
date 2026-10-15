@@ -12,6 +12,7 @@ use gpui_kit::component::{Theme, ThemeMode};
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> anyhow::Result<()> {
+    
     let _logging_guard = tokio::task::spawn_blocking(|| {
         infrastructure::logging::initialize(
             std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("logs"),

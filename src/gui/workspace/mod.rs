@@ -169,6 +169,9 @@ pub struct Workspace {
     pub(super) run_terminal: Entity<crate::gui::terminal::TerminalView>,
     pub(super) git_loading: bool,
     pub(super) editors: HashMap<ProjectFile, Entity<EditorState>>,
+    pub(super) definition_request: u64,
+    pub(super) definition_observer: Option<Subscription>,
+    pub(super) external_source_files: HashSet<ProjectFile>,
     pub(super) editor_revisions: HashMap<ProjectFile, u64>,
     pub(super) syncing_editors: HashSet<ProjectFile>,
     pub(super) editor_subscriptions: HashMap<ProjectFile, Subscription>,
@@ -199,6 +202,8 @@ pub struct Workspace {
     pub(super) session_ready: bool,
     pub(super) session_revision: u64,
     pub(super) window_view: crate::domain::history::WindowViewState,
+    window_diagnostics: std::rc::Rc<std::cell::RefCell<ui::diagnostics::WindowDiagnostics>>,
+    window_diagnostics_task: Option<Task<()>>,
     pub(super) window_bounds_subscription: Option<Subscription>,
     pub(super) pending_file_views: HashMap<PathBuf, crate::domain::history::FileViewState>,
 }
@@ -295,6 +300,9 @@ impl Workspace {
             }),
             git_loading: false,
             editors: HashMap::new(),
+            definition_request: 0,
+            definition_observer: None,
+            external_source_files: HashSet::new(),
             editor_revisions: HashMap::new(),
             syncing_editors: HashSet::new(),
             editor_subscriptions: HashMap::new(),
@@ -327,6 +335,8 @@ impl Workspace {
             session_ready: false,
             session_revision: session.as_ref().map_or(0, |saved| saved.revision),
             window_view: Self::window_view_state(window),
+            window_diagnostics: Default::default(),
+            window_diagnostics_task: None,
             window_bounds_subscription: None,
             pending_file_views: session
                 .as_ref()
@@ -341,6 +351,13 @@ impl Workspace {
                 .unwrap_or_default(),
         };
         this.start_subscribe(window, cx);
+        cx.spawn(async move |_, _| {
+            if let Err(error) = crate::application::lifecycle::start_language_server().await {
+                tracing::warn!(%error, "Workspace language server startup failed");
+            }
+        })
+        .detach();
+        this.window_diagnostics.borrow_mut().bounds_changed(window);
         this.layout_subscriptions
             .push(cx.observe(&this.run_resize, |_, _, cx| cx.notify()));
         this.layout_subscriptions
@@ -369,6 +386,7 @@ impl Workspace {
         );
         this.window_bounds_subscription =
             Some(cx.observe_window_bounds(window, |this, window, cx| {
+                this.record_window_bounds(window, cx);
                 this.update_window_view(window, cx);
             }));
         this.load_directory(PathBuf::new(), cx);
@@ -419,6 +437,13 @@ impl Workspace {
 
 impl Render for Workspace {
     fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.render_view(window, cx)
+        let started = std::time::Instant::now();
+        let child = self.render_view(window, cx).into_any_element();
+        ui::diagnostics::MeasuredWorkspace::new(
+            "workspace",
+            child,
+            self.window_diagnostics.clone(),
+            started,
+        )
     }
 }

@@ -137,6 +137,16 @@ impl Workspace {
                     PROJECT_TREE_STATUS_ICON_SIZE,
                     palette.accent,
                 ))
+            })
+            // Opacity zero still lays out and paints the hint's text and icon.
+            // Native window movement does not need this application-drag hint.
+            .when(!entry.is_link && cx.has_active_drag(), |row| {
+                let target = if entry.is_directory {
+                    path.as_path()
+                } else {
+                    path.parent().unwrap_or(Path::new(""))
+                };
+                row.child(project_drop_hint(target, palette))
             });
         if entry.is_link {
             row.on_click(cx.listener(|this, _, _, cx| {
@@ -147,10 +157,7 @@ impl Workspace {
         } else if entry.is_directory {
             let target = path.clone();
             let highlight_target = target.clone();
-            row.child(project_drop_hint(&target, palette))
-                .on_click(
-                    cx.listener(move |this, _, _, cx| this.toggle_directory(path.clone(), cx)),
-                )
+            row.on_click(cx.listener(move |this, _, _, cx| this.toggle_directory(path.clone(), cx)))
                 .on_drag(
                     DraggedProjectEntry {
                         path: target.clone(),
@@ -188,32 +195,31 @@ impl Workspace {
                 name: entry.name.clone(),
                 is_directory: false,
             };
-            row.child(project_drop_hint(&target, palette))
-                .on_click(cx.listener(move |this, _, window, cx| {
-                    this.select_file(file.clone(), window, cx)
-                }))
-                .on_drag(drag, |drag, _, _, cx| cx.new(|_| drag.clone()))
-                .drag_over::<DraggedProjectEntry>(move |style, drag, _, _| {
-                    if valid_project_drop(&drag.path, &highlight_target) {
-                        style
-                            .bg(palette.drop_target)
-                            .border_color(palette.drag_border)
+            row.on_click(
+                cx.listener(move |this, _, window, cx| this.select_file(file.clone(), window, cx)),
+            )
+            .on_drag(drag, |drag, _, _, cx| cx.new(|_| drag.clone()))
+            .drag_over::<DraggedProjectEntry>(move |style, drag, _, _| {
+                if valid_project_drop(&drag.path, &highlight_target) {
+                    style
+                        .bg(palette.drop_target)
+                        .border_color(palette.drag_border)
+                } else {
+                    style.bg(palette.error_hover).border_color(palette.error)
+                }
+            })
+            .on_drop(
+                cx.listener(move |this, drag: &DraggedProjectEntry, window, cx| {
+                    cx.stop_propagation();
+                    if valid_project_drop(&drag.path, &target) {
+                        this.move_project_entry(drag.path.clone(), target.clone(), window, cx);
                     } else {
-                        style.bg(palette.error_hover).border_color(palette.error)
+                        this.notice = Some("不能移入自身、子目录或文件当前所在目录".into());
+                        cx.notify();
                     }
-                })
-                .on_drop(
-                    cx.listener(move |this, drag: &DraggedProjectEntry, window, cx| {
-                        cx.stop_propagation();
-                        if valid_project_drop(&drag.path, &target) {
-                            this.move_project_entry(drag.path.clone(), target.clone(), window, cx);
-                        } else {
-                            this.notice = Some("不能移入自身、子目录或文件当前所在目录".into());
-                            cx.notify();
-                        }
-                    }),
-                )
-                .into_any_element()
+                }),
+            )
+            .into_any_element()
         }
     }
 }

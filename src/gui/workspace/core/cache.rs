@@ -40,6 +40,7 @@ impl Workspace {
             {
                 self.editor_subscriptions.remove(&file);
                 self.editors.remove(&file);
+                self.external_source_files.remove(&file);
                 self.editor_revisions.remove(&file);
                 self.editor_order.retain(|cached| *cached != file);
                 remaining -= 1;

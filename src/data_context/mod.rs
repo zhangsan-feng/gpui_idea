@@ -25,6 +25,7 @@ pub struct DataContext {
     pub history: history::HistoryContext,
     startup: OnceLock<WorkspaceStartup>,
     changes: tokio::sync::watch::Sender<u64>,
+    language_server: std::sync::Mutex<crate::domain::language_server::LanguageServerStatus>,
 }
 impl DataContext {
     fn new() -> Self {
@@ -35,6 +36,7 @@ impl DataContext {
             history: history::HistoryContext::new(),
             startup: OnceLock::new(),
             changes: tokio::sync::watch::channel(0).0,
+            language_server: Default::default(),
         }
     }
 }

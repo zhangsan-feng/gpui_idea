@@ -1,7 +1,9 @@
+pub(crate) mod definition;
 pub mod document;
 pub mod file_tree;
 pub mod git;
 pub mod history;
+pub(crate) mod language_server;
 pub mod project;
 pub mod run;
 pub mod statistics;

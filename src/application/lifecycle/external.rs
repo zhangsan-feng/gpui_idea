@@ -12,7 +12,18 @@ pub async fn prepare_startup() -> Result<()> {
     run_application(core::prepare_startup()).await
 }
 
+pub(crate) async fn start_language_server() -> Result<()> {
+    run_application(super::language_server::start()).await
+}
+
+pub(crate) fn warm_language_server_document(
+    snapshot: std::sync::Arc<crate::domain::document::DocumentSnapshot>,
+) {
+    super::language_server::warm_document(snapshot);
+}
+
 pub async fn shutdown() {
+    INFRASTRUCTURE.language_servers.shutdown().await;
     crate::application::APPLICATION.file_watch.shutdown().await;
     INFRASTRUCTURE.terminal.shutdown().await;
     INFRASTRUCTURE.timer.shutdown().await;

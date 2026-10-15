@@ -9,15 +9,34 @@ notify = "=8.2.0"
 chrono = "0.4.45"
 fern = "0.7.1"
 log = "0.4.34"
-gpui-kit = "=0.7.3"
+gpui-kit = { version = "=0.7.3", features = [
+    "tree-sitter-java",
+    "tree-sitter-python",
+    "tree-sitter-go",
+    "tree-sitter-javascript",
+    "tree-sitter-typescript",
+    "tree-sitter-tsx",
+    "tree-sitter-css",
+    "tree-sitter-rust",
+    "tree-sitter-php",
+    "tree-sitter-cmake",
+    "tree-sitter-cpp",
+    "tree-sitter-c",
+    "tree-sitter-toml",
+    "tree-sitter-yaml",
+    "tree-sitter-markdown",
+    "tree-sitter-html",
+] }
 ropey = "=2.0.0-beta.1"
+lsp-types = "=0.97.0"
+url = "=2.5.8"
 serde = { version = "=1.0.229", features = ["derive"] }
 serde_json = "=1.0.154"
-tokio = { version = "1.53.2", features = ["macros", "rt-multi-thread", "sync", "time"] }
+tokio = { version = "1.53.2", features = ["macros", "rt-multi-thread", "sync", "time", "process", "io-util"] }
 tracing = "0.1"
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 alacritty_terminal = "0.26.0"
-windows-sys = { version = "0.59.0", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
-base64 = "0.22.1"
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
+base64 = "0.23.1"
 rust-embed = { version = "8.13.0", features = ["debug-embed", "include-exclude"] }

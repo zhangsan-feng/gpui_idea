@@ -1,5 +1,6 @@
 mod cache;
 mod document;
+mod definition;
 mod document_sync;
 mod drop;
 mod file_tree_menu;

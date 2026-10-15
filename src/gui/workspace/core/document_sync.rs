@@ -42,6 +42,7 @@ impl Workspace {
                             let current = DATA_CONTEXT.documents.snapshot(&path);
                             if current.is_some_and(|doc| !doc.dirty() && !doc.saving && doc.revision == revision) {
                                 if let Some(editor) = this.editors.get(&file) {
+                                    crate::component::code_editor::dismiss_completions(editor, cx);
                                     editor.update(cx, |state, cx| {
                                         let mut cursor = state.cursor_position();
                                         let scroll = state.scroll_offset();

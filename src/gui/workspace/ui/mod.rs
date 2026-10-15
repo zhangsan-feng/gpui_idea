@@ -1,5 +1,6 @@
 use crate::data_context::DATA_CONTEXT;
 mod bottom;
+pub(super) mod diagnostics;
 mod editor;
 mod main_window;
 mod sidebar;
