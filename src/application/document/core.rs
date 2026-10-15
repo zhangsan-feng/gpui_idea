@@ -17,6 +17,15 @@ impl DocumentService {
         DATA_CONTEXT.documents.edit(path, text, changed)
     }
 
+    pub(super) fn attach_editor_buffer_core(
+        &self,
+        path: &Path,
+        text: ropey::Rope,
+        revision: u64,
+    ) -> Result<()> {
+        DATA_CONTEXT.documents.attach_buffer(path, text, revision)
+    }
+
     pub(super) async fn record_opened(&self, opened: &OpenedDocument) {
         if let Err(error) = APPLICATION
             .history
@@ -76,13 +85,25 @@ impl DocumentService {
         })
     }
     pub(super) async fn save_core(&self, path: PathBuf) -> Result<()> {
+        let _refresh = APPLICATION.file_watch.lock_refresh().await;
+        let current = DATA_CONTEXT
+            .documents
+            .snapshot(&path)
+            .ok_or_else(|| anyhow::anyhow!("文件尚未打开"))?;
+        let relative = path.strip_prefix(&current.scope_root)?.to_owned();
+        let change = INFRASTRUCTURE
+            .filesystem
+            .begin_gui_file_change(current.scope_root.clone(), vec![relative])
+            .await?;
         let snapshot = DATA_CONTEXT.documents.begin_save(&path)?;
         let revision = snapshot.revision;
         let started = std::time::Instant::now();
-        let result = INFRASTRUCTURE
-            .filesystem
-            .save_document(snapshot.scope_root.clone(), Arc::clone(&snapshot))
-            .await;
+        let result = change.finish(
+            INFRASTRUCTURE
+                .filesystem
+                .save_document(snapshot.scope_root.clone(), Arc::clone(&snapshot))
+                .await,
+        );
         let error = result.as_ref().err().map(|error| format!("{error:#}"));
         DATA_CONTEXT
             .documents
@@ -90,6 +111,12 @@ impl DocumentService {
         tracing::info!(file = %path.display(), revision, elapsed_ms = started.elapsed().as_millis(), success = error.is_none(), "document save completed");
         if let Some(error) = error {
             bail!(error);
+        }
+        // Local native events are excluded; update already loaded statistics here.
+        if !DATA_CONTEXT.project.statistics().scanned_at.is_empty() {
+            if let Err(error) = APPLICATION.project.statistics().await {
+                tracing::warn!(%error, "document saved but project statistics refresh failed");
+            }
         }
         Ok(())
     }

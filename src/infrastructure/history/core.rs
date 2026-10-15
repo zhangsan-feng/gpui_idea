@@ -10,6 +10,28 @@ use std::{
 const LIMIT_PER_KIND: usize = 100;
 const MAX_HISTORY_BYTES: u64 = 4 * 1024 * 1024;
 
+pub(super) fn lock_history(path: &Path) -> Result<fs::File> {
+    fs::create_dir_all(path.parent().context("历史记录缺少存储目录")?)?;
+    let file = fs::OpenOptions::new()
+        .read(true)
+        .write(true)
+        .create(true)
+        .truncate(false)
+        .open(path.with_extension("lock"))
+        .context("无法创建项目历史锁")?;
+    file.lock().context("无法锁定项目历史")?;
+    Ok(file)
+}
+
+pub(super) fn forget_project(path: &Path, project: &Path) -> Result<OpenHistory> {
+    let mut history = read(path)?;
+    history
+        .entries
+        .retain(|entry| entry.kind != OpenKind::Project || !same_path(&entry.path, project));
+    write(path, &history)?;
+    Ok(history)
+}
+
 pub(super) fn read(path: &Path) -> Result<OpenHistory> {
     let file = match fs::File::open(path) {
         Ok(file) => file,
@@ -21,8 +43,25 @@ pub(super) fn read(path: &Path) -> Result<OpenHistory> {
     if file.metadata()?.len() > MAX_HISTORY_BYTES {
         bail!("打开历史文件过大");
     }
-    let history: OpenHistory =
+    let mut value: serde_json::Value =
         serde_json::from_reader(file).context("打开历史格式损坏，原文件已保留")?;
+    if let Some(session) = value
+        .get_mut("session")
+        .and_then(serde_json::Value::as_object_mut)
+    {
+        if !session.contains_key("run_automatic") {
+            let command = session
+                .get("run_command")
+                .and_then(serde_json::Value::as_str)
+                .unwrap_or("")
+                .trim();
+            // Migrate the old default to detection, while preserving user overrides.
+            let automatic = command.is_empty() || command == "cargo run";
+            session.insert("run_automatic".into(), serde_json::Value::Bool(automatic));
+        }
+    }
+    let history: OpenHistory =
+        serde_json::from_value(value).context("打开历史格式损坏，原文件已保留")?;
     if history.version != 1 {
         bail!("不支持的打开历史版本：{}", history.version);
     }
@@ -77,11 +116,28 @@ pub(super) fn record(path: &Path, kind: OpenKind, target: &Path) -> Result<OpenH
 pub(super) fn save_session(path: &Path, session: WorkspaceSession) -> Result<OpenHistory> {
     let mut history = read(path)?;
     // A slow background write cannot replace a newer snapshot from this workspace.
-    if history.session.as_ref().is_some_and(|saved| {
-        same_path(&saved.project_root, &session.project_root) && saved.revision > session.revision
-    }) {
+    if history
+        .sessions
+        .iter()
+        .find(|saved| same_path(&saved.project_root, &session.project_root))
+        .or_else(|| {
+            history
+                .session
+                .as_ref()
+                .filter(|saved| same_path(&saved.project_root, &session.project_root))
+        })
+        .is_some_and(|saved| {
+            same_path(&saved.project_root, &session.project_root)
+                && saved.revision > session.revision
+        })
+    {
         return Ok(history);
     }
+    history
+        .sessions
+        .retain(|saved| !same_path(&saved.project_root, &session.project_root));
+    history.sessions.insert(0, session.clone());
+    history.sessions.truncate(30);
     history.session = Some(session);
     write(path, &history)?;
     Ok(history)
@@ -110,7 +166,13 @@ fn same_path(left: &Path, right: &Path) -> bool {
     {
         left.as_os_str()
             .to_string_lossy()
-            .eq_ignore_ascii_case(&right.as_os_str().to_string_lossy())
+            .trim_start_matches("\\\\?\\")
+            .eq_ignore_ascii_case(
+                right
+                    .as_os_str()
+                    .to_string_lossy()
+                    .trim_start_matches("\\\\?\\"),
+            )
     }
     #[cfg(not(windows))]
     {

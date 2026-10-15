@@ -39,8 +39,8 @@ impl Workspace {
                 .release_clean(&file.path(DATA_CONTEXT.project_root()))
             {
                 self.editor_subscriptions.remove(&file);
-                self.autosave_timers.remove(&file);
                 self.editors.remove(&file);
+                self.editor_revisions.remove(&file);
                 self.editor_order.retain(|cached| *cached != file);
                 remaining -= 1;
                 tracing::debug!(file = %file.relative_path().display(), "clean document and editor cache released");

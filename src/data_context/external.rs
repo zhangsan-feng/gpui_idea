@@ -1,5 +1,4 @@
 use super::DataContext;
-use tokio::sync::watch;
 
 impl DataContext {
     pub(crate) fn startup(&self) -> &super::WorkspaceStartup {
@@ -17,7 +16,12 @@ impl DataContext {
     pub(crate) fn project_root(&self) -> &std::path::Path {
         &self.startup().project_root
     }
-    pub fn subscribe_gui_refresh(&self) -> watch::Receiver<u64> {
-        self.gui_refresh_notification.subscribe()
+    pub(crate) fn subscribe_changes(&self) -> tokio::sync::watch::Receiver<u64> {
+        self.changes.subscribe()
+    }
+
+    pub(crate) fn notify_gui_refresh(&self) {
+        self.changes
+            .send_modify(|version| *version = version.wrapping_add(1));
     }
 }

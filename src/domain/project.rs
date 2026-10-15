@@ -14,3 +14,19 @@ pub struct DirectorySnapshot {
     pub entries: Arc<[ProjectEntry]>,
     pub error: Option<String>,
 }
+
+#[derive(Clone, Debug)]
+pub struct ContentMatch {
+    pub path: PathBuf,
+    pub line: u32,
+    pub column: u32,
+    pub preview: String,
+}
+
+#[derive(Clone, Default)]
+pub struct ContentSearchSnapshot {
+    pub request: u64,
+    pub matches: Vec<ContentMatch>,
+    pub truncated: bool,
+    pub error: Option<String>,
+}

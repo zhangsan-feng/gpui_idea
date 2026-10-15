@@ -48,17 +48,19 @@ pub(in crate::infrastructure::filesystem) fn create_file(
     contents: &[u8],
 ) -> Result<()> {
     let path = resolve(root, relative, true)?;
-    let mut file = OpenOptions::new()
-        .write(true)
-        .create_new(true)
-        .open(&path)
-        .context("新建失败，目标可能已存在")?;
-    let result = file.write_all(contents).and_then(|_| file.sync_all());
-    drop(file);
-    if result.is_err() {
-        let _ = fs::remove_file(path);
-    }
-    Ok(result?)
+    (|| {
+        let mut file = OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&path)
+            .context("新建失败，目标可能已存在")?;
+        let result = file.write_all(contents).and_then(|_| file.sync_all());
+        drop(file);
+        if result.is_err() {
+            let _ = fs::remove_file(path);
+        }
+        Ok(result?)
+    })()
 }
 pub(in crate::infrastructure::filesystem) fn write_file(
     root: &Path,

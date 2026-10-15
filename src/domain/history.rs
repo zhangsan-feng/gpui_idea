@@ -9,6 +9,16 @@ pub enum OpenKind {
     File,
 }
 
+#[derive(Clone, Copy, Debug, Default, Eq, PartialEq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum ToolWindow {
+    #[default]
+    Run,
+    Statistics,
+    Git,
+    Terminal,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct OpenHistoryEntry {
     pub kind: OpenKind,
@@ -24,6 +34,18 @@ pub struct WorkspaceSession {
     pub expanded_directories: Vec<PathBuf>,
     pub project_panel_open: bool,
     pub run_panel_open: bool,
+    #[serde(default)]
+    pub active_tool: ToolWindow,
+    #[serde(default)]
+    pub run_command: String,
+    #[serde(default = "default_run_automatic")]
+    pub run_automatic: bool,
+    #[serde(default)]
+    pub run_profile: String,
+    #[serde(default)]
+    pub run_configurations: Vec<crate::domain::run::SavedRunConfiguration>,
+    #[serde(default)]
+    pub selected_run_configuration: u64,
     #[serde(default)]
     pub project_width: Option<f32>,
     #[serde(default)]
@@ -41,6 +63,9 @@ pub struct WindowViewState {
     pub height: f32,
     pub maximized: bool,
 }
+fn default_run_automatic() -> bool {
+    true
+}
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FileViewState {
@@ -56,6 +81,8 @@ pub struct OpenHistory {
     pub version: u32,
     pub entries: Vec<OpenHistoryEntry>,
     pub session: Option<WorkspaceSession>,
+    #[serde(default)]
+    pub sessions: Vec<WorkspaceSession>,
 }
 
 impl Default for OpenHistory {
@@ -64,6 +91,7 @@ impl Default for OpenHistory {
             version: 1,
             entries: Vec::new(),
             session: None,
+            sessions: Vec::new(),
         }
     }
 }

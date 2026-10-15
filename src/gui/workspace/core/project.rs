@@ -20,7 +20,11 @@ impl Workspace {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.closing || self.close_prompt_open || self.moving_path.is_some() {
+        if self.closing
+            || self.close_prompt_open
+            || self.moving_path.is_some()
+            || self.file_operation_running
+        {
             return;
         }
         let Some(name) = source.file_name() else {
@@ -69,12 +73,11 @@ impl Workspace {
         self.moving_path = Some(source.clone());
         cx.notify();
 
-        let project = &APPLICATION.project;
         cx.spawn_in(window, async move |this, cx| {
             let move_source = source.clone();
             let move_target = target_directory.clone();
             let result = run_application(async move {
-                project.move_entry(move_source, move_target).await
+                crate::application::APPLICATION.project.move_entry(move_source, move_target).await
             })
             .await;
             let _ = this.update_in(cx, |this, window, cx| {
@@ -95,7 +98,7 @@ impl Workspace {
         .detach();
     }
 
-    fn apply_project_move(
+    pub(in crate::gui::workspace) fn apply_project_move(
         &mut self,
         source: &Path,
         destination: &Path,
@@ -143,13 +146,16 @@ impl Workspace {
             .retain(|file, _| !file.relative_path().starts_with(source));
         self.editor_subscriptions
             .retain(|file, _| !file.relative_path().starts_with(source));
-        self.autosave_timers
-            .retain(|file, _| !file.relative_path().starts_with(source));
         self.load_errors
             .retain(|file, _| !file.relative_path().starts_with(source));
         self.editor_order
             .retain(|file| !file.relative_path().starts_with(source));
+        self.editor_revisions
+            .retain(|file, _| !file.relative_path().starts_with(source));
         for file in &mut self.open_files {
+            file.0 = remap(&file.0);
+        }
+        for file in &mut self.navigation {
             file.0 = remap(&file.0);
         }
         let new_selected = ProjectFile(remap(old_selected.relative_path()));
@@ -162,19 +168,17 @@ impl Workspace {
         self.expanded_directories
             .insert(destination.parent().unwrap_or(Path::new("")).to_owned());
         self.expanded_directories.insert(PathBuf::new());
+        let navigating = self.navigating;
+        self.navigating = true;
         for file in reopened {
             self.select_file(file, window, cx);
         }
         if self.open_files.contains(&new_selected) {
             self.select_file(new_selected, window, cx);
         }
-        let mut refresh = self.expanded_directories.clone();
-        refresh.insert(source.parent().unwrap_or(Path::new("")).to_owned());
-        refresh.insert(destination.parent().unwrap_or(Path::new("")).to_owned());
-        for directory in refresh {
-            self.load_directory(directory, cx);
-        }
-        self.schedule_session_save(cx);
+        self.navigating = navigating;
+        // Application has already published directory snapshots for this move.
+        self.schedule_save(cx);
         tracing::info!(source = %source.display(), destination = %destination.display(), reopened_tabs = self.open_files.len(), "project tree updated after move");
     }
 
@@ -201,7 +205,7 @@ impl Workspace {
                 cx,
             );
         }
-        self.schedule_session_save(cx);
+        self.schedule_save(cx);
         self.rebuild_tree();
         cx.notify();
     }
@@ -224,13 +228,13 @@ impl Workspace {
         }
         tracing::info!(directory = %path.display(), "project directory load requested");
 
-        let project = &APPLICATION.project;
         let relative = path.clone();
         self.rebuild_tree();
         cx.notify();
         cx.spawn(async move |this, cx| {
             let result =
-                run_application(async move { project.load_directory(relative).await }).await;
+                run_application(async move { APPLICATION.project.load_directory(relative).await })
+                    .await;
             let _ = this.update(cx, |this, cx| {
                 this.loading_directories.remove(&path);
                 if let Err(error) = result {
@@ -256,6 +260,28 @@ impl Workspace {
                 &self.loading_directories,
                 &mut rows,
             );
+        }
+        if let Some(edit) = &self.inline_file_edit {
+            if matches!(
+                edit.action,
+                super::super::FileTreeMenuAction::NewFile
+                    | super::super::FileTreeMenuAction::NewDirectory
+            ) {
+                rows.retain(|row| !matches!(row, TreeRow::Message { directory, text, .. } if directory == &edit.directory && text == "空目录"));
+                let position = if edit.directory.as_os_str().is_empty() {
+                    Some((0, 1))
+                } else {
+                    rows.iter().enumerate().find_map(|(index, row)| match row {
+                        TreeRow::Entry(entry, depth) if entry.relative_path == edit.directory => {
+                            Some((index + 1, depth + 1))
+                        }
+                        _ => None,
+                    })
+                };
+                if let Some((index, depth)) = position {
+                    rows.insert(index, TreeRow::InlineFile(depth));
+                }
+            }
         }
         self.tree_rows = rows;
         self.project_revision = revision;

@@ -1,3 +1,9 @@
+mod content_search;
+mod file_tree;
+mod run;
+mod run_configurations;
+mod run_sessions;
+
 use super::ProjectService;
 use crate::application::APPLICATION;
 use crate::domain::project::DirectorySnapshot;
@@ -6,11 +12,78 @@ use anyhow::{Result, bail};
 use std::{path::PathBuf, time::Instant};
 
 impl ProjectService {
+    pub(super) async fn statistics_core(&self) -> Result<()> {
+        let _permit = self.reads.acquire().await?;
+        let result = INFRASTRUCTURE
+            .filesystem
+            .statistics(DATA_CONTEXT.project_root().to_owned())
+            .await;
+        match result {
+            Ok(snapshot) => {
+                DATA_CONTEXT.project.set_statistics(snapshot);
+                Ok(())
+            }
+            Err(error) => {
+                DATA_CONTEXT.project.set_statistics(
+                    crate::domain::statistics::StatisticsSnapshot {
+                        error: Some(format!("{error:#}")),
+                        ..Default::default()
+                    },
+                );
+                Err(error)
+            }
+        }
+    }
+    pub(super) async fn git_status_core(&self) -> Result<()> {
+        let result = INFRASTRUCTURE
+            .filesystem
+            .git_log(DATA_CONTEXT.project_root().to_owned())
+            .await;
+        match result {
+            Ok(status) => {
+                DATA_CONTEXT.project.set_git(status);
+                Ok(())
+            }
+            Err(error) => {
+                DATA_CONTEXT
+                    .project
+                    .set_git(crate::domain::git::GitSnapshot {
+                        error: Some(format!("{error:#}")),
+                        ..Default::default()
+                    });
+                Err(error)
+            }
+        }
+    }
+    pub(super) async fn git_details_core(&self, hash: String) -> Result<()> {
+        let result = INFRASTRUCTURE
+            .filesystem
+            .git_details(DATA_CONTEXT.project_root().to_owned(), hash.clone())
+            .await;
+        match result {
+            Ok(details) => {
+                DATA_CONTEXT.project.set_git_details(details);
+                Ok(())
+            }
+            Err(error) => {
+                DATA_CONTEXT
+                    .project
+                    .set_git_details(crate::domain::git::GitDetails {
+                        hash,
+                        error: Some(format!("{error:#}")),
+                        ..Default::default()
+                    });
+                Err(error)
+            }
+        }
+    }
     pub(super) async fn move_core(
         &self,
         source: PathBuf,
         target_directory: PathBuf,
     ) -> Result<PathBuf> {
+        let _guard = self.file_operations.lock().await;
+        let _refresh = APPLICATION.file_watch.lock_refresh().await;
         let name = source
             .file_name()
             .ok_or_else(|| anyhow::anyhow!("不能移动项目根目录"))?;
@@ -22,14 +95,32 @@ impl ProjectService {
             bail!("目录不能移动到自身或子目录中");
         }
         tracing::info!(source = %source.display(), destination = %destination.display(), "project entry move requested");
-        INFRASTRUCTURE
+        let change = INFRASTRUCTURE
             .filesystem
-            .rename(
+            .begin_gui_file_change(
                 DATA_CONTEXT.project_root().to_owned(),
-                source,
-                destination.clone(),
+                vec![source.clone(), destination.clone()],
             )
             .await?;
+        change.finish(
+            INFRASTRUCTURE
+                .filesystem
+                .rename(
+                    DATA_CONTEXT.project_root().to_owned(),
+                    source.clone(),
+                    destination.clone(),
+                )
+                .await,
+        )?;
+        self.invalidate_moved_run_target(&source, &destination);
+        self.refresh_local_directories(
+            &[
+                source.parent().unwrap_or(std::path::Path::new("")),
+                &target_directory,
+            ],
+            Some((&source, &destination)),
+        )
+        .await;
         tracing::info!(destination = %destination.display(), "project entry moved");
         Ok(destination)
     }

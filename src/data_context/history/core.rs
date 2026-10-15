@@ -8,7 +8,6 @@ impl HistoryContext {
             .snapshot
             .lock()
             .unwrap_or_else(|error| error.into_inner()) = Arc::new(history);
-        self.gui_refresh_notification
-            .send_modify(|version| *version += 1);
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
     }
 }

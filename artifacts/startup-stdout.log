@@ -1,0 +1,31 @@
+[2026-10-14 10:10:09] [INFO] [gpui_idea::infrastructure::logging::core] [src\infrastructure\logging\core.rs:44] init logger success: C:\Users\10463\Desktop\project\gpui_idea\logs\2026-10-14.log
+[2026-10-14 10:10:09] [INFO] [gpui_idea] [src\main.rs:22] application startup application="GPUI Editor"
+[2026-10-14 10:10:09] [INFO] [gpui_idea::infrastructure::history] [src\infrastructure\history\mod.rs:16] history store initialized path=C:\Users\10463\Desktop\project\gpui_idea\data\open-history.json
+[2026-10-14 10:10:09] [INFO] [gpui_idea::infrastructure::external] [src\infrastructure\external.rs:11] infrastructure runtime initialized
+[2026-10-14 10:10:09] [INFO] [gpui_idea::application::lifecycle::external] [src\application\lifecycle\external.rs:7] application services initialized
+[2026-10-14 10:10:09] [INFO] [gpui_idea::application::history::core] [src\application\history\core.rs:47] last workspace session loaded project=C:\Users\10463\Desktop\project\gpui_idea files=8 directories=5
+[2026-10-14 10:10:09] [DEBUG] [gpui_idea::application::history::core] [src\application\history\core.rs:22] opened path recorded in persistent history kind=Project path=C:\Users\10463\Desktop\project\gpui_idea
+[2026-10-14 10:10:09] [INFO] [gpui_idea::application::lifecycle::core] [src\application\lifecycle\core.rs:40] shared workspace state initialized root=C:\Users\10463\Desktop\project\gpui_idea
+[2026-10-14 10:10:09] [INFO] [gpui_idea] [src\main.rs:34] GPUI application event loop starting execution="block_in_place"
+[2026-10-14 10:10:09] [INFO] [gpui_windows::direct_write] [C:\Users\10463\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\gpui-pre-windows-0.3.9\src\direct_write.rs:1918] Use Microsoft YaHei UI as UI font.
+[2026-10-14 10:10:10] [INFO] [gpui_windows::directx_devices] [C:\Users\10463\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\gpui-pre-windows-0.3.9\src\directx_devices.rs:121] Using GPU: Intel(R) Iris(R) Xe Graphics
+[2026-10-14 10:10:10] [INFO] [gpui_windows::directx_devices] [C:\Users\10463\.cargo\registry\src\index.crates.io-1949cf8c6b5b557f\gpui-pre-windows-0.3.9\src\directx_devices.rs:55] Created device with Direct3D 11.1 feature level.
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::external] [src\gui\external.rs:10] main window opening: title=GPUI Editor
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::external] [src\gui\external.rs:31] main window size prepared window_size=Size { 1469px × 833px } maximized=false
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace] [src\gui\workspace\mod.rs:200] workspace layout initialized project_width=300 run_height=250
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace] [src\gui\workspace\mod.rs:205] workspace and document saving enabled after activity becomes idle delay_ms=3000
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::project] [src\gui\workspace\core\project.rs:229] project directory load requested directory=
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::project] [src\gui\workspace\core\project.rs:229] project directory load requested directory=src\gui\workspace
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::project] [src\gui\workspace\core\project.rs:229] project directory load requested directory=src
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::project] [src\gui\workspace\core\project.rs:229] project directory load requested directory=src\gui
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::project] [src\gui\workspace\core\project.rs:229] project directory load requested directory=src\gui\workspace\core
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::document] [src\gui\workspace\core\document.rs:82] document open requested file=Cargo.toml
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::document] [src\gui\workspace\core\document.rs:82] document open requested file=src\gui\mod.rs
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::document] [src\gui\workspace\core\document.rs:82] document open requested file=src\gui\external.rs
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::document] [src\gui\workspace\core\document.rs:82] document open requested file=src\data_context\external.rs
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::document] [src\gui\workspace\core\document.rs:82] document open requested file=.git\config
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::document] [src\gui\workspace\core\document.rs:82] document open requested file=.git\description
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::document] [src\gui\workspace\core\document.rs:82] document open requested file=data\open-history.json
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace::core::document] [src\gui\workspace\core\document.rs:82] document open requested file=src\gui\workspace\core\save.rs
+[2026-10-14 10:10:10] [INFO] [gpui_idea::gui::workspace] [src\gui\workspace\mod.rs:378] workspace state restored into GUI tabs=8 directories=5
+[2026-10-14 10:10:10] [DEBUG] [gpui_idea::gui::workspace::core::save] [src\gui\workspace\core\save.rs:18] workspace and document save scheduled revision=157 delay_ms=3000

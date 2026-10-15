@@ -1,4 +1,4 @@
 mod core;
 mod external;
 
-pub use external::{initialize, prepare_startup, run_application};
+pub use external::{initialize, prepare_startup, run_application, shutdown, wait_timer};

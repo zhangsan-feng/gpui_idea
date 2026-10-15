@@ -2,12 +2,12 @@ mod document;
 mod external;
 mod history;
 mod project;
+mod terminal;
 
 use std::{
     path::PathBuf,
     sync::{LazyLock, OnceLock},
 };
-use tokio::sync::watch;
 
 pub(crate) static DATA_CONTEXT: LazyLock<DataContext> = LazyLock::new(DataContext::new);
 
@@ -15,24 +15,26 @@ pub(crate) struct WorkspaceStartup {
     pub(crate) project_root: PathBuf,
     pub(crate) session: Option<crate::domain::history::WorkspaceSession>,
     pub(crate) notice: Option<String>,
+    pub(crate) initial_file: Option<PathBuf>,
 }
 
 pub struct DataContext {
+    pub terminal: terminal::TerminalContext,
     pub documents: document::DocumentContext,
     pub project: project::ProjectContext,
     pub history: history::HistoryContext,
-    gui_refresh_notification: watch::Sender<u64>,
     startup: OnceLock<WorkspaceStartup>,
+    changes: tokio::sync::watch::Sender<u64>,
 }
 impl DataContext {
     fn new() -> Self {
-        let notification = watch::channel(0).0;
         Self {
-            documents: document::DocumentContext::new(notification.clone()),
-            project: project::ProjectContext::new(notification.clone()),
-            history: history::HistoryContext::new(notification.clone()),
-            gui_refresh_notification: notification,
+            terminal: terminal::TerminalContext::new(),
+            documents: document::DocumentContext::new(),
+            project: project::ProjectContext::new(),
+            history: history::HistoryContext::new(),
             startup: OnceLock::new(),
+            changes: tokio::sync::watch::channel(0).0,
         }
     }
 }

@@ -25,7 +25,6 @@ impl DocumentContext {
         Ok(snapshot)
     }
     pub(super) fn notify(&self) {
-        self.gui_refresh_notification
-            .send_modify(|version| *version += 1);
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
     }
 }

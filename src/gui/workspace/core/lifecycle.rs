@@ -1,5 +1,4 @@
 use super::super::Workspace;
-use crate::application::APPLICATION;
 use crate::application::lifecycle::run_application;
 use crate::data_context::DATA_CONTEXT;
 use gpui_kit::component::{
@@ -16,17 +15,18 @@ impl Workspace {
         cx: &mut Context<Self>,
     ) {
         if self.closing
+            || self.file_operation_running
             || !self.saving_files.is_empty()
             || DATA_CONTEXT.documents.has_pending_save()
         {
-            self.notice = Some("保存正在进行，请稍后关闭窗口".into());
+            self.notice = Some("文件操作或保存正在进行，请稍后关闭窗口".into());
             cx.notify();
             return;
         }
         let dirty = DATA_CONTEXT.documents.dirty_documents();
         if dirty.is_empty() {
             self.closing = true;
-            self.autosave_timers.clear();
+            self.persistence_timer.take();
             self.close_with_session(window, cx);
             return;
         }
@@ -34,7 +34,7 @@ impl Workspace {
             return;
         }
         self.close_prompt_open = true;
-        self.autosave_timers.clear();
+        self.persistence_timer.take();
         let view = cx.entity().downgrade();
         let message = format!(
             "有 {} 个文件尚未保存。保存全部后关闭，或明确放弃这些编辑。",
@@ -79,7 +79,7 @@ impl Workspace {
                                 if let Some(view) = discard.upgrade() {
                                     view.update(cx, |this, cx| {
                                         this.closing = true;
-                                        this.autosave_timers.clear();
+                                        this.persistence_timer.take();
                                         this.close_with_session(window, cx);
                                     });
                                 }
@@ -105,7 +105,7 @@ impl Workspace {
     fn save_all_and_close(&mut self, window: &mut Window, cx: &mut Context<Self>) {
         self.close_prompt_open = false;
         self.closing = true;
-        self.autosave_timers.clear();
+        self.persistence_timer.take();
         let paths = DATA_CONTEXT
             .documents
             .dirty_documents()
@@ -113,11 +113,10 @@ impl Workspace {
             .map(|doc| doc.path.clone())
             .collect::<Vec<_>>();
 
-        let documents = &APPLICATION.documents;
         cx.spawn_in(window, async move |this, cx| {
             let result = run_application(async move {
                 for path in paths {
-                    documents.save(path).await?;
+                    crate::application::APPLICATION.documents.save(path).await?;
                 }
                 Ok(())
             })

@@ -3,6 +3,103 @@ use anyhow::Result;
 use std::{path::PathBuf, sync::Arc};
 
 impl FileSystem {
+    pub(crate) async fn search_content(
+        &self,
+        root: PathBuf,
+        query: String,
+    ) -> Result<crate::domain::project::ContentSearchSnapshot> {
+        core::run("content_search", PathBuf::new(), move || {
+            core::search_content(root, query)
+        })
+        .await
+    }
+    pub(crate) async fn copy_destination(
+        &self,
+        root: PathBuf,
+        source: PathBuf,
+        directory: PathBuf,
+    ) -> Result<PathBuf> {
+        core::run("copy_destination", source.clone(), move || {
+            core::copy_destination(&root, &source, &directory)
+        })
+        .await
+    }
+
+    pub(crate) async fn copy_entry(
+        &self,
+        root: PathBuf,
+        source: PathBuf,
+        destination: PathBuf,
+    ) -> Result<PathBuf> {
+        core::run("copy_entry", source.clone(), move || {
+            core::copy_entry(&root, &source, &destination)
+        })
+        .await
+    }
+    pub(crate) async fn remove_entry(&self, root: PathBuf, relative: PathBuf) -> Result<()> {
+        core::run("remove_entry", relative.clone(), move || {
+            core::remove_entry(&root, &relative)
+        })
+        .await
+    }
+    pub(crate) async fn reveal_entry(&self, root: PathBuf, relative: PathBuf) -> Result<()> {
+        core::run("reveal_entry", relative.clone(), move || {
+            core::reveal_entry(&root, &relative)
+        })
+        .await
+    }
+    pub fn prepare_run_command(
+        &self,
+        command: &str,
+        arguments: &str,
+        prefix: &str,
+        template: Option<&str>,
+    ) -> Result<String> {
+        core::prepare_run_command(command, arguments, prefix, template)
+    }
+    pub async fn search_files(&self, root: PathBuf, query: String) -> Result<Vec<PathBuf>> {
+        core::run("file_search", PathBuf::new(), move || {
+            core::search_files(root, query)
+        })
+        .await
+    }
+    pub async fn run_configuration(
+        &self,
+        root: PathBuf,
+        file: Option<PathBuf>,
+    ) -> Result<crate::domain::run::RunConfiguration> {
+        core::run(
+            "run_configuration",
+            file.clone().unwrap_or_default(),
+            move || core::run_configuration(root, file),
+        )
+        .await
+    }
+    pub async fn git_log(&self, root: PathBuf) -> Result<crate::domain::git::GitSnapshot> {
+        core::run("git_log", PathBuf::new(), move || core::git_log(root)).await
+    }
+    pub async fn git_details(
+        &self,
+        root: PathBuf,
+        hash: String,
+    ) -> Result<crate::domain::git::GitDetails> {
+        core::run("git_details", PathBuf::new(), move || {
+            core::git_details(root, hash)
+        })
+        .await
+    }
+    pub async fn statistics(
+        &self,
+        root: PathBuf,
+    ) -> Result<crate::domain::statistics::StatisticsSnapshot> {
+        core::run("project_statistics", PathBuf::new(), move || {
+            core::statistics(root)
+        })
+        .await
+    }
+    pub async fn git_status(&self, root: PathBuf) -> Result<String> {
+        core::run("git_status", PathBuf::new(), move || core::git_status(root)).await
+    }
     /// All offsets refer to the original file. Expected bytes protect the target blocks.
     pub async fn modify_blocks(
         &self,

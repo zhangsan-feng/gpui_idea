@@ -9,6 +9,7 @@ impl InfrastructureContext {
             .set(runtime)
             .map_err(|_| anyhow!("基础设施已经初始化"))?;
         tracing::info!("infrastructure runtime initialized");
+        self.timer.start()?;
         Ok(())
     }
 

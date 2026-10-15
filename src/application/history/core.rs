@@ -5,6 +5,39 @@ use anyhow::{Result, bail};
 use std::path::{Component, PathBuf};
 
 impl HistoryService {
+    pub(super) async fn forget_project_core(&self, project: PathBuf) -> Result<()> {
+        let _guard = self.operations.lock().await;
+        let history = INFRASTRUCTURE.history.forget_project(project).await?;
+        DATA_CONTEXT.history.set_history(history);
+        Ok(())
+    }
+    pub(super) async fn restore_project_core(
+        &self,
+        root: PathBuf,
+    ) -> Result<Option<WorkspaceSession>> {
+        self.load().await?;
+        let history = DATA_CONTEXT.history.snapshot();
+        let normalize = |path: &std::path::Path| {
+            path.to_string_lossy()
+                .trim_start_matches("\\\\?\\")
+                .to_lowercase()
+        };
+        let session = history
+            .sessions
+            .iter()
+            .find(|session| normalize(&session.project_root) == normalize(&root))
+            .or_else(|| {
+                history
+                    .session
+                    .as_ref()
+                    .filter(|session| normalize(&session.project_root) == normalize(&root))
+            })
+            .cloned();
+        if let Some(session) = &session {
+            validate_session(session)?;
+        }
+        Ok(session)
+    }
     pub(super) async fn load_core(&self) -> Result<()> {
         let _guard = self.operations.lock().await;
         let history = INFRASTRUCTURE.history.load().await?;

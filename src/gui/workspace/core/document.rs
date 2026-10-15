@@ -35,6 +35,16 @@ impl Workspace {
             return;
         }
         let activated = Instant::now();
+        if !self.navigating && self.navigation.get(self.navigation_index) != Some(&file) {
+            if !self.navigation.is_empty() {
+                self.navigation.truncate(self.navigation_index + 1);
+            }
+            self.navigation.push(file.clone());
+            if self.navigation.len() > 100 {
+                self.navigation.remove(0);
+            }
+            self.navigation_index = self.navigation.len() - 1;
+        }
         if !self.open_files.contains(&file) {
             self.open_files.push(file.clone());
         }
@@ -42,7 +52,7 @@ impl Workspace {
         self.reveal_editor_tab(&file);
         self.touch_editor(&file);
         self.prune_editors();
-        self.schedule_session_save(cx);
+        self.schedule_save(cx);
         if self.session_ready {
             self.notice = None;
         }
@@ -58,6 +68,7 @@ impl Workspace {
                 elapsed_us = activated.elapsed().as_micros(),
                 "document activated from editor cache"
             );
+            self.sync_documents(window, cx);
             cx.notify();
             return;
         }
@@ -95,20 +106,28 @@ impl Workspace {
                                 state.set_scroll_offset(point(px(view.scroll_x), px(view.scroll_y)), cx);
                             });
                         }
-                        let changed_file = file.clone();
-                        if let Err(error) = APPLICATION.documents.attach_editor_buffer(&path, editor.read(cx).text().clone()) {
+                        if let Some(mut position) = this.pending_search_positions.remove(&path) {
+                            editor.update(cx, |state, cx| {
+                                position.line = position.line.min(state.text().lines_len().saturating_sub(1) as u32);
+                                state.set_cursor_position(position, window, cx);
+                            });
+                        }
+                        if let Err(error) = APPLICATION.documents.attach_editor_buffer(&path, editor.read(cx).text().clone(), opened.snapshot.revision) {
                             this.notice = Some(format!("{error:#}"));
                         }
                         let subscription = cx.subscribe_in(&editor, window, move |this, state, event: &InputEvent, _, cx| {
                             if matches!(event, InputEvent::Change) {
-                                this.schedule_session_save(cx);
                                 let committed = Instant::now();
                                 let buffer = state.read(cx).text().clone();
                                 if let Err(error) = APPLICATION.documents.edit(&path, buffer) {
                                     this.notice = Some(format!("{error:#}"));
                                     cx.notify();
                                 } else {
-                                    this.schedule_autosave(changed_file.clone(), cx);
+                                    if let Some(snapshot) = DATA_CONTEXT.documents.snapshot(&path) {
+                                        let file = this.project_file(&path);
+                                        this.editor_revisions.insert(file, snapshot.revision);
+                                    }
+                                    this.schedule_save(cx);
                                 }
                                 let elapsed_us = committed.elapsed().as_micros();
                                 if elapsed_us > 8_000 {
@@ -117,10 +136,12 @@ impl Workspace {
                             }
                         });
                         this.editor_subscriptions.insert(file.clone(), subscription);
+                        this.editor_revisions.insert(file.clone(), opened.snapshot.revision);
                         if this.selected_file == file && this.open_files.contains(&file) {
                             editor.update(cx, |state, cx| state.focus(window, cx));
                         }
                         this.editors.insert(file.clone(), editor);
+                        this.sync_documents(window, cx);
                         this.prune_editors();
                         let initialize_us = initialization.elapsed().as_micros();
                         tracing::info!(file = %file.relative_path().display(), initialize_us, elapsed_ms = started.elapsed().as_millis(), "document editor ready");

@@ -41,6 +41,15 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
 
     super::bridge::initialize();
 
+    let default_panic_hook = std::panic::take_hook();
+    std::panic::set_hook(Box::new(move |info| {
+        log::error!(
+            "application panic: {info}\n{}",
+            std::backtrace::Backtrace::force_capture()
+        );
+        default_panic_hook(info);
+    }));
+
     log::info!("init logger success: {}", log_file.display());
     [stdout_guard, file_guard]
 }

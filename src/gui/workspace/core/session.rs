@@ -6,10 +6,7 @@ use crate::{
     domain::history::{FileViewState, OpenKind, WindowViewState, WorkspaceSession},
 };
 use gpui_kit::{Context, Window, WindowBounds};
-use std::{
-    path::{Path, PathBuf},
-    time::Duration,
-};
+use std::path::{Path, PathBuf};
 
 impl Workspace {
     pub(in crate::gui::workspace) fn window_view_state(window: &Window) -> WindowViewState {
@@ -31,7 +28,7 @@ impl Workspace {
         if view != self.window_view && view.width > 0. && view.height > 0. {
             self.window_view = view;
             tracing::debug!(?view, "window size updated for restoration");
-            self.schedule_session_save(cx);
+            self.schedule_save(cx);
         }
     }
 
@@ -43,10 +40,14 @@ impl Workspace {
         )
     }
 
-    fn workspace_session(&self, cx: &Context<Self>) -> WorkspaceSession {
+    pub(in crate::gui::workspace) fn workspace_session(
+        &self,
+        cx: &Context<Self>,
+    ) -> WorkspaceSession {
         let root = DATA_CONTEXT.project_root();
         let mut expanded_directories: Vec<_> = self.expanded_directories.iter().cloned().collect();
         expanded_directories.sort();
+        let run = DATA_CONTEXT.project.run_configuration();
         WorkspaceSession {
             project_root: root.to_owned(),
             open_files: self.open_files.iter().map(|file| file.path(root)).collect(),
@@ -54,6 +55,12 @@ impl Workspace {
             expanded_directories,
             project_panel_open: self.project_panel_open,
             run_panel_open: self.run_panel_open,
+            active_tool: self.active_tool,
+            run_command: run.command.clone(),
+            run_automatic: run.automatic,
+            run_profile: run.selected_profile.clone(),
+            run_configurations: run.configurations.clone(),
+            selected_run_configuration: run.selected_configuration,
             window_view: Some(self.window_view),
             project_width: self
                 .project_resize
@@ -108,36 +115,6 @@ impl Workspace {
         }
     }
 
-    pub(in crate::gui::workspace) fn schedule_session_save(&mut self, cx: &mut Context<Self>) {
-        if !self.session_ready || self.closing {
-            return;
-        }
-        self.session_revision = self.session_revision.saturating_add(1);
-        self.session_timer.take();
-        self.session_timer = Some(cx.spawn(async move |this, cx| {
-            cx.background_executor()
-                .timer(Duration::from_millis(300))
-                .await;
-            let Ok(session) = this.update(cx, |this, cx| {
-                if let Some(timer) = this.session_timer.take() {
-                    timer.detach();
-                }
-                this.workspace_session(cx)
-            }) else {
-                return;
-            };
-            let history = &APPLICATION.history;
-            let result = run_application(async move { history.save_session(session).await }).await;
-            if let Err(error) = result {
-                tracing::error!(error = %error, "workspace session save failed");
-                let _ = this.update(cx, |this, cx| {
-                    this.notice = Some(format!("工作区状态保存失败：{error:#}"));
-                    cx.notify();
-                });
-            }
-        }));
-    }
-
     pub(in crate::gui::workspace) fn remember_opened(
         &self,
         kind: OpenKind,
@@ -162,7 +139,7 @@ impl Workspace {
     ) {
         self.window_view = Self::window_view_state(window);
         self.closing = true;
-        self.session_timer.take();
+        self.persistence_timer.take();
         self.session_revision = self.session_revision.saturating_add(1);
         let session = self.workspace_session(cx);
 
@@ -175,6 +152,14 @@ impl Workspace {
                     this.notice = Some(format!("工作区状态保存失败：{error:#}"));
                 }
                 // History failure must not trap the user in a window they asked to close.
+                for handle in this
+                    .project_windows
+                    .values()
+                    .copied()
+                    .chain(this.run_configuration_window)
+                {
+                    let _ = handle.update(cx, |_, child, _| child.remove_window());
+                }
                 window.defer(cx, |window, _| window.remove_window());
             });
         })

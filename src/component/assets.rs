@@ -6,10 +6,23 @@ gpui_kit::assets::icon_assets!(
     [
         ArrowLeft,
         ArrowRight,
+        ArrowDownToLine,
         BellDot,
         BugPlay,
         ChevronDown,
         ChevronRight,
+        ChartNoAxesCombined,
+        ChevronUp,
+        Copy,
+        ClipboardPaste,
+        FilePlus,
+        Pencil,
+        Eye,
+        List,
+        ListTree,
+        Plus,
+        Trash,
+        Circle,
         CirclePlay,
         Code,
         Database,
@@ -55,6 +68,9 @@ impl MergedAssets {
 
 impl AssetSource for MergedAssets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
+        if let Some(bytes) = super::idea_icons::load(path) {
+            return Ok(Some(bytes));
+        }
         if let Some(asset) = self.editor_icons.load(path)? {
             return Ok(Some(asset));
         }
@@ -74,6 +90,7 @@ impl AssetSource for MergedAssets {
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
         let mut paths = BTreeSet::new();
+        paths.extend(super::idea_icons::list(path));
         for asset_path in self.editor_icons.list(path)? {
             paths.insert(asset_path.to_string());
         }

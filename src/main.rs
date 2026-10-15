@@ -2,6 +2,7 @@ mod application;
 mod component;
 mod data_context;
 mod domain;
+mod event_bus;
 mod gui;
 mod infrastructure;
 
@@ -39,6 +40,7 @@ async fn main() -> anyhow::Result<()> {
             .with_assets(component::assets::MergedAssets::new())
             .run(move |cx| {
                 gpui_kit::init(cx);
+                gui::terminal::init(cx);
                 Theme::change(ThemeMode::Light, None, cx);
                 Theme::set_scrollbar_mode(ScrollbarMode::Always, cx);
 
@@ -50,6 +52,7 @@ async fn main() -> anyhow::Result<()> {
     });
 
     tracing::info!("GPUI application event loop returned; shutdown starting");
+    application::lifecycle::shutdown().await;
     tracing::info!("application shutdown complete");
     Ok(())
 }

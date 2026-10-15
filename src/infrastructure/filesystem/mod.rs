@@ -2,6 +2,8 @@ mod core;
 mod directory;
 mod document;
 mod external;
+mod watcher;
+pub(crate) use watcher::FileSubscription;
 
 use std::{path::PathBuf, time::SystemTime};
 
@@ -47,3 +49,9 @@ pub struct FileBlockEdit {
 const MAX_TEXT_LINES: usize = 50_000;
 
 pub(crate) struct FileSystem;
+
+impl FileSystem {
+    pub(super) fn new() -> Self {
+        Self
+    }
+}

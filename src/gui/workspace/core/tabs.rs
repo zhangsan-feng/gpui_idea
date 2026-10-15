@@ -10,7 +10,7 @@ impl Workspace {
         self.open_files.clear();
         // As with closing one tab, dirty buffers and pending autosave stay alive.
         self.prune_editors();
-        self.schedule_session_save(cx);
+        self.schedule_save(cx);
         tracing::info!(closed, "all editor tabs closed");
         cx.notify();
     }
@@ -40,7 +40,7 @@ impl Workspace {
             self.select_file(next, window, cx);
         }
         self.prune_editors();
-        self.schedule_session_save(cx);
+        self.schedule_save(cx);
         tracing::info!(file = %file.relative_path().display(), remaining = self.open_files.len(), "editor tab closed");
         cx.notify();
     }

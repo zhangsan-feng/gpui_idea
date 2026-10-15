@@ -4,11 +4,22 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 impl HistoryStore {
+    pub(crate) async fn forget_project(&self, project: PathBuf) -> Result<OpenHistory> {
+        let path = self.path.clone();
+        let lock = self.io_lock.clone();
+        tokio::task::spawn_blocking(move || {
+            let _guard = lock.lock().unwrap_or_else(|error| error.into_inner());
+            let _process_guard = core::lock_history(&path)?;
+            core::forget_project(&path, &project)
+        })
+        .await?
+    }
     pub async fn load(&self) -> Result<OpenHistory> {
         let path = self.path.clone();
         let lock = self.io_lock.clone();
         tokio::task::spawn_blocking(move || {
             let _guard = lock.lock().unwrap_or_else(|error| error.into_inner());
+            let _process_guard = core::lock_history(&path)?;
             core::read(&path)
         })
         .await
@@ -20,6 +31,7 @@ impl HistoryStore {
         let lock = self.io_lock.clone();
         tokio::task::spawn_blocking(move || {
             let _guard = lock.lock().unwrap_or_else(|error| error.into_inner());
+            let _process_guard = core::lock_history(&path)?;
             core::record(&path, kind, &target)
         })
         .await
@@ -31,6 +43,7 @@ impl HistoryStore {
         let lock = self.io_lock.clone();
         tokio::task::spawn_blocking(move || {
             let _guard = lock.lock().unwrap_or_else(|error| error.into_inner());
+            let _process_guard = core::lock_history(&path)?;
             core::save_session(&path, session)
         })
         .await

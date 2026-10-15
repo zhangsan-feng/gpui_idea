@@ -23,7 +23,7 @@ impl DocumentService {
     pub fn edit(&self, path: &Path, text: Rope) -> Result<()> {
         self.edit_core(path, text, true)
     }
-    pub fn attach_editor_buffer(&self, path: &Path, text: Rope) -> Result<()> {
-        self.edit_core(path, text, false)
+    pub fn attach_editor_buffer(&self, path: &Path, text: Rope, revision: u64) -> Result<()> {
+        self.attach_editor_buffer_core(path, text, revision)
     }
 }
