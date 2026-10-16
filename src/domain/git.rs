@@ -10,6 +10,8 @@ pub struct GitCommit {
 }
 #[derive(Clone, Default)]
 pub struct GitSnapshot {
+    pub is_repository: bool,
+    pub is_detached: bool,
     pub branch: String,
     pub commits: Vec<GitCommit>,
     pub status: String,

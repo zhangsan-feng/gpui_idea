@@ -8,7 +8,7 @@ pub(in crate::infrastructure::filesystem) async fn run<T: Send + 'static>(
 ) -> Result<T> {
     let started = Instant::now();
     let result = tokio::task::spawn_blocking(work).await?;
-    tracing::info!(operation, path = %path.display(), elapsed_ms = started.elapsed().as_millis(), success = result.is_ok(), "filesystem operation completed");
+    tracing::debug!(operation, path = %path.display(), elapsed_ms = started.elapsed().as_millis(), success = result.is_ok(), "filesystem operation completed");
     if let Err(error) = &result {
         tracing::error!(operation, path = %path.display(), error = %error, "filesystem operation failed");
     }

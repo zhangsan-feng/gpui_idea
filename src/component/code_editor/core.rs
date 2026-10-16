@@ -32,9 +32,12 @@ pub(super) fn language_definition(path: &Path) -> Option<&'static EditorLanguage
 
 pub(super) fn install(cx: &mut App) -> Result<()> {
     // Palette reference: JetBrains/intellij-community, expUI_lightScheme.xml.
+    let theme_bytes =
+        crate::infrastructure::assets::load("editor/idea-light.json").unwrap_or_else(|| {
+            std::borrow::Cow::Borrowed(include_bytes!("../../../assets/editor/idea-light.json"))
+        });
     let theme: HighlightTheme =
-        serde_json::from_str(include_str!("../../../assets/editor/idea-light.json"))
-            .context("IDEA 浅色代码配色格式无效")?;
+        serde_json::from_slice(&theme_bytes).context("IDEA 浅色代码配色格式无效")?;
 
     let registry = LanguageRegistry::singleton();
     for language in LANGUAGES {

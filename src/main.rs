@@ -12,15 +12,18 @@ use gpui_kit::component::{Theme, ThemeMode};
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> anyhow::Result<()> {
-    
     let _logging_guard = tokio::task::spawn_blocking(|| {
-        infrastructure::logging::initialize(
-            std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("logs"),
-            "%Y-%m-%d",
-        )
+        let paths = infrastructure::paths::initialize()?;
+        Ok::<_, anyhow::Error>(infrastructure::logging::initialize(&paths.logs, "%Y-%m-%d"))
     })
     .await
-    .context("initialize logging task failed")?;
+    .context("initialize logging task failed")??;
+    tracing::info!(root = %infrastructure::paths::get().root.display(), "application directories initialized");
+    tokio::task::spawn_blocking(|| {
+        infrastructure::assets::initialize(&infrastructure::paths::get().assets)
+    })
+    .await
+    .context("preload assets task failed")??;
     tracing::info!(application = "GPUI Editor", "application startup");
 
     if let Err(error) = application::lifecycle::initialize() {

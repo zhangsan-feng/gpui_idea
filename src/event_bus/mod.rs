@@ -1,5 +1,7 @@
 mod core;
 mod external;
+pub(crate) mod gui_event;
+pub(crate) mod refresh_gui;
 
 use std::{
     collections::HashSet,
@@ -26,12 +28,16 @@ pub(crate) struct RefreshDataContext {
 
 pub(crate) struct EventBus {
     refresh_data_context: broadcast::Sender<Arc<RefreshDataContext>>,
+    pub(crate) refresh_gui: refresh_gui::RefreshGui,
+    pub(crate) gui_event: gui_event::GuiEventBus,
 }
 
 impl EventBus {
     fn new() -> Self {
         Self {
             refresh_data_context: broadcast::channel(64).0,
+            refresh_gui: Default::default(),
+            gui_event: Default::default(),
         }
     }
 }

@@ -1,6 +1,7 @@
 mod core;
 mod external;
 mod process;
+mod shell;
 use crate::domain::terminal::TerminalId;
 use alacritty_terminal::{
     Term,
@@ -32,6 +33,13 @@ impl EventListener for Listener {
         let _ = self.events.send(event);
     }
 }
+struct ShellLaunch {
+    options: alacritty_terminal::tty::Options,
+    title: String,
+    #[cfg(windows)]
+    workspace: tempfile::TempDir,
+}
+
 struct Session {
     stopped: bool,
     output_finalized: bool,
@@ -40,6 +48,7 @@ struct Session {
     cell_height: u16,
     pty_exited: Arc<AtomicBool>,
     process_job: process::ProcessJob,
+    _launch: ShellLaunch,
     command: Option<String>,
     exit_code: Option<i32>,
     generation: u64,

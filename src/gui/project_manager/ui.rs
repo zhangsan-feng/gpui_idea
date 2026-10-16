@@ -13,6 +13,9 @@ use gpui_kit::*;
 
 impl ProjectManager {
     pub(super) fn render_view(&self, cx: &mut Context<Self>) -> Div {
+        if self.mode == ProjectWindowKind::Create {
+            return self.render_create(cx);
+        }
         let theme = cx.theme();
         let mut view = v_flex()
             .size_full()
@@ -22,48 +25,27 @@ impl ProjectManager {
             .text_color(theme.foreground);
         if self.mode != ProjectWindowKind::Manage {
             view = view.child(
-                v_flex()
-                    .gap_2()
-                    .child(if self.mode == ProjectWindowKind::Create {
-                        "父目录"
-                    } else {
-                        "项目目录"
-                    })
-                    .child(
-                        h_flex()
-                            .gap_2()
-                            .child(
-                                div()
-                                    .flex_1()
-                                    .min_w_0()
-                                    .child(Input::new(&self.directory).disabled(self.busy)),
-                            )
-                            .child(
-                                Button::new("choose-project-directory")
-                                    .label("浏览…")
-                                    .disabled(self.busy)
-                                    .on_click(cx.listener(|this, _, window, cx| {
-                                        this.choose_directory(window, cx)
-                                    })),
-                            ),
-                    ),
+                v_flex().gap_2().child("项目目录").child(
+                    h_flex()
+                        .gap_2()
+                        .child(
+                            div()
+                                .flex_1()
+                                .min_w_0()
+                                .child(Input::new(&self.directory).disabled(self.busy)),
+                        )
+                        .child(
+                            Button::new("choose-project-directory")
+                                .label("浏览…")
+                                .disabled(self.busy)
+                                .on_click(cx.listener(|this, _, window, cx| {
+                                    this.choose_directory(window, cx)
+                                })),
+                        ),
+                ),
             );
         }
-        if self.mode == ProjectWindowKind::Create {
-            view = view
-                .child(
-                    v_flex()
-                        .gap_2()
-                        .child("项目名称")
-                        .child(Input::new(&self.name).disabled(self.busy)),
-                )
-                .child(
-                    div()
-                        .text_size(px(12.))
-                        .text_color(theme.muted_foreground)
-                        .child("创建一个空项目目录，并在独立工作区中打开。"),
-                );
-        } else {
+        {
             let history = DATA_CONTEXT.history.snapshot();
             let projects: Vec<_> = history
                 .entries
@@ -172,8 +154,6 @@ impl ProjectManager {
                     .primary()
                     .label(if self.busy {
                         "处理中…"
-                    } else if self.mode == ProjectWindowKind::Create {
-                        "创建并打开"
                     } else {
                         "打开项目"
                     })
@@ -181,9 +161,6 @@ impl ProjectManager {
                     .on_click(cx.listener(|this, _, window, cx| this.submit(window, cx))),
             );
         }
-        view.when(self.mode == ProjectWindowKind::Create, |view| {
-            view.child(div().flex_1())
-        })
-        .child(footer)
+        view.child(footer)
     }
 }

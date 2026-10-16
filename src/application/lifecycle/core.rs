@@ -39,7 +39,7 @@ pub(super) async fn prepare_startup() -> Result<()> {
         .as_ref()
         .map(|session| session.project_root.clone())
         .or(requested)
-        .unwrap_or_else(|| env!("CARGO_MANIFEST_DIR").into());
+        .unwrap_or_else(|| crate::infrastructure::paths::get().root.clone());
     let initial_file = INFRASTRUCTURE
         .filesystem
         .list_directory(root.clone(), std::path::PathBuf::new())

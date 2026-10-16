@@ -52,7 +52,7 @@ impl Default for TerminalSnapshot {
             history_size: 0,
             scroll_offset: 0,
             cursor: None,
-            title: "PowerShell".into(),
+            title: "Terminal".into(),
             exited: false,
             application_cursor: false,
             bracketed_paste: false,

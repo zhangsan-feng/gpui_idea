@@ -1,5 +1,6 @@
 use super::DocumentContext;
 use crate::domain::document::DocumentSnapshot;
+use crate::event_bus::refresh_gui::GuiComponent;
 use anyhow::{Result, anyhow};
 use std::{path::Path, sync::Arc};
 
@@ -25,6 +26,10 @@ impl DocumentContext {
         Ok(snapshot)
     }
     pub(super) fn notify(&self) {
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[
+            GuiComponent::Editor,
+            GuiComponent::FileTree,
+            GuiComponent::BottomBar,
+        ]);
     }
 }

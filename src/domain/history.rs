@@ -1,6 +1,23 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+pub(crate) fn project_identity(path: &std::path::Path) -> String {
+    let path = path.to_string_lossy();
+    #[cfg(windows)]
+    {
+        let path = if let Some(network) = path.strip_prefix("\\\\?\\UNC\\") {
+            format!("\\\\{network}")
+        } else {
+            path.trim_start_matches("\\\\?\\").to_owned()
+        };
+        path.to_lowercase()
+    }
+    #[cfg(not(windows))]
+    {
+        path.into_owned()
+    }
+}
+
 #[derive(Clone, Copy, Debug, Eq, PartialEq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum OpenKind {
@@ -19,7 +36,7 @@ pub enum ToolWindow {
     Terminal,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize)]
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub struct OpenHistoryEntry {
     pub kind: OpenKind,
     pub path: PathBuf,
@@ -80,7 +97,7 @@ pub struct FileViewState {
 pub struct OpenHistory {
     pub version: u32,
     pub entries: Vec<OpenHistoryEntry>,
-    pub session: Option<WorkspaceSession>,
+    pub last_project: Option<PathBuf>,
     #[serde(default)]
     pub sessions: Vec<WorkspaceSession>,
 }
@@ -88,9 +105,9 @@ pub struct OpenHistory {
 impl Default for OpenHistory {
     fn default() -> Self {
         Self {
-            version: 1,
+            version: 2,
             entries: Vec::new(),
-            session: None,
+            last_project: None,
             sessions: Vec::new(),
         }
     }

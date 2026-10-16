@@ -77,7 +77,11 @@ pub(super) async fn resolve(
     language: &'static str,
     cancelled: tokio::sync::watch::Receiver<bool>,
 ) -> Result<DefinitionResult> {
-    anyhow::ensure!(language == "rust", "当前仅支持 Rust 源码跳转");
+    let language = crate::domain::language_server::language_for_path(&path).unwrap_or(language);
+    anyhow::ensure!(
+        crate::domain::language_server::family(language).is_some(),
+        "尚未接入 {language} 语言服务"
+    );
     let started = std::time::Instant::now();
     let snapshots = DATA_CONTEXT.documents.snapshots();
     let known_paths: Vec<_> = snapshots
@@ -116,10 +120,9 @@ pub(super) async fn resolve(
             .into_iter()
             .filter(|snapshot| {
                 snapshot.path != current
-                    && snapshot
-                        .path
-                        .extension()
-                        .is_some_and(|extension| extension.eq_ignore_ascii_case("rs"))
+                    && crate::domain::language_server::language_for_path(&snapshot.path)
+                        .and_then(crate::domain::language_server::family)
+                        == crate::domain::language_server::family(language)
             })
             .map(|snapshot| (snapshot.path.clone(), snapshot.text.to_string()))
             .collect::<Vec<_>>();

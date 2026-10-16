@@ -3,6 +3,13 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 impl ProjectService {
+    pub(crate) async fn operate_entries(
+        &self,
+        sources: Vec<PathBuf>,
+        target: Option<PathBuf>,
+    ) -> Result<crate::domain::file_tree::FileTreeBatchOutcome> {
+        self.operate_entries_core(sources, target).await
+    }
     pub(crate) async fn search_content(&self, query: String, request: u64) -> Result<()> {
         self.search_content_core(query, request).await
     }
@@ -65,9 +72,5 @@ impl ProjectService {
     }
     pub async fn load_directory(&self, relative: PathBuf) -> Result<()> {
         self.load_core(relative).await
-    }
-
-    pub async fn move_entry(&self, source: PathBuf, target_directory: PathBuf) -> Result<PathBuf> {
-        self.move_core(source, target_directory).await
     }
 }

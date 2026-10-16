@@ -22,14 +22,26 @@ pub(super) fn quote(path: impl AsRef<Path>) -> String {
     } else {
         path.strip_prefix("\\\\?\\").unwrap_or(&path).to_string()
     };
-    format!("'{}'", path.replace('\'', "''"))
+    if cfg!(windows) {
+        // Generated commands execute in a batch file; protect percent expansion.
+        format!("\"{}\"", path.replace('%', "%%").replace('"', "\"\""))
+    } else {
+        format!("'{}'", path.replace('\'', "'\"'\"'"))
+    }
 }
 
 pub(super) fn in_directory(directory: &Path, command: &str) -> String {
-    format!(
-        "Set-Location -LiteralPath {} -ErrorAction Stop; {command}",
-        quote(directory)
-    )
+    let cd = if cfg!(windows) { "cd /d" } else { "cd" };
+    format!("{cd} {} && {command}", quote(directory))
+}
+
+pub(super) fn with_output_directory(directory: &Path, command: &str) -> String {
+    let directory = quote(directory);
+    if cfg!(windows) {
+        format!("(if not exist {directory} mkdir {directory}) && {command}")
+    } else {
+        format!("mkdir -p {directory} && {command}")
+    }
 }
 
 pub(super) fn configuration(

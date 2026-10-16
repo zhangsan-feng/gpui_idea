@@ -1,5 +1,6 @@
 mod core;
 mod external;
+mod image_preview;
 use crate::domain::document::DocumentSnapshot;
 use std::sync::Arc;
 

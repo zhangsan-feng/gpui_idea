@@ -1,6 +1,5 @@
 use anyhow::{Context, Result, bail};
 use std::{
-    fs,
     path::{Path, PathBuf},
     process::Command,
 };
@@ -12,13 +11,6 @@ pub(super) fn validate(path: &Path) -> Result<PathBuf> {
     if !path.is_dir() {
         bail!("项目必须是目录");
     }
-    Ok(path)
-}
-pub(super) fn create(parent: &Path, name: &str) -> Result<PathBuf> {
-    let parent = validate(parent)?;
-    let path = parent.join(name);
-    fs::create_dir(&path).context("创建项目失败，目录可能已经存在")?;
-    tracing::info!(path = %path.display(), "project directory created");
     Ok(path)
 }
 pub(super) fn launch(path: &Path) -> Result<()> {

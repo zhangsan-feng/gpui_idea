@@ -93,13 +93,17 @@ pub(super) fn javascript_file(
         ));
     }
     if let Some(manifest) = manifest {
-        let runner = manifest.parent().unwrap().join("node_modules/.bin/tsx.cmd");
+        let runner = manifest.parent().unwrap().join(if cfg!(windows) {
+            "node_modules/.bin/tsx.cmd"
+        } else {
+            "node_modules/.bin/tsx"
+        });
         if runner.is_file() && matches!(extension, "ts" | "mts" | "cts" | "tsx" | "jsx") {
             return Ok(configuration(
                 "TypeScript / JSX · tsx",
                 in_directory(
                     manifest.parent().unwrap(),
-                    &format!("& {} {}", quote(runner), quote(file)),
+                    &format!("{} {}", quote(runner), quote(file)),
                 ),
                 None,
                 None,

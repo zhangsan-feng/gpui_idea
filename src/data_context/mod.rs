@@ -1,6 +1,7 @@
 mod document;
 mod external;
 mod history;
+mod image_preview;
 mod project;
 mod terminal;
 
@@ -23,9 +24,10 @@ pub struct DataContext {
     pub documents: document::DocumentContext,
     pub project: project::ProjectContext,
     pub history: history::HistoryContext,
+    pub(crate) images: image_preview::ImagePreviewContext,
     startup: OnceLock<WorkspaceStartup>,
-    changes: tokio::sync::watch::Sender<u64>,
     language_server: std::sync::Mutex<crate::domain::language_server::LanguageServerStatus>,
+    language_servers: std::sync::Mutex<Vec<crate::domain::language_server::LanguageServerInfo>>,
 }
 impl DataContext {
     fn new() -> Self {
@@ -34,9 +36,10 @@ impl DataContext {
             documents: document::DocumentContext::new(),
             project: project::ProjectContext::new(),
             history: history::HistoryContext::new(),
+            images: image_preview::ImagePreviewContext::default(),
             startup: OnceLock::new(),
-            changes: tokio::sync::watch::channel(0).0,
             language_server: Default::default(),
+            language_servers: Default::default(),
         }
     }
 }

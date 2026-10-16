@@ -26,18 +26,6 @@ impl DocumentService {
         DATA_CONTEXT.documents.attach_buffer(path, text, revision)
     }
 
-    pub(super) async fn record_opened(&self, opened: &OpenedDocument) {
-        if let Err(error) = APPLICATION
-            .history
-            .record_opened(
-                crate::domain::history::OpenKind::File,
-                opened.snapshot.path.clone(),
-            )
-            .await
-        {
-            tracing::warn!(file = %opened.snapshot.path.display(), error = %error, "file opened but history could not be persisted");
-        }
-    }
     pub(super) fn resolve(&self, relative: &Path) -> Result<PathBuf> {
         if relative.as_os_str().is_empty()
             || relative

@@ -1,10 +1,16 @@
 [package]
 name = "gpui_idea"
-version = "0.1.0"
+version = "0.0.1"
 edition = "2024"
 
 [dependencies]
 anyhow = "1.0"
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "json", "rustls-tls"] }
+flate2 = "1"
+tar = "0.4"
+zip = { version = "9", default-features = false, features = ["deflate"] }
+regex = "1"
+node-semver = "2.2"
 notify = "=8.2.0"
 chrono = "0.4.45"
 fern = "0.7.1"
@@ -17,6 +23,7 @@ gpui-kit = { version = "=0.7.3", features = [
     "tree-sitter-typescript",
     "tree-sitter-tsx",
     "tree-sitter-css",
+    "tree-sitter-html",
     "tree-sitter-rust",
     "tree-sitter-php",
     "tree-sitter-cmake",
@@ -25,7 +32,6 @@ gpui-kit = { version = "=0.7.3", features = [
     "tree-sitter-toml",
     "tree-sitter-yaml",
     "tree-sitter-markdown",
-    "tree-sitter-html",
 ] }
 ropey = "=2.0.0-beta.1"
 lsp-types = "=0.97.0"
@@ -37,6 +43,14 @@ tracing = "0.1"
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 alacritty_terminal = "0.26.0"
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
-base64 = "0.23.1"
 rust-embed = { version = "8.13.0", features = ["debug-embed", "include-exclude"] }
+
+[target.'cfg(windows)'.dependencies]
+windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
+tempfile = "3.27.0"
+
+[target.'cfg(unix)'.dependencies]
+libc = "0.2.190"
+
+[profile.dev]
+opt-level = 3

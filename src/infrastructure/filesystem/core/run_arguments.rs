@@ -8,7 +8,7 @@ pub(in crate::infrastructure::filesystem) fn prepare_run_command(
 ) -> Result<String> {
     let arguments = parse(arguments)?
         .into_iter()
-        .map(|argument| format!("'{}'", argument.replace('\'', "''")))
+        .map(|argument| quote_argument(&argument))
         .collect::<Vec<_>>()
         .join(" ");
     if arguments.is_empty() {
@@ -25,6 +25,46 @@ pub(in crate::infrastructure::filesystem) fn prepare_run_command(
             format!("{prefix} ")
         }
     ))
+}
+
+#[cfg(not(windows))]
+fn quote_argument(argument: &str) -> String {
+    format!("'{}'", argument.replace('\'', "'\"'\"'"))
+}
+
+#[cfg(windows)]
+fn quote_argument(argument: &str) -> String {
+    // First encode one CRT argv item, including trailing backslashes and quotes.
+    let mut encoded = String::from("\"");
+    let mut backslashes = 0;
+    for ch in argument.chars() {
+        if ch == '\\' {
+            backslashes += 1;
+            continue;
+        }
+        encoded.extend(std::iter::repeat_n(
+            '\\',
+            backslashes * if ch == '"' { 2 } else { 1 },
+        ));
+        if ch == '"' {
+            encoded.push('\\');
+        }
+        encoded.push(ch);
+        backslashes = 0;
+    }
+    encoded.extend(std::iter::repeat_n('\\', backslashes * 2));
+    encoded.push('"');
+    // Then protect it from batch parsing. Delayed expansion is disabled by Launch.
+    let mut escaped = String::new();
+    for ch in encoded.chars() {
+        if ch == '%' {
+            escaped.push('%');
+        } else if matches!(ch, '^' | '"' | '&' | '|' | '<' | '>' | '(' | ')') {
+            escaped.push('^');
+        }
+        escaped.push(ch);
+    }
+    escaped
 }
 
 fn parse(arguments: &str) -> Result<Vec<String>> {

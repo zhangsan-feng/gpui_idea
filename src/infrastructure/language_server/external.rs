@@ -11,7 +11,9 @@ impl LanguageServers {
         Self {
             sessions: Mutex::new(HashMap::new()),
             status: watch::channel(LanguageServerStatus::Stopped).0,
-            stopping: std::sync::atomic::AtomicBool::new(false),
+            inventory: watch::channel(Vec::new()).0,
+            stopping: Arc::new(std::sync::atomic::AtomicBool::new(false)),
+            updates_started: std::sync::atomic::AtomicBool::new(false),
         }
     }
 
@@ -19,17 +21,43 @@ impl LanguageServers {
         self.status.subscribe()
     }
 
-    pub(crate) async fn start(&self, root: PathBuf) -> Result<()> {
+    pub(crate) fn subscribe_inventory(
+        &self,
+    ) -> watch::Receiver<Vec<crate::domain::language_server::LanguageServerInfo>> {
+        self.inventory.subscribe()
+    }
+
+    pub(crate) async fn start_workspace(&self, root: PathBuf) -> Result<()> {
+        if !self.updates_started.swap(true, Ordering::AcqRel) {
+            let root = root.clone();
+            let inventory = self.inventory.clone();
+            let stopping = self.stopping.clone();
+            tokio::spawn(async move {
+                if let Err(error) = tokio::task::spawn_blocking(move || {
+                    super::managed::refresh(root, inventory, stopping);
+                })
+                .await
+                {
+                    tracing::warn!(%error, "LSP startup update task failed");
+                }
+            });
+        }
+        let directory = root.clone();
+        if let Some(language) =
+            tokio::task::spawn_blocking(move || launch::workspace_language(&directory)).await?
+        {
+            self.start(root, language).await?;
+        }
+        Ok(())
+    }
+
+    pub(crate) async fn start(&self, root: PathBuf, language: &'static str) -> Result<()> {
+        let family = launch::family(language)?;
         let mut sessions = self.sessions.lock().await;
         anyhow::ensure!(!self.stopping.load(Ordering::Acquire), "语言服务正在关闭");
         let cell = sessions
-            .entry((root.clone(), "rust"))
-            .or_insert_with(|| {
-                Arc::new(SessionSlot {
-                    session: Mutex::new(None),
-                    generation: watch::channel(0).0,
-                })
-            })
+            .entry((root.clone(), family))
+            .or_insert_with(|| Arc::new(SessionSlot::new()))
             .clone();
         drop(sessions);
         let mut session = cell.session.lock().await;
@@ -40,7 +68,7 @@ impl LanguageServers {
         if let Some(mut dead) = session.take() {
             dead.stop().await;
         }
-        *session = Some(self.start_session(&root, "rust").await?);
+        *session = Some(self.start_slot(&root, family, &cell).await?);
         Ok(())
     }
 
@@ -49,13 +77,19 @@ impl LanguageServers {
         root: PathBuf,
         path: PathBuf,
         text: String,
+        language: &'static str,
     ) -> Result<()> {
-        self.start(root.clone()).await?;
+        let family = launch::family(language)?;
+        let source = path.clone();
+        let root =
+            tokio::task::spawn_blocking(move || launch::document_root(&root, &source, family))
+                .await?;
+        self.start(root.clone(), language).await?;
         let cell = self
             .sessions
             .lock()
             .await
-            .get(&(root, "rust"))
+            .get(&(root, family))
             .cloned()
             .context("语言服务会话不可用")?;
         let mut changes = cell.generation.subscribe();
@@ -67,7 +101,7 @@ impl LanguageServers {
         let operation = session
             .as_mut()
             .context("语言服务会话不可用")?
-            .warm_document(path, text);
+            .warm_document(path, text, language);
         let result = tokio::select! {
             result = tokio::time::timeout(Duration::from_secs(180), operation) => Some(result),
             _ = changes.changed() => None,
@@ -103,9 +137,21 @@ impl LanguageServers {
         result
     }
 
-    async fn start_session(&self, root: &std::path::Path, family: &str) -> Result<core::Session> {
+    pub(super) async fn start_session(
+        &self,
+        root: &std::path::Path,
+        family: &str,
+    ) -> Result<core::Session> {
         self.status.send_replace(LanguageServerStatus::Starting);
-        match core::Session::start(root, family, self.status.clone()).await {
+        match core::Session::start(
+            root,
+            family,
+            self.status.clone(),
+            self.inventory.clone(),
+            self.stopping.clone(),
+        )
+        .await
+        {
             Ok(session) => Ok(session),
             Err(error) => {
                 tracing::warn!(%error, "Language server startup failed");
@@ -114,6 +160,31 @@ impl LanguageServers {
                 Err(error)
             }
         }
+    }
+
+    pub(super) async fn start_slot(
+        &self,
+        root: &std::path::Path,
+        family: &str,
+        cell: &SessionSlot,
+    ) -> Result<core::Session> {
+        let cached = cell
+            .failure
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .clone();
+        if let Some((at, message)) = cached {
+            anyhow::ensure!(at.elapsed() >= Duration::from_secs(30), "{message}");
+        }
+        let result = self.start_session(root, family).await;
+        *cell
+            .failure
+            .lock()
+            .unwrap_or_else(|error| error.into_inner()) = result
+            .as_ref()
+            .err()
+            .map(|error| (std::time::Instant::now(), format!("{error:#}")));
+        result
     }
 
     pub(crate) async fn definitions(
@@ -130,16 +201,19 @@ impl LanguageServers {
             bail!("定义跳转已被取消");
         }
         let family = launch::family(language)?;
+        let source = path.clone();
+        let root =
+            tokio::task::spawn_blocking(move || launch::document_root(&root, &source, family))
+                .await?;
+        let overlays = overlays
+            .into_iter()
+            .filter(|(path, _)| family == "rust" || path.starts_with(&root))
+            .collect();
         let mut sessions = self.sessions.lock().await;
         anyhow::ensure!(!self.stopping.load(Ordering::Acquire), "语言服务正在关闭");
         let cell = sessions
             .entry((root.clone(), family))
-            .or_insert_with(|| {
-                Arc::new(SessionSlot {
-                    session: Mutex::new(None),
-                    generation: watch::channel(0).0,
-                })
-            })
+            .or_insert_with(|| Arc::new(SessionSlot::new()))
             .clone();
         // The map lock can yield: an older call may have been cancelled while
         // a newer one entered. It must not advance the newer call's generation.
@@ -174,7 +248,7 @@ impl LanguageServers {
             }
         }
         if session.is_none() {
-            *session = Some(self.start_session(&root, family).await?);
+            *session = Some(self.start_slot(&root, family, &cell).await?);
         }
         if *changes.borrow() != generation
             || *cancelled.borrow()
@@ -241,6 +315,7 @@ impl LanguageServers {
                 session.stop().await;
             }
         }
+        self.inventory.send_replace(Vec::new());
         self.status.send_replace(LanguageServerStatus::Stopped);
     }
 }

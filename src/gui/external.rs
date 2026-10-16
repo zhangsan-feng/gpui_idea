@@ -53,10 +53,17 @@ pub fn open_workspace(cx: &mut App) -> Result<()> {
         )]);
         let workspace = cx.new(|cx| super::workspace::Workspace::new(window, cx));
         let weak = workspace.downgrade();
-        window.on_window_should_close(cx, move |window, cx| {
+        window.on_window_should_close(cx, move |_window, cx| {
             tracing::info!("main window native close requested: action=remove_window");
             if let Some(workspace) = weak.upgrade() {
-                workspace.update(cx, |this, cx| this.request_close(window, cx));
+                workspace.update(cx, |_this, cx| {
+                    crate::event_bus::EVENT_BUS.gui_event.send(
+                        cx.entity().entity_id(),
+                        crate::event_bus::gui_event::GuiEvent::WindowBar(
+                            super::workspace::window_bar::Event::RequestClose,
+                        ),
+                    )
+                });
             }
             false
         });

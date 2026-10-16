@@ -3,6 +3,17 @@ use anyhow::Result;
 use std::{path::PathBuf, sync::Arc};
 
 impl FileSystem {
+    pub(crate) async fn validate_entry_batch(
+        &self,
+        root: PathBuf,
+        sources: Vec<PathBuf>,
+        target: Option<PathBuf>,
+    ) -> Result<()> {
+        core::run("validate_entry_batch", PathBuf::new(), move || {
+            core::validate_entry_batch(&root, &sources, target.as_deref())
+        })
+        .await
+    }
     pub(crate) async fn search_content(
         &self,
         root: PathBuf,
@@ -75,19 +86,6 @@ impl FileSystem {
         )
         .await
     }
-    pub async fn git_log(&self, root: PathBuf) -> Result<crate::domain::git::GitSnapshot> {
-        core::run("git_log", PathBuf::new(), move || core::git_log(root)).await
-    }
-    pub async fn git_details(
-        &self,
-        root: PathBuf,
-        hash: String,
-    ) -> Result<crate::domain::git::GitDetails> {
-        core::run("git_details", PathBuf::new(), move || {
-            core::git_details(root, hash)
-        })
-        .await
-    }
     pub async fn statistics(
         &self,
         root: PathBuf,
@@ -96,9 +94,6 @@ impl FileSystem {
             core::statistics(root)
         })
         .await
-    }
-    pub async fn git_status(&self, root: PathBuf) -> Result<String> {
-        core::run("git_status", PathBuf::new(), move || core::git_status(root)).await
     }
     /// All offsets refer to the original file. Expected bytes protect the target blocks.
     pub async fn modify_blocks(

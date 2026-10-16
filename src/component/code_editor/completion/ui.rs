@@ -1,18 +1,23 @@
 use super::CompletionDropdown;
 use gpui_kit::{
     assets::IconName,
-    component::{Icon, h_flex},
+    component::{
+        Icon, h_flex,
+        scroll::{Scrollbar, ScrollbarMode},
+    },
 };
 use gpui_kit::{prelude::*, *};
 use lsp_types::CompletionItemKind;
 
 impl CompletionDropdown {
     pub(super) fn menu(&self, width: Pixels, cx: &mut Context<Self>) -> AnyElement {
+        let scrollable = self.items.len() > 9;
         let mut rows = div()
             .flex()
             .flex_col()
             .id("completion-rows")
-            .max_h(px(216.))
+            .size_full()
+            .when(scrollable, |rows| rows.pr(Scrollbar::width()))
             .overflow_y_scroll()
             .track_scroll(&self.scroll);
         for (index, item) in self.items.iter().enumerate() {
@@ -92,7 +97,31 @@ impl CompletionDropdown {
             .overflow_hidden()
             .font_family("Cascadia Mono")
             .text_size(px(13.))
-            .child(rows)
+            .child(
+                div()
+                    .relative()
+                    .w_full()
+                    .h(px(self.items.len().min(9) as f32 * 24.))
+                    .flex_shrink_0()
+                    .capture_any_mouse_down(|event, window, _| {
+                        if event.button == MouseButton::Left {
+                            window.prevent_default();
+                        }
+                    })
+                    .child(rows)
+                    .when(scrollable, |list| {
+                        list.child(
+                            Scrollbar::vertical(&self.scroll)
+                                .mode(ScrollbarMode::Always)
+                                .styles(|styles| {
+                                    styles
+                                        .thumb(|thumb| thumb.bg(rgb(0xb8bdc9)))
+                                        .thumb_hover(|thumb| thumb.bg(rgb(0x8c95a6)))
+                                        .thumb_active(|thumb| thumb.bg(rgb(0x6b7280)))
+                                }),
+                        )
+                    }),
+            )
             .child(
                 h_flex()
                     .h(px(25.))

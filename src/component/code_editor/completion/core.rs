@@ -9,6 +9,7 @@ impl CompletionDropdown {
     pub(super) fn new(
         editor: &Entity<EditorState>,
         language: &'static str,
+        path: std::path::PathBuf,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
@@ -35,6 +36,8 @@ impl CompletionDropdown {
         Self {
             editor: editor.downgrade(),
             language,
+            path,
+            cancellation: None,
             items: vec![],
             selected: 0,
             offset: editor.read(cx).cursor(),
@@ -48,6 +51,9 @@ impl CompletionDropdown {
     }
 
     pub(super) fn dismiss(&mut self, cx: &mut Context<Self>) {
+        if let Some(cancelled) = self.cancellation.take() {
+            cancelled.send_replace(true);
+        }
         self.generation = self.generation.wrapping_add(1);
         self.request = None;
         self.pending = false;
@@ -76,7 +82,7 @@ impl CompletionDropdown {
                 .chars_at(offset)
                 .reversed()
                 .next()
-                .is_some_and(|ch| ch.is_alphanumeric() || ch == '_')
+                .is_some_and(|ch| ch.is_alphanumeric() || matches!(ch, '_' | ':' | '.'))
         {
             return;
         }
@@ -84,13 +90,17 @@ impl CompletionDropdown {
         self.offset = offset;
         let generation = self.generation;
         let language = self.language;
+        let path = self.path.clone();
+        let (cancelled, cancellation) = tokio::sync::watch::channel(false);
+        self.cancellation = Some(cancelled);
         let executor = cx.background_executor().clone();
         self.pending = true;
         self.request = Some(cx.spawn_in(window, async move |this, cx| {
             executor.timer(Duration::from_millis(100)).await;
-            let result =
-                run_application(async move { completion::complete(text, offset, language).await })
-                    .await;
+            let result = run_application(async move {
+                completion::complete(path, text, offset, language, cancellation).await
+            })
+            .await;
             let _ = this.update_in(cx, |this, window, cx| {
                 if this.generation != generation {
                     return;
@@ -119,7 +129,7 @@ impl CompletionDropdown {
                         cx.notify();
                     }
                     Err(error) => {
-                        tracing::warn!(%error, language, "code completion request failed")
+                        tracing::debug!(%error, language, "code completion request failed")
                     }
                 }
             });

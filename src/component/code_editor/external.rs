@@ -23,7 +23,13 @@ pub(crate) fn attach_completions(
     window: &mut gpui_kit::Window,
     cx: &mut App,
 ) {
-    super::completion::attach(editor, core::language_for_path(path), window, cx);
+    super::completion::attach(
+        editor,
+        core::language_for_path(path),
+        path.to_owned(),
+        window,
+        cx,
+    );
 }
 
 pub(crate) fn completion_dropdown(

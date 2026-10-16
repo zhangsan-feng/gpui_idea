@@ -147,13 +147,13 @@ pub(super) fn cargo(
                 "--args"
             };
             debug_argument_template = Some(format!(
-                "{}; if ($LASTEXITCODE -eq 0) {{ & {} {prefix} {} __GPUI_PROGRAM_ARGUMENTS__ }}",
+                "{} && {} {prefix} {} __GPUI_PROGRAM_ARGUMENTS__",
                 wrap(&build),
                 quote(&debugger),
                 quote(&binary)
             ));
             format!(
-                "{}; if ($LASTEXITCODE -eq 0) {{ & {} {} }}",
+                "{} && {} {prefix} {}",
                 wrap(&build),
                 quote(debugger),
                 quote(binary)

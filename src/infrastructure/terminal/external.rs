@@ -208,6 +208,11 @@ impl TerminalStore {
                         tracing::info!(?id,code=?status.code(),"terminal process exited");
                     }
                     Event::Exit => {
+                        // Retire remaining jobs immediately, before Unix PIDs can
+                        // be reused while the completed transcript stays open.
+                        if let Err(error) = session.process_job.terminate() {
+                            tracing::warn!(?id, %error, "terminal exit cleanup failed");
+                        }
                         session.exited = true;
                         session.output_finalized = true;
                         tracing::info!(?id, "terminal child exited");

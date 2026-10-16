@@ -1,5 +1,6 @@
 use super::HistoryContext;
 use crate::domain::history::OpenHistory;
+use crate::event_bus::refresh_gui::GuiComponent;
 use std::sync::Arc;
 
 impl HistoryContext {
@@ -8,6 +9,7 @@ impl HistoryContext {
             .snapshot
             .lock()
             .unwrap_or_else(|error| error.into_inner()) = Arc::new(history);
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT
+            .notify_gui_refresh(&[GuiComponent::ProjectManager, GuiComponent::WindowBar]);
     }
 }

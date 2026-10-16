@@ -68,6 +68,9 @@ impl MergedAssets {
 
 impl AssetSource for MergedAssets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
+        if let Some(bytes) = crate::infrastructure::assets::load(path) {
+            return Ok(Some(bytes));
+        }
         if let Some(bytes) = super::idea_icons::load(path) {
             return Ok(Some(bytes));
         }
@@ -90,6 +93,7 @@ impl AssetSource for MergedAssets {
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
         let mut paths = BTreeSet::new();
+        paths.extend(crate::infrastructure::assets::list(path).map(str::to_owned));
         paths.extend(super::idea_icons::list(path));
         for asset_path in self.editor_icons.list(path)? {
             paths.insert(asset_path.to_string());

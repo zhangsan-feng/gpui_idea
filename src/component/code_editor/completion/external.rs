@@ -16,6 +16,7 @@ pub(in crate::component::code_editor) fn install_keys(cx: &mut App) {
 pub(in crate::component::code_editor) fn attach(
     editor: &Entity<EditorState>,
     language: &'static str,
+    path: std::path::PathBuf,
     window: &mut Window,
     cx: &mut App,
 ) {
@@ -32,7 +33,7 @@ pub(in crate::component::code_editor) fn attach(
     for id in dead {
         cx.global_mut::<CompletionRegistry>().0.remove(&id);
     }
-    let menu = cx.new(|cx| CompletionDropdown::new(editor, language, window, cx));
+    let menu = cx.new(|cx| CompletionDropdown::new(editor, language, path, window, cx));
     cx.global_mut::<CompletionRegistry>()
         .0
         .insert(editor.entity_id(), menu);

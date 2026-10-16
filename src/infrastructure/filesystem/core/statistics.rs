@@ -91,7 +91,7 @@ pub(in crate::infrastructure::filesystem) fn statistics(
     snapshot.extensions = groups.into_values().collect();
     snapshot.total.extension = "Total".into();
     snapshot.scanned_at = chrono::Local::now().format("%H:%M:%S").to_string();
-    tracing::info!(
+    tracing::debug!(
         files = snapshot.total.count,
         lines = snapshot.total.lines,
         groups = snapshot.extensions.len(),

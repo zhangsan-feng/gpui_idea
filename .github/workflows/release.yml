@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - "v*"
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+env:
+  CARGO_TERM_COLOR: always
+  CARGO_INCREMENTAL: "0"
+  CARGO_PROFILE_RELEASE_DEBUG: "0"
+
+jobs:
+  build:
+    name: Build ${{ matrix.platform }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 90
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - platform: Windows x64
+            runner: windows-latest
+            target: x86_64-pc-windows-msvc
+          - platform: macOS ARM64
+            runner: macos-15
+            target: aarch64-apple-darwin
+          - platform: Linux x64
+            runner: ubuntu-24.04
+            target: x86_64-unknown-linux-gnu
+    defaults:
+      run:
+        shell: bash
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Validate version tag
+        run: python .github/scripts/package_release.py --check-version
+
+      - name: Install Linux build dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential clang cmake pkg-config libfontconfig-dev \
+            libwayland-dev libxkbcommon-x11-dev libx11-xcb-dev \
+            libssl-dev libzstd-dev libasound2-dev libvulkan-dev
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - uses: Swatinem/rust-cache@v2
+        with:
+          key: release-${{ matrix.target }}
+
+      - name: Build release binary
+        env:
+          MACOSX_DEPLOYMENT_TARGET: "13.0"
+        run: cargo build --release --locked --target "${{ matrix.target }}"
+
+      - name: Package application and assets
+        run: python .github/scripts/package_release.py --target "${{ matrix.target }}"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: gpui_idea-${{ matrix.target }}
+          path: |
+            dist/*.zip
+            dist/*.tar.gz
+            dist/*.sha256
+          if-no-files-found: error
+          compression-level: 0
+          retention-days: 14
+
+  publish:
+    name: Publish GitHub Release
+    needs: build
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+
+      - uses: actions/download-artifact@v4
+        with:
+          pattern: gpui_idea-*
+          path: dist
+          merge-multiple: true
+
+      - name: Verify checksums
+        working-directory: dist
+        run: sha256sum --check -- *.sha256
+
+      - name: Publish all platform packages
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          if draft=$(gh release view "$RELEASE_TAG" --json isDraft --jq '.isDraft'); then
+            if [ "$draft" != "true" ]; then
+              echo "Release $RELEASE_TAG is already published; refusing to overwrite it."
+              exit 1
+            fi
+          else
+            gh release create "$RELEASE_TAG" --verify-tag --draft \
+              --title "$RELEASE_TAG" --generate-notes
+          fi
+          gh release upload "$RELEASE_TAG" dist/*.zip dist/*.tar.gz dist/*.sha256 --clobber
+          gh release edit "$RELEASE_TAG" --draft=false

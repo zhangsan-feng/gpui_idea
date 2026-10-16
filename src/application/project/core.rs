@@ -1,3 +1,4 @@
+mod batch;
 mod content_search;
 mod file_tree;
 mod run;
@@ -36,8 +37,8 @@ impl ProjectService {
     }
     pub(super) async fn git_status_core(&self) -> Result<()> {
         let result = INFRASTRUCTURE
-            .filesystem
-            .git_log(DATA_CONTEXT.project_root().to_owned())
+            .git
+            .snapshot(DATA_CONTEXT.project_root().to_owned())
             .await;
         match result {
             Ok(status) => {
@@ -57,8 +58,8 @@ impl ProjectService {
     }
     pub(super) async fn git_details_core(&self, hash: String) -> Result<()> {
         let result = INFRASTRUCTURE
-            .filesystem
-            .git_details(DATA_CONTEXT.project_root().to_owned(), hash.clone())
+            .git
+            .details(DATA_CONTEXT.project_root().to_owned(), hash.clone())
             .await;
         match result {
             Ok(details) => {
@@ -77,13 +78,13 @@ impl ProjectService {
             }
         }
     }
-    pub(super) async fn move_core(
+    // The caller holds file_operations and the file-watch refresh lock.
+    pub(in crate::application::project) async fn move_unlocked(
         &self,
         source: PathBuf,
         target_directory: PathBuf,
     ) -> Result<PathBuf> {
-        let _guard = self.file_operations.lock().await;
-        let _refresh = APPLICATION.file_watch.lock_refresh().await;
+        file_tree::ensure_idle(&source)?;
         let name = source
             .file_name()
             .ok_or_else(|| anyhow::anyhow!("不能移动项目根目录"))?;
@@ -133,18 +134,6 @@ impl ProjectService {
             .filesystem
             .list_directory(DATA_CONTEXT.project_root().to_owned(), relative.clone())
             .await;
-        if result.is_ok() {
-            if let Err(error) = APPLICATION
-                .history
-                .record_opened(
-                    crate::domain::history::OpenKind::Directory,
-                    DATA_CONTEXT.project_root().join(&relative),
-                )
-                .await
-            {
-                tracing::warn!(directory = %relative.display(), error = %error, "directory opened but history could not be persisted");
-            }
-        }
         let snapshot = match &result {
             Ok(entries) => DirectorySnapshot {
                 entries: entries.clone().into(),

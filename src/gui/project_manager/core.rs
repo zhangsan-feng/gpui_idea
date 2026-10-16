@@ -15,6 +15,11 @@ impl ProjectManager {
             Ok(Ok(Some(paths))) => {
                 if let Some(path) = paths.into_iter().next() {
                     let _ = this.update_in(cx, |this, window, cx| {
+                        let path = if this.mode == ProjectWindowKind::Create {
+                            path.join("untitled")
+                        } else {
+                            path
+                        };
                         this.directory.update(cx, |state, cx| {
                             state.set_value(path.to_string_lossy().into_owned(), window, cx)
                         });
@@ -40,13 +45,20 @@ impl ProjectManager {
         }
         let path = PathBuf::from(self.directory.read(cx).value().as_str());
         if self.mode == ProjectWindowKind::Create {
-            let name = self.name.read(cx).value().to_string();
+            let request = crate::domain::project_creation::CreateProject {
+                location: path,
+                language: self.creation.language,
+                library: self.creation.library,
+                toolchain: self.creation.toolchain.read(cx).value().to_string(),
+                module: self.creation.module.read(cx).value().to_string(),
+                environment: self.creation.environment.read(cx).value().to_string(),
+            };
             self.busy = true;
             self.error = None;
             cx.notify();
             cx.spawn_in(window, async move |this, cx| {
                 let result = run_application(async move {
-                    let root = APPLICATION.projects.create(path, name).await?;
+                    let root = APPLICATION.projects.create(request).await?;
                     // Creation is complete before launch; callers can retry opening if launch fails.
                     APPLICATION
                         .projects

@@ -74,7 +74,10 @@ impl ProjectService {
         if let Some(statistics) = statistics {
             DATA_CONTEXT.project.set_statistics_silent(statistics);
         }
-        DATA_CONTEXT.notify_gui_refresh();
+        DATA_CONTEXT.notify_gui_refresh(&[
+            crate::event_bus::refresh_gui::GuiComponent::FileTree,
+            crate::event_bus::refresh_gui::GuiComponent::BottomPanel,
+        ]);
     }
 
     pub(crate) fn validate_file_name(&self, name: &str) -> Result<String> {
@@ -89,6 +92,13 @@ impl ProjectService {
             .file_watch
             .lock_refresh()
             .await;
+        self.file_tree_operation_unlocked(operation).await
+    }
+
+    pub(in crate::application::project) async fn file_tree_operation_unlocked(
+        &self,
+        operation: FileTreeOperation,
+    ) -> Result<FileTreeOutcome> {
         let root = DATA_CONTEXT.project_root().to_owned();
         let files = &INFRASTRUCTURE.filesystem;
         match operation {
@@ -208,7 +218,7 @@ impl ProjectService {
     }
 }
 
-fn ensure_idle(relative: &Path) -> Result<()> {
+pub(super) fn ensure_idle(relative: &Path) -> Result<()> {
     if relative.as_os_str().is_empty() {
         bail!("不能修改或复制项目根目录");
     }

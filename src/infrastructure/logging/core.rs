@@ -10,7 +10,27 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
     let file = fern::log_file(&log_file).expect("open log file failed");
     let (file_writer, file_guard) = tracing_appender::non_blocking(file);
 
-    fern::Dispatch::new()
+    let mut dispatch = fern::Dispatch::new().level(log::LevelFilter::Warn);
+    // Examples: RUST_LOG=debug or RUST_LOG=warn,gpui_idea=debug.
+    // Invalid directives cannot prevent the application from starting.
+    if let Ok(filter) = std::env::var("RUST_LOG") {
+        for directive in filter
+            .split(',')
+            .map(str::trim)
+            .filter(|value| !value.is_empty())
+        {
+            if let Some((target, level)) = directive.split_once('=') {
+                if let Ok(level) = level.trim().parse::<log::LevelFilter>() {
+                    if !target.trim().is_empty() {
+                        dispatch = dispatch.level_for(target.trim().to_owned(), level);
+                    }
+                }
+            } else if let Ok(level) = directive.parse::<log::LevelFilter>() {
+                dispatch = dispatch.level(level);
+            }
+        }
+    }
+    dispatch
         .format(|out, message, record| {
             let file = record.file().unwrap_or("<unknown>");
             let line = record.line().unwrap_or(0);
@@ -24,16 +44,6 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
                 message
             ))
         })
-        .level(log::LevelFilter::Info)
-        .level_for("gpui_idea::application", log::LevelFilter::Debug)
-        .level_for("gpui_idea::infrastructure", log::LevelFilter::Debug)
-        .level_for("gpui_idea::gui::workspace", log::LevelFilter::Debug)
-        .level_for("gpui_idea::gui::workspace::ssh", log::LevelFilter::Debug)
-        .level_for("gpui_idea::gui::workspace::sftp", log::LevelFilter::Debug)
-        .level_for(
-            "gpui_idea::data_context::terminal::update",
-            log::LevelFilter::Debug,
-        )
         .chain(fern::Output::writer(Box::new(stdout_writer), "\n"))
         .chain(fern::Output::writer(Box::new(file_writer), "\n"))
         .apply()

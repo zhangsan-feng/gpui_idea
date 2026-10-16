@@ -21,8 +21,6 @@ impl HistoryStore {
     }
 
     pub fn default_path() -> PathBuf {
-        PathBuf::from(env!("CARGO_MANIFEST_DIR"))
-            .join("data")
-            .join("open-history.json")
+        super::paths::get().data.join("open-history.json")
     }
 }

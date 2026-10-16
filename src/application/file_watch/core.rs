@@ -26,6 +26,16 @@ pub(super) async fn refresh(changes: &FileChanges) {
                 .iter()
                 .any(|changed| path == changed || path.starts_with(changed))
     };
+    let mut image_updated = false;
+    for image in DATA_CONTEXT.images.snapshots() {
+        if image.path.starts_with(root) && affected(&image.path) {
+            crate::application::APPLICATION
+                .documents
+                .refresh_image_preview(image)
+                .await;
+            image_updated = true;
+        }
+    }
     for document in DATA_CONTEXT.documents.snapshots() {
         if !document.path.starts_with(root) || !affected(&document.path) || document.saving {
             continue;
@@ -81,7 +91,7 @@ pub(super) async fn refresh(changes: &FileChanges) {
     };
 
     // Finish all IO first, then publish the batch without per-entry notifications.
-    let mut updated = false;
+    let mut updated = image_updated;
     for (document, result) in document_updates {
         updated |= match result {
             Ok(loaded) => DATA_CONTEXT
@@ -107,7 +117,12 @@ pub(super) async fn refresh(changes: &FileChanges) {
         updated = true;
     }
     if updated {
-        DATA_CONTEXT.notify_gui_refresh();
+        DATA_CONTEXT.notify_gui_refresh(&[
+            crate::event_bus::refresh_gui::GuiComponent::FileTree,
+            crate::event_bus::refresh_gui::GuiComponent::Editor,
+            crate::event_bus::refresh_gui::GuiComponent::BottomBar,
+            crate::event_bus::refresh_gui::GuiComponent::BottomPanel,
+        ]);
     }
     tracing::debug!(
         paths = changes.paths.len(),

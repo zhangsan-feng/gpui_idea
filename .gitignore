@@ -1,5 +1,7 @@
 /target
+/dist
 /logs
 /data
-.idea/workspace.xml
-**/.gpui-run/
+.idea
+test
+tools

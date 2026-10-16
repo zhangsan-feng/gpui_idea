@@ -97,7 +97,9 @@ impl RunConfigurationEditor {
     }
 
     fn start_subscribe(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let mut changes = crate::data_context::DATA_CONTEXT.subscribe_changes();
+        let mut changes = crate::event_bus::EVENT_BUS
+            .refresh_gui
+            .subscribe(crate::event_bus::refresh_gui::GuiComponent::RunConfiguration);
         cx.spawn_in(window, async move |this, cx| {
             while changes.changed().await.is_ok() {
                 if this

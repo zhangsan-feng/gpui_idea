@@ -1,4 +1,6 @@
+mod batch;
 mod blocks;
+pub(super) use batch::validate_entry_batch;
 mod directory;
 mod entries;
 mod file;
@@ -15,9 +17,6 @@ pub(super) use lines::modify_lines;
 
 mod task;
 pub(super) use task::run;
-mod git;
-pub(super) use git::git_status;
-pub(super) use git::{git_details, git_log};
 mod content_search;
 mod search;
 pub(super) use content_search::search_content;

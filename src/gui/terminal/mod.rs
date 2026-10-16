@@ -48,7 +48,9 @@ impl TerminalView {
             .await;
         })
         .detach();
-        let mut refresh = crate::data_context::DATA_CONTEXT.subscribe_changes();
+        let mut refresh = crate::event_bus::EVENT_BUS
+            .refresh_gui
+            .subscribe(crate::event_bus::refresh_gui::GuiComponent::Terminal(id));
         cx.spawn(async move |view, cx| {
             while refresh.changed().await.is_ok() {
                 if view

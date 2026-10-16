@@ -101,9 +101,16 @@ impl RunConfigurationEditor {
         self.error = None;
         if run {
             let parent = self.parent.clone();
-            let result = self.parent_window.update(cx, |_, main_window, cx| {
-                parent.update(cx, |parent, cx| {
-                    parent.start_execution(RunAction::Run, main_window, cx)
+            let result = self.parent_window.update(cx, |_, _main_window, cx| {
+                parent.update(cx, |_parent, cx| {
+                    crate::event_bus::EVENT_BUS.gui_event.send(
+                        cx.entity().entity_id(),
+                        crate::event_bus::gui_event::GuiEvent::BottomPanel(
+                            crate::gui::workspace::bottom_panel::Event::StartExecution(
+                                RunAction::Run,
+                            ),
+                        ),
+                    )
                 })
             });
             if result.is_ok_and(|result| result.is_ok()) {

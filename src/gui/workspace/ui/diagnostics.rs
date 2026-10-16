@@ -1,9 +1,5 @@
 use gpui_kit::*;
-use std::{
-    cell::RefCell,
-    rc::Rc,
-    time::{Duration, Instant},
-};
+use std::{cell::RefCell, rc::Rc, time::Instant};
 
 /// CPU diagnostics only: painting here builds the scene; GPU submission/present
 /// happens later in GPUI and must not be attributed to these timings.
@@ -72,7 +68,7 @@ impl WindowDiagnostics {
         let budget_us = window
             .refresh_interval(cx)
             .map_or(16_667, |v| v.as_micros());
-        tracing::info!(
+        tracing::debug!(
             sample_ms = report_at.elapsed().as_millis(),
             moves = self.moves,
             resizes = self.resizes,
@@ -99,30 +95,6 @@ impl WindowDiagnostics {
         self.max_us = [0; 5];
         self.editor_max_us = [0; 5];
         self.tree_max_us = [0; 5];
-    }
-}
-
-impl super::super::Workspace {
-    pub(in crate::gui::workspace) fn record_window_bounds(
-        &mut self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
-    ) {
-        if !self.window_diagnostics.borrow_mut().bounds_changed(window)
-            || self.window_diagnostics_task.is_some()
-        {
-            return;
-        }
-        let timer = cx.background_executor().timer(Duration::from_secs(1));
-        self.window_diagnostics_task = Some(cx.spawn_in(window, async move |this, cx| {
-            timer.await;
-            let _ = this.update_in(cx, |this, window, cx| {
-                if let Some(task) = this.window_diagnostics_task.take() {
-                    task.detach();
-                }
-                this.window_diagnostics.borrow_mut().report(window, cx);
-            });
-        }));
     }
 }
 

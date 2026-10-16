@@ -18,11 +18,12 @@ pub(super) fn go(
         quote(file.unwrap())
     };
     let debug = executable("dlv").map(|_| in_directory(directory, &format!("dlv debug {target}")));
-    let output = directory.join(".gpui-run").join("go.exe");
-    let build = format!(
-        "New-Item -ItemType Directory -Force -Path {} -ErrorAction Stop | Out-Null; go build -o {} {target}",
-        quote(output.parent().unwrap()),
-        quote(output)
+    let output = directory
+        .join(".gpui-run")
+        .join(if cfg!(windows) { "go.exe" } else { "go" });
+    let build = with_output_directory(
+        output.parent().unwrap(),
+        &format!("go build -o {} {target}", quote(&output)),
     );
     let mut result = configuration(
         if manifest.is_some() {
@@ -67,29 +68,17 @@ pub(super) fn cpp(
 
 fn compiled_file(file: &Path, label: &str, compiler: &str, flags: &str) -> RunConfiguration {
     let directory = file.parent().unwrap();
-    let output = directory
-        .join(".gpui-run")
-        .join(file.file_stem().unwrap())
-        .with_extension("exe");
-    let build = format!(
-        "New-Item -ItemType Directory -Force -Path {} -ErrorAction Stop | Out-Null; {compiler} {flags} {} -o {}",
-        quote(output.parent().unwrap()),
-        quote(file),
-        quote(&output)
+    let mut output = directory.join(".gpui-run").join(file.file_stem().unwrap());
+    if cfg!(windows) {
+        output.set_extension("exe");
+    }
+    let build = with_output_directory(
+        output.parent().unwrap(),
+        &format!("{compiler} {flags} {} -o {}", quote(file), quote(&output)),
     );
-    let run = format!(
-        "{build}; if ($? -and $LASTEXITCODE -eq 0) {{ & {} }} else {{ if ($LASTEXITCODE -eq 0) {{ $global:LASTEXITCODE = 1 }} }}",
-        quote(&output)
-    );
-    let debug = executable("gdb").map(|_| {
-        in_directory(
-            directory,
-            &format!(
-                "{build}; if ($? -and $LASTEXITCODE -eq 0) {{ gdb {} }} else {{ if ($LASTEXITCODE -eq 0) {{ $global:LASTEXITCODE = 1 }} }}",
-                quote(&output)
-            ),
-        )
-    });
+    let run = format!("{build} && {}", quote(&output));
+    let debug = executable("gdb")
+        .map(|_| in_directory(directory, &format!("{build} && gdb {}", quote(&output))));
     let mut result = configuration(
         label,
         in_directory(directory, &run),
@@ -99,8 +88,8 @@ fn compiled_file(file: &Path, label: &str, compiler: &str, flags: &str) -> RunCo
     result.profiles[0].argument_template = Some(in_directory(
         directory,
         &run.replace(
-            &format!("& {}", quote(&output)),
-            &format!("& {} __GPUI_PROGRAM_ARGUMENTS__", quote(&output)),
+            &format!("&& {}", quote(&output)),
+            &format!("&& {} __GPUI_PROGRAM_ARGUMENTS__", quote(&output)),
         ),
     ));
     result.profiles[0].debug_argument_template =
@@ -120,7 +109,7 @@ pub(super) fn cmake(directory: &Path) -> Result<RunConfiguration> {
         String::new(),
         Some(in_directory(
             directory,
-            "cmake -S . -B .gpui-run/cmake; if ($? -and $LASTEXITCODE -eq 0) { cmake --build .gpui-run/cmake } else { if ($LASTEXITCODE -eq 0) { $global:LASTEXITCODE = 1 } }",
+            "cmake -S . -B .gpui-run/cmake && cmake --build .gpui-run/cmake",
         )),
         None,
     ))

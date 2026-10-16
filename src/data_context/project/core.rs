@@ -1,11 +1,12 @@
 use super::ProjectContext;
 use crate::domain::project::DirectorySnapshot;
+use crate::event_bus::refresh_gui::GuiComponent;
 use std::{path::PathBuf, sync::Arc};
 
 impl ProjectContext {
     pub(super) fn replace(&self, path: PathBuf, snapshot: DirectorySnapshot) {
         self.replace_silent(path, snapshot);
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::FileTree]);
     }
 
     pub(super) fn replace_silent(&self, path: PathBuf, snapshot: DirectorySnapshot) {

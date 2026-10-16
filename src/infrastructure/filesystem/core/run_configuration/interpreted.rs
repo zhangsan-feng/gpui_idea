@@ -19,15 +19,15 @@ pub(super) fn resolve(
             ]
             .into_iter()
             .find_map(|name| nearest(directory, root, name));
-            let runner = interpreter
-                .map(|path| format!("& {}", quote(path)))
-                .unwrap_or_else(|| {
-                    if executable("python").is_some() {
-                        "python".into()
-                    } else {
-                        "py -3".into()
-                    }
-                });
+            let runner = interpreter.map(quote).unwrap_or_else(|| {
+                if executable("python").is_some() {
+                    "python".into()
+                } else if cfg!(windows) {
+                    "py -3".into()
+                } else {
+                    "python3".into()
+                }
+            });
             (
                 "Python",
                 format!("{runner} {file_arg}"),
@@ -47,7 +47,19 @@ pub(super) fn resolve(
             Some(format!("php -l {file_arg}")),
             None,
         ),
-        "ps1" => ("PowerShell", format!("& {file_arg}"), None, None),
+        "ps1" => {
+            let runner = if executable("pwsh").is_some() || !cfg!(windows) {
+                "pwsh"
+            } else {
+                "powershell.exe"
+            };
+            (
+                "PowerShell",
+                format!("{runner} -NoLogo -File {file_arg}"),
+                None,
+                None,
+            )
+        }
         "sh" => (
             "Shell",
             format!("bash {file_arg}"),

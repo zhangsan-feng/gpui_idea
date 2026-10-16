@@ -17,21 +17,11 @@ impl HistoryService {
     ) -> Result<Option<WorkspaceSession>> {
         self.load().await?;
         let history = DATA_CONTEXT.history.snapshot();
-        let normalize = |path: &std::path::Path| {
-            path.to_string_lossy()
-                .trim_start_matches("\\\\?\\")
-                .to_lowercase()
-        };
+        let normalize = |path: &std::path::Path| crate::domain::history::project_identity(path);
         let session = history
             .sessions
             .iter()
             .find(|session| normalize(&session.project_root) == normalize(&root))
-            .or_else(|| {
-                history
-                    .session
-                    .as_ref()
-                    .filter(|session| normalize(&session.project_root) == normalize(&root))
-            })
             .cloned();
         if let Some(session) = &session {
             validate_session(session)?;
@@ -46,6 +36,9 @@ impl HistoryService {
     }
 
     pub(super) async fn record_core(&self, kind: OpenKind, path: PathBuf) -> Result<()> {
+        if kind != OpenKind::Project {
+            return Ok(());
+        }
         if !path.is_absolute() {
             bail!("历史记录路径必须是绝对路径");
         }
@@ -68,7 +61,18 @@ impl HistoryService {
 
     pub(super) async fn restore_core(&self) -> Result<Option<WorkspaceSession>> {
         self.load().await?;
-        let Some(session) = DATA_CONTEXT.history.snapshot().session.clone() else {
+        let history = DATA_CONTEXT.history.snapshot();
+        let Some(session) = history
+            .last_project
+            .as_ref()
+            .and_then(|root| {
+                history.sessions.iter().find(|session| {
+                    crate::domain::history::project_identity(&session.project_root)
+                        == crate::domain::history::project_identity(root)
+                })
+            })
+            .cloned()
+        else {
             return Ok(None);
         };
         validate_session(&session)?;

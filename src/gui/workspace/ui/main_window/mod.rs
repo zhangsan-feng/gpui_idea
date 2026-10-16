@@ -1,30 +1,42 @@
 use super::*;
 use gpui_kit::component::resizable::{h_resizable, resizable_panel};
 
-mod search;
-mod toolbar;
-
 impl Workspace {
     pub(in crate::gui::workspace) fn render_view(
         &self,
-        window: &mut Window,
-        cx: &mut Context<Self>,
+        _window: &mut Window,
+        cx: &mut Context<Workspace>,
     ) -> impl IntoElement {
         v_flex()
             .id("workspace")
             .key_context("Workspace")
-            .on_drop(cx.listener(|this, paths: &ExternalPaths, window, cx| {
+            .on_drop(cx.listener(|_this, paths: &ExternalPaths, _window, cx| {
                 cx.stop_propagation();
-                this.open_dropped_files(paths, window, cx);
+                crate::event_bus::EVENT_BUS.gui_event.send(
+                    cx.entity().entity_id(),
+                    crate::event_bus::gui_event::GuiEvent::Editor(
+                        crate::gui::workspace::editor::Event::OpenDroppedFiles(paths.clone()),
+                    ),
+                );
             }))
             .drag_over::<ExternalPaths>(|style, _, _, _| {
                 style.border_1().border_color(color(ACCENT))
             })
-            .on_action(
-                cx.listener(|this, _: &SaveDocument, window, cx| this.save_current(window, cx)),
-            )
-            .on_action(cx.listener(|this, _: &CloseAllDocuments, _, cx| {
-                this.close_all_editor_tabs(cx);
+            .on_action(cx.listener(|_this, _: &SaveDocument, _window, cx| {
+                crate::event_bus::EVENT_BUS.gui_event.send(
+                    cx.entity().entity_id(),
+                    crate::event_bus::gui_event::GuiEvent::Editor(
+                        crate::gui::workspace::editor::Event::SaveCurrent,
+                    ),
+                )
+            }))
+            .on_action(cx.listener(|_this, _: &CloseAllDocuments, _, cx| {
+                crate::event_bus::EVENT_BUS.gui_event.send(
+                    cx.entity().entity_id(),
+                    crate::event_bus::gui_event::GuiEvent::Editor(
+                        crate::gui::workspace::editor::Event::CloseAllEditorTabs,
+                    ),
+                );
             }))
             .size_full()
             .min_w_0()
@@ -34,19 +46,40 @@ impl Workspace {
             .text_size(px(12.))
             .bg(color(EDITOR_BG))
             .text_color(color(TEXT))
-            .child(self.render_toolbar(window, cx))
+            .child(
+                AnyView::from(self.window_bar.clone()).cached(
+                    StyleRefinement::default()
+                        .w_full()
+                        .h(px(40.))
+                        .flex_shrink_0(),
+                ),
+            )
             .child(self.render_body(cx))
-            .child(self.render_status_bar(cx))
+            .child(
+                AnyView::from(self.bottom_bar.clone()).cached(
+                    StyleRefinement::default()
+                        .w_full()
+                        .h(px(32.))
+                        .flex_shrink_0(),
+                ),
+            )
     }
 
-    fn render_body(&self, cx: &mut Context<Self>) -> Div {
+    fn render_body(&self, cx: &mut Context<Workspace>) -> Div {
         h_flex()
             .flex_1()
             .min_h_0()
             .min_w_0()
             .items_stretch()
             .overflow_hidden()
-            .child(self.render_activity_bar(cx))
+            .child(
+                AnyView::from(self.left_sidebar.clone()).cached(
+                    StyleRefinement::default()
+                        .w(px(40.))
+                        .h_full()
+                        .flex_shrink_0(),
+                ),
+            )
             .child(
                 div()
                     .flex_1()
@@ -55,22 +88,36 @@ impl Workspace {
                     .h_full()
                     .child(self.render_bottom_area(cx)),
             )
-            .child(self.render_right_tool_bar())
+            .child(
+                AnyView::from(self.right_sidebar.clone()).cached(
+                    StyleRefinement::default()
+                        .w(px(40.))
+                        .h_full()
+                        .flex_shrink_0(),
+                ),
+            )
     }
 
-    pub(in crate::gui::workspace::ui) fn render_workbench(
+    pub(in crate::gui::workspace) fn render_workbench(
         &self,
-        cx: &mut Context<Self>,
+        cx: &mut Context<Workspace>,
     ) -> AnyElement {
-        if !self.project_panel_open {
-            return self.render_editor(cx).into_any_element();
+        if !self.left_sidebar.read(cx).state.project_panel_open {
+            return AnyView::from(self.editor.clone())
+                .cached(StyleRefinement::default().size_full())
+                .into_any_element();
         }
         h_resizable("workspace-columns")
-            .with_state(&self.project_resize)
+            .with_state(&self.left_sidebar.read(cx).state.project_resize)
             .on_resize(cx.listener(
-                |this, state: &Entity<gpui_kit::component::ResizableState>, _, cx| {
+                |_this, state: &Entity<gpui_kit::component::ResizableState>, _, cx| {
                     tracing::debug!(sizes = ?state.read(cx).sizes(), "workspace columns resized");
-                    this.schedule_save(cx);
+                    crate::event_bus::EVENT_BUS.gui_event.send(
+                        cx.entity().entity_id(),
+                        crate::event_bus::gui_event::GuiEvent::WindowBar(
+                            crate::gui::workspace::window_bar::Event::ScheduleSave,
+                        ),
+                    );
                 },
             ))
             .child(
@@ -83,12 +130,59 @@ impl Workspace {
                         .unwrap_or(300.)))
                     .size_range(px(180.)..px(480.))
                     .flex_none()
-                    .child(self.render_project_panel(cx)),
+                    .child(
+                        AnyView::from(self.file_tree.clone())
+                            .cached(StyleRefinement::default().size_full()),
+                    ),
+            )
+            .child(resizable_panel().size_range(px(360.)..Pixels::MAX).child(
+                AnyView::from(self.editor.clone()).cached(StyleRefinement::default().size_full()),
+            ))
+            .into_any_element()
+    }
+}
+
+impl Workspace {
+    pub(in crate::gui::workspace) fn render_bottom_area(
+        &self,
+        cx: &mut Context<Workspace>,
+    ) -> AnyElement {
+        if !self.left_sidebar.read(cx).state.run_panel_open {
+            return self.render_workbench(cx);
+        }
+
+        gpui_kit::component::resizable::v_resizable("workspace-rows")
+            .with_state(&self.left_sidebar.read(cx).state.run_resize)
+            .on_resize(cx.listener(
+                |_this, state: &Entity<gpui_kit::component::ResizableState>, _, cx| {
+                    tracing::debug!(sizes = ?state.read(cx).sizes(), "workspace rows resized");
+                    crate::event_bus::EVENT_BUS.gui_event.send(
+                        cx.entity().entity_id(),
+                        crate::event_bus::gui_event::GuiEvent::WindowBar(
+                            crate::gui::workspace::window_bar::Event::ScheduleSave,
+                        ),
+                    );
+                },
+            ))
+            .child(
+                resizable_panel()
+                    .size_range(px(180.)..Pixels::MAX)
+                    .child(self.render_workbench(cx)),
             )
             .child(
                 resizable_panel()
-                    .size_range(px(360.)..Pixels::MAX)
-                    .child(self.render_editor(cx)),
+                    .size(px(DATA_CONTEXT
+                        .startup()
+                        .session
+                        .as_ref()
+                        .and_then(|saved| saved.run_height)
+                        .unwrap_or(250.)))
+                    .size_range(px(120.)..px(500.))
+                    .flex_none()
+                    .child(
+                        AnyView::from(self.bottom_panel.clone())
+                            .cached(StyleRefinement::default().size_full()),
+                    ),
             )
             .into_any_element()
     }

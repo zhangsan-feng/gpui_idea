@@ -1,5 +1,6 @@
 use super::ProjectContext;
 use crate::domain::project::DirectorySnapshot;
+use crate::event_bus::refresh_gui::GuiComponent;
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 
 impl ProjectContext {
@@ -20,7 +21,7 @@ impl ProjectContext {
         }
         state.content_search = Arc::new(snapshot);
         drop(state);
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::FileTree]);
     }
     pub fn run_sessions(&self) -> Arc<crate::domain::run::RunSessions> {
         self.state
@@ -34,7 +35,11 @@ impl ProjectContext {
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .run_sessions = Arc::new(snapshot);
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[
+            GuiComponent::WindowBar,
+            GuiComponent::LeftSidebar,
+            GuiComponent::BottomPanel,
+        ]);
     }
     pub fn run_configuration(&self) -> Arc<crate::domain::run::RunConfiguration> {
         self.state
@@ -50,7 +55,11 @@ impl ProjectContext {
         }
         state.run_configuration = Arc::new(snapshot);
         drop(state);
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[
+            GuiComponent::WindowBar,
+            GuiComponent::BottomPanel,
+            GuiComponent::RunConfiguration,
+        ]);
     }
     pub fn git(&self) -> Arc<crate::domain::git::GitSnapshot> {
         self.state
@@ -64,7 +73,8 @@ impl ProjectContext {
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .git = Arc::new(snapshot);
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT
+            .notify_gui_refresh(&[GuiComponent::WindowBar, GuiComponent::BottomPanel]);
     }
     pub fn git_details(&self, hash: &str) -> Arc<crate::domain::git::GitDetails> {
         self.state
@@ -81,7 +91,7 @@ impl ProjectContext {
             .unwrap_or_else(|error| error.into_inner())
             .git_details
             .insert(snapshot.hash.clone(), Arc::new(snapshot));
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::BottomPanel]);
     }
     pub fn statistics(&self) -> Arc<crate::domain::statistics::StatisticsSnapshot> {
         self.state
@@ -92,7 +102,7 @@ impl ProjectContext {
     }
     pub(crate) fn set_statistics(&self, snapshot: crate::domain::statistics::StatisticsSnapshot) {
         self.set_statistics_silent(snapshot);
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh();
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::BottomPanel]);
     }
     pub(crate) fn set_statistics_silent(
         &self,

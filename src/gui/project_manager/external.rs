@@ -8,7 +8,11 @@ pub(crate) fn open(
 ) -> Result<AnyWindowHandle> {
     let (window, _) = crate::gui::external::open_tool_window(
         mode.title(),
-        size(px(640.), px(510.)),
+        if mode == ProjectWindowKind::Create {
+            size(px(840.), px(600.))
+        } else {
+            size(px(640.), px(510.))
+        },
         parent,
         cx,
         move |window, cx| cx.new(|cx| ProjectManager::new(mode, window, cx)),

@@ -1,4 +1,5 @@
 mod core;
+mod create;
 mod external;
 mod ui;
 
@@ -25,11 +26,11 @@ impl ProjectWindowKind {
 struct ProjectManager {
     mode: ProjectWindowKind,
     directory: Entity<InputState>,
-    name: Entity<InputState>,
     busy: bool,
     error: Option<String>,
     status: Option<String>,
     subscriptions: Vec<Subscription>,
+    creation: create::CreateForm,
 }
 impl ProjectManager {
     fn new(mode: ProjectWindowKind, window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -44,17 +45,32 @@ impl ProjectManager {
             directory: cx.new(|cx| {
                 InputState::new(window, cx)
                     .placeholder("选择项目目录")
-                    .default_value(initial.to_string_lossy().into_owned())
+                    .default_value(if mode == ProjectWindowKind::Create {
+                        initial.join("untitled").to_string_lossy().into_owned()
+                    } else {
+                        initial.to_string_lossy().into_owned()
+                    })
             }),
-            name: cx.new(|cx| InputState::new(window, cx).placeholder("例如：my-project")),
             busy: false,
             error: None,
             status: None,
             subscriptions: Vec::new(),
+            creation: create::CreateForm::new(window, cx),
         };
-        for input in [&this.directory, &this.name] {
+        for input in [&this.directory] {
             this.subscriptions
                 .push(cx.observe(input, |_, _, cx| cx.notify()));
+        }
+        for input in [
+            &this.creation.toolchain,
+            &this.creation.module,
+            &this.creation.environment,
+        ] {
+            this.subscriptions
+                .push(cx.observe(input, |_, _, cx| cx.notify()));
+        }
+        if mode == ProjectWindowKind::Create {
+            this.inspect_toolchain(window, cx);
         }
         this.start_subscribe(window, cx);
         cx.spawn(async move |this, cx| {
@@ -77,7 +93,9 @@ impl ProjectManager {
         this
     }
     fn start_subscribe(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        let mut changes = crate::data_context::DATA_CONTEXT.subscribe_changes();
+        let mut changes = crate::event_bus::EVENT_BUS
+            .refresh_gui
+            .subscribe(crate::event_bus::refresh_gui::GuiComponent::ProjectManager);
         cx.spawn_in(window, async move |this, cx| {
             while changes.changed().await.is_ok() {
                 if this.update(cx, |_, cx| cx.notify()).is_err() {

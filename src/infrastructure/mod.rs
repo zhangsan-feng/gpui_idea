@@ -1,9 +1,12 @@
+pub(crate) mod assets;
 mod external;
+mod git;
 mod history;
 mod language_server;
 pub mod logging;
-mod runtime;
+pub(crate) mod paths;
 mod projects;
+mod runtime;
 mod timer;
 pub(crate) use timer::TimerRegistration;
 mod terminal;
@@ -18,6 +21,7 @@ pub(crate) static INFRASTRUCTURE: LazyLock<InfrastructureContext> =
     LazyLock::new(InfrastructureContext::new);
 
 pub(crate) struct InfrastructureContext {
+    pub(crate) git: git::Git,
     pub(crate) projects: projects::ProjectStore,
     pub(crate) timer: timer::TimerPipeline,
     pub(crate) terminal: terminal::TerminalStore,
@@ -30,6 +34,7 @@ pub(crate) struct InfrastructureContext {
 impl InfrastructureContext {
     fn new() -> Self {
         Self {
+            git: git::Git,
             projects: projects::ProjectStore,
             timer: timer::TimerPipeline::new(),
             terminal: terminal::TerminalStore::new(),

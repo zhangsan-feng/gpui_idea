@@ -8,7 +8,6 @@ use alacritty_terminal::{
     vte::ansi::{Color, NamedColor},
 };
 use anyhow::Result;
-use base64::Engine as _;
 use std::path::PathBuf;
 
 pub(super) fn start(
@@ -27,35 +26,10 @@ pub(super) fn start(
         &size,
         listener.clone(),
     )));
-    // The child blocks before running user commands or profiles, so descendants
-    // can only be created after it has been assigned to this session's job.
-    let script = if let Some(command) = &command {
-        let display = command.replace('\'', "''");
-        format!(
-            "[Console]::ReadLine() | Out-Null; [Console]::WriteLine(([char]27).ToString() + '[34m' + '{display}' + ([char]27).ToString() + '[0m'); $global:LASTEXITCODE=0; & {{\n{command}\n}}; $gpuiRunOk=$?; $gpuiRunCode=$global:LASTEXITCODE; if(-not $gpuiRunOk -and $gpuiRunCode -eq 0){{$gpuiRunCode=1}}; exit $gpuiRunCode"
-        )
-    } else {
-        "[Console]::ReadLine() | Out-Null; foreach($profilePath in @($PROFILE.AllUsersAllHosts,$PROFILE.AllUsersCurrentHost,$PROFILE.CurrentUserAllHosts,$PROFILE.CurrentUserCurrentHost)){if(Test-Path -LiteralPath $profilePath){. $profilePath}}".into()
-    };
-    let encoded = base64::engine::general_purpose::STANDARD.encode(
-        script
-            .encode_utf16()
-            .flat_map(u16::to_le_bytes)
-            .collect::<Vec<_>>(),
-    );
-    let mut args = vec!["-NoLogo".into(), "-NoProfile".into()];
-    if command.is_none() {
-        args.push("-NoExit".into());
-    }
-    args.extend(["-EncodedCommand".into(), encoded]);
-    let options = tty::Options {
-        shell: Some(tty::Shell::new("powershell.exe".into(), args)),
-        working_directory: Some(root),
-        drain_on_exit: true,
-        ..Default::default()
-    };
+    let launch = shell::prepare(&root, command.as_deref())?;
+    tracing::info!(shell = %launch.title, ?root, running_command = command.is_some(), "starting terminal shell");
     let pty = tty::new(
-        &options,
+        &launch.options,
         WindowSize {
             num_lines: 12,
             num_cols: 100,
@@ -64,13 +38,16 @@ pub(super) fn start(
         },
         0,
     )?;
-    let process_job = process::ProcessJob::new(pty.child_watcher().raw_handle())?;
+    let process_job = process::ProcessJob::new(&pty)?;
+    if let Some(command) = &command {
+        let text = format!("\x1b[34m{}\x1b[0m\r\n", command.replace('\n', "\r\n"));
+        let mut parser: alacritty_terminal::vte::ansi::Processor = Default::default();
+        parser.advance(&mut *term.lock(), text.as_bytes());
+    }
     let event_loop = EventLoop::new(term.clone(), listener, pty, true, false)?;
     let sender = event_loop.channel();
     event_loop.spawn();
-    sender.send(alacritty_terminal::event_loop::Msg::Input(
-        vec![b'\r'].into(),
-    ))?;
+    launch.release()?;
     static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
     let generation = GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     Ok((
@@ -87,7 +64,8 @@ pub(super) fn start(
             generation,
             term,
             sender,
-            title: "PowerShell".into(),
+            title: launch.title.clone(),
+            _launch: launch,
             exited: false,
         },
         rx,

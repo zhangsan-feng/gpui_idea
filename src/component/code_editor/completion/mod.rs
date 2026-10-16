@@ -17,6 +17,8 @@ impl Global for CompletionRegistry {}
 pub(crate) struct CompletionDropdown {
     editor: WeakEntity<EditorState>,
     language: &'static str,
+    path: std::path::PathBuf,
+    cancellation: Option<tokio::sync::watch::Sender<bool>>,
     items: Vec<CompletionItem>,
     selected: usize,
     offset: usize,
