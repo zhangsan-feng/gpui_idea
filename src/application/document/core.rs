@@ -9,6 +9,36 @@ use std::{
 };
 
 impl DocumentService {
+    pub(super) async fn save_dirty_core(&self) -> Result<()> {
+        loop {
+            if DATA_CONTEXT.documents.autosave_paused() {
+                return Ok(());
+            }
+            for document in DATA_CONTEXT.documents.dirty_documents() {
+                if document.saving || document.save_error.is_some() {
+                    continue;
+                }
+                if let Err(error) = self.save_core(document.path.clone(), true).await {
+                    tracing::error!(path = %document.path.display(), %error, "automatic document save failed");
+                }
+            }
+            if DATA_CONTEXT.documents.autosave_paused()
+                || !DATA_CONTEXT
+                    .documents
+                    .dirty_documents()
+                    .iter()
+                    .any(|doc| doc.save_error.is_none())
+            {
+                return Ok(());
+            }
+            // A slow save can finish after the next edit's timer fired; retry new revisions.
+            INFRASTRUCTURE
+                .timer
+                .delay("document-autosave-retry", std::time::Duration::from_secs(3))
+                .await?;
+        }
+    }
+
     pub(super) fn release_clean_core(&self, path: &Path) -> bool {
         DATA_CONTEXT.documents.release_clean(path)
     }
@@ -74,7 +104,8 @@ impl DocumentService {
             initial_text: loaded.initial_text,
         })
     }
-    pub(super) async fn save_core(&self, path: PathBuf) -> Result<()> {
+    pub(super) async fn save_core(&self, path: PathBuf, automatic: bool) -> Result<()> {
+        let formatted = self.format_before_save(&path, automatic).await;
         let _refresh = APPLICATION.file_watch.lock_refresh().await;
         let current = DATA_CONTEXT
             .documents
@@ -85,13 +116,19 @@ impl DocumentService {
             .filesystem
             .begin_gui_file_change(current.scope_root.clone(), vec![relative])
             .await?;
-        let snapshot = DATA_CONTEXT.documents.begin_save(&path)?;
+        let Some(snapshot) = DATA_CONTEXT
+            .documents
+            .begin_save(&path, automatic, formatted)?
+        else {
+            change.finish(Ok(()))?;
+            return Ok(());
+        };
         let revision = snapshot.revision;
         let started = std::time::Instant::now();
         let result = change.finish(
-            INFRASTRUCTURE
-                .filesystem
-                .save_document(snapshot.scope_root.clone(), Arc::clone(&snapshot))
+            crate::event_bus::EVENT_BUS
+                .timer_event
+                .save_file(Arc::clone(&snapshot))
                 .await,
         );
         let error = result.as_ref().err().map(|error| format!("{error:#}"));

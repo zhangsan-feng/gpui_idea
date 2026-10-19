@@ -1,4 +1,6 @@
 mod configuration;
+mod formatting;
+mod runtime;
 mod start;
 mod sync;
 use super::launch;
@@ -10,10 +12,7 @@ use serde_json::{Value, json};
 use std::{
     collections::{HashMap, HashSet},
     path::{Path, PathBuf},
-    sync::{
-        Arc,
-        atomic::{AtomicBool, Ordering},
-    },
+    sync::{Arc, atomic::AtomicBool},
     time::Duration,
 };
 use sync::incremental_change;
@@ -63,13 +62,19 @@ impl std::error::Error for SessionFault {
 
 #[derive(Clone, Copy, Default)]
 struct Readiness {
+    server_status: bool,
     quiescent: Option<bool>,
     progress: usize,
 }
 
 impl Readiness {
     fn busy(self) -> bool {
-        self.quiescent == Some(false) || self.progress > 0
+        // A server's explicit quiescence is authoritative. Progress tokens can
+        // finish later; they must not resurrect completed rust-analyzer work.
+        match self.quiescent {
+            Some(quiescent) if self.server_status => !quiescent,
+            _ => self.progress > 0,
+        }
     }
 }
 
@@ -84,12 +89,12 @@ pub(super) struct Session {
     sync_kind: u64,
     completion_supported: bool,
     definition_supported: bool,
+    formatting_supported: bool,
     documents: HashMap<PathBuf, (i32, String)>,
     readiness: watch::Receiver<Readiness>,
     rust: bool,
     diagnosed: bool,
-    status: watch::Sender<LanguageServerStatus>,
-    warming: Arc<AtomicBool>,
+    runtime: runtime::Runtime,
     warmed: HashSet<PathBuf>,
 }
 
@@ -354,8 +359,7 @@ impl Session {
             return Ok(());
         }
         let started = std::time::Instant::now();
-        self.warming.store(true, Ordering::Release);
-        self.status.send_replace(LanguageServerStatus::Warming);
+        self.runtime.warming(true);
         let result = async {
             self.sync_document(path.clone(), text, "rust").await?;
             self.wait_for_index().await?;
@@ -385,22 +389,7 @@ impl Session {
     }
 
     pub(super) fn finish_warmup(&self) {
-        self.warming.store(false, Ordering::Release);
-        // Server health notifications take precedence over a successful warmup.
-        self.status.send_if_modified(|current| {
-            if matches!(
-                current,
-                LanguageServerStatus::Warning(_) | LanguageServerStatus::Error(_)
-            ) {
-                return false;
-            }
-            *current = if self.indexing() {
-                LanguageServerStatus::Indexing
-            } else {
-                LanguageServerStatus::Ready
-            };
-            true
-        });
+        self.runtime.warming(false);
     }
 
     pub(super) async fn definitions(
@@ -515,8 +504,7 @@ impl Session {
     }
 
     pub(super) async fn stop(&mut self) {
-        self.warming.store(false, Ordering::Release);
-        self.status.send_replace(LanguageServerStatus::Stopped);
+        self.runtime.stop();
         // Avoid waiting for indexing servers during application shutdown.
         let _ = tokio::time::timeout(
             Duration::from_millis(500),
@@ -527,6 +515,7 @@ impl Session {
             .await;
         let _ = self.child.start_kill();
         self.reader.abort();
+        let _ = (&mut self.reader).await;
         self.writer.abort();
         self.stderr.abort();
         let _ = tokio::time::timeout(Duration::from_secs(2), self.child.wait()).await;
@@ -535,6 +524,8 @@ impl Session {
 
 impl Drop for Session {
     fn drop(&mut self) {
+        // Fence the old reader before a replacement session can publish status.
+        self.runtime.stop();
         self.reader.abort();
         self.writer.abort();
         self.stderr.abort();

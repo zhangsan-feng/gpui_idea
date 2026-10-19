@@ -55,7 +55,7 @@ pub(super) fn install(
         .read(true)
         .write(true)
         .open(base.join(format!("{key}.lock")))?;
-    context.progress(format!("正在准备 {label}，安装目录：{}", target.display()))?;
+    context.progress(format!("正在准备 {label}…"))?;
     let wait = Instant::now();
     loop {
         context.check()?;
@@ -138,6 +138,9 @@ fn run_output(
     capture: bool,
 ) -> Result<PathBuf> {
     context.check()?;
+    crate::infrastructure::INFRASTRUCTURE
+        .proxy
+        .configure_lsp_command(&mut command);
     let base = root();
     fs::create_dir_all(&base)?;
     let output = crate::infrastructure::paths::get().logs.join(format!(

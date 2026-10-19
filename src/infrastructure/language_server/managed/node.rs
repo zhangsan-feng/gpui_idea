@@ -9,6 +9,7 @@ pub(in crate::infrastructure::language_server) fn node_server(
 ) -> Result<(tokio::process::Command, Option<String>)> {
     let group = match package {
         "pyright" => "python",
+        "intelephense" => "php",
         "typescript-language-server" => "typescript",
         "vscode-langservers-extracted" => "web",
         "yaml-language-server" => "yaml",
@@ -24,7 +25,10 @@ pub(in crate::infrastructure::language_server) fn node_server(
         package,
         context,
         || {
-            let version = compatible::npm(package, &node_version, context)?;
+            let version = match &context.requested_release {
+                Some(version) => version.clone(),
+                None => compatible::npm(package, &node_version, context)?,
+            };
             if package == "typescript-language-server" {
                 Ok(format!(
                     "{version}__{}",

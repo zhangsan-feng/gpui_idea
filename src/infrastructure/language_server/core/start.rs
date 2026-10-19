@@ -5,7 +5,7 @@ impl Session {
     pub(in crate::infrastructure::language_server) async fn start(
         root: &Path,
         family: &str,
-        status: watch::Sender<LanguageServerStatus>,
+        status: crate::infrastructure::language_server::status::SessionStatus,
         inventory: watch::Sender<Vec<crate::domain::language_server::LanguageServerInfo>>,
         stopping: Arc<AtomicBool>,
     ) -> Result<Self> {
@@ -48,22 +48,20 @@ impl Session {
         let stdout = child.stdout.take().context("语言服务器 stdout 不可用")?;
         let stderr_pipe = child.stderr.take().context("语言服务器 stderr 不可用")?;
         let (sender, messages) = mpsc::channel(32);
-        let (status_sender, readiness) = watch::channel(Readiness {
-            quiescent: (family != "rust").then_some(true),
-            progress: 0,
-        });
+        let (runtime, readiness) = runtime::Runtime::new(
+            family == "rust",
+            status.clone(),
+            inventory.clone(),
+            server_id,
+        );
         let reader_input = input.clone();
-        let reader_status = status.clone();
-        let warming = Arc::new(AtomicBool::new(false));
-        let reader_warming = warming.clone();
+        let reader_runtime = runtime.clone();
         let root_uri = uri(root)?;
         let workspace_folders = json!([{"uri": root_uri, "name": root.file_name().unwrap_or_default().to_string_lossy()}]);
         let reader_workspace_folders = workspace_folders.clone();
         let reader = tokio::spawn(async move {
             let _registration = registration;
             let mut stdout = BufReader::new(stdout);
-            let mut progress = HashSet::new();
-            let mut health_status = None;
             loop {
                 let result = read_message(&mut stdout).await;
                 match result {
@@ -76,58 +74,10 @@ impl Session {
                             )
                             .await
                             {
-                                reader_status
-                                    .send_replace(LanguageServerStatus::Error(error.to_string()));
+                                reader_runtime.failed(error.to_string());
                                 let _ = sender.send(Err(error)).await;
                                 break;
                             }
-                        } else if message.get("method").and_then(Value::as_str)
-                            == Some("experimental/serverStatus")
-                        {
-                            let health = message
-                                .pointer("/params/health")
-                                .and_then(Value::as_str)
-                                .unwrap_or("unknown");
-                            let quiescent = message
-                                .pointer("/params/quiescent")
-                                .and_then(Value::as_bool);
-                            let detail = message
-                                .pointer("/params/message")
-                                .and_then(Value::as_str)
-                                .unwrap_or_default();
-                            tracing::debug!(
-                                health,
-                                ?quiescent,
-                                message = detail,
-                                "Language server status"
-                            );
-                            status_sender.send_modify(|status| status.quiescent = quiescent);
-                            health_status = match health {
-                                "error" => Some(LanguageServerStatus::Error(detail.to_owned())),
-                                "warning" => Some(LanguageServerStatus::Warning(detail.to_owned())),
-                                _ => None,
-                            };
-                        } else if message.get("method").and_then(Value::as_str)
-                            == Some("$/progress")
-                        {
-                            let token = message
-                                .pointer("/params/token")
-                                .map(Value::to_string)
-                                .unwrap_or_default();
-                            let kind = message
-                                .pointer("/params/value/kind")
-                                .and_then(Value::as_str)
-                                .unwrap_or_default();
-                            if kind == "begin" {
-                                progress.insert(token.clone());
-                            }
-                            if kind == "end" {
-                                progress.remove(&token);
-                            }
-                            if matches!(kind, "begin" | "end") {
-                                tracing::debug!(token, kind, progress = %message["params"]["value"], active = progress.len(), "Language server indexing progress");
-                            }
-                            status_sender.send_modify(|status| status.progress = progress.len());
                         } else if matches!(
                             message.get("method").and_then(Value::as_str),
                             Some("window/logMessage" | "window/showMessage")
@@ -138,24 +88,7 @@ impl Session {
                                 tracing::debug!(message = text, "LSP server notification");
                             }
                         }
-                        let state = *status_sender.borrow();
-                        let next = health_status.clone().unwrap_or_else(|| {
-                            if state.busy() || state.quiescent.is_none() {
-                                LanguageServerStatus::Indexing
-                            } else if reader_warming.load(Ordering::Acquire) {
-                                LanguageServerStatus::Warming
-                            } else {
-                                LanguageServerStatus::Ready
-                            }
-                        });
-                        reader_status.send_if_modified(|current| {
-                            if *current == next {
-                                false
-                            } else {
-                                *current = next;
-                                true
-                            }
-                        });
+                        reader_runtime.notification(&message);
                     }
                     Ok(message) => {
                         if sender.send(Ok(message)).await.is_err() {
@@ -163,7 +96,7 @@ impl Session {
                         }
                     }
                     Err(error) => {
-                        reader_status.send_replace(LanguageServerStatus::Error(error.to_string()));
+                        reader_runtime.failed(error.to_string());
                         let _ = sender.send(Err(error)).await;
                         break;
                     }
@@ -194,12 +127,12 @@ impl Session {
             sync_kind: 1,
             completion_supported: false,
             definition_supported: false,
+            formatting_supported: false,
             documents: HashMap::new(),
             readiness,
             rust: family == "rust",
             diagnosed: false,
-            status,
-            warming,
+            runtime,
             warmed: HashSet::new(),
         };
         let initialization_options = configuration::initialization_options(family);
@@ -212,6 +145,7 @@ impl Session {
                 "textDocument":{
                     "completion":{"completionItem":{"snippetSupport":matches!(family, "html" | "css" | "json"),"insertReplaceSupport":true}},
                     "definition":{"linkSupport":true},"synchronization":{"didSave":true},
+                    "formatting":{"dynamicRegistration":false},
                     "semanticTokens":{
                         "requests":{"full":true},"formats":["relative"],
                         "tokenTypes":["namespace","type","struct","variable","function","method","macro","keyword","comment","string","number","operator"],
@@ -251,10 +185,12 @@ impl Session {
         };
         session.completion_supported = supports("completionProvider");
         session.definition_supported = supports("definitionProvider");
+        session.formatting_supported = supports("documentFormattingProvider");
         tracing::debug!(
             family,
             completion = session.completion_supported,
             definition = session.definition_supported,
+            formatting = session.formatting_supported,
             sync_kind = session.sync_kind,
             "LSP capabilities negotiated"
         );
@@ -267,15 +203,11 @@ impl Session {
                 )
                 .await?;
         }
-        if family != "rust" {
-            session.status.send_replace(LanguageServerStatus::Ready);
-        }
-        inventory::initialized(&inventory, server_id, &capabilities);
-        if capabilities
-            .pointer("/serverInfo/version")
-            .and_then(Value::as_str)
-            .is_none_or(|version| version.trim().is_empty())
-        {
+        session.runtime.initialized();
+        let version = inventory::reported_version(&capabilities, family);
+        let needs_version_query = version.is_none();
+        inventory::initialized(&inventory, server_id, &capabilities, version);
+        if needs_version_query {
             if let Some(program) = version_program {
                 let argument = if family == "go" {
                     "version"

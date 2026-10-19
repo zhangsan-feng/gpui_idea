@@ -3,7 +3,7 @@ mod directory;
 mod document;
 mod external;
 mod watcher;
-pub(crate) use watcher::FileSubscription;
+pub(crate) use watcher::{FileSubscription, LocalChangeGuard};
 
 use std::{path::PathBuf, time::SystemTime};
 

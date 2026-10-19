@@ -19,6 +19,7 @@ pub struct DocumentSnapshot {
     pub scope_root: PathBuf,
     pub text: Rope,
     pub revision: u64,
+    pub(crate) formatted_revision: Option<u64>,
     pub saved_revision: u64,
     pub saving: bool,
     pub save_error: Option<String>,

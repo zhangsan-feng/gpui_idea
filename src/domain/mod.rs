@@ -8,5 +8,6 @@ pub(crate) mod language_server;
 pub mod project;
 pub(crate) mod project_creation;
 pub mod run;
+pub(crate) mod settings;
 pub mod statistics;
 pub mod terminal;

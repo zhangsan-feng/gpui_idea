@@ -1,140 +1,78 @@
 mod core;
+mod language_servers;
 mod ui;
 
-use gpui_kit::{Context, IntoElement, Render, Window};
-
-struct SettingsSection {
-    label: &'static str,
-    parent: Option<&'static str>,
-    expandable: bool,
-}
-
-const SECTIONS: &[SettingsSection] = &[
-    SettingsSection {
-        label: "Rust",
-        parent: None,
-        expandable: true,
-    },
-    SettingsSection {
-        label: "外观与行为",
-        parent: None,
-        expandable: true,
-    },
-    SettingsSection {
-        label: "外观",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "菜单与工具栏",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "系统设置",
-        parent: Some("外观与行为"),
-        expandable: true,
-    },
-    SettingsSection {
-        label: "文件颜色",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "作用域",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "通知",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "数据编辑器与查看器",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "快速列表",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "必需插件",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "受信任的位置",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "路径变量",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "演示助手",
-        parent: Some("外观与行为"),
-        expandable: false,
-    },
-    SettingsSection {
-        label: "快捷键",
-        parent: None,
-        expandable: false,
-    },
-    SettingsSection {
-        label: "编辑器",
-        parent: None,
-        expandable: true,
-    },
-    SettingsSection {
-        label: "插件",
-        parent: None,
-        expandable: false,
-    },
-    SettingsSection {
-        label: "版本控制",
-        parent: None,
-        expandable: true,
-    },
-    SettingsSection {
-        label: "构建、执行、部署",
-        parent: None,
-        expandable: true,
-    },
-    SettingsSection {
-        label: "语言与框架",
-        parent: None,
-        expandable: true,
-    },
-    SettingsSection {
-        label: "工具",
-        parent: None,
-        expandable: true,
-    },
-    SettingsSection {
-        label: "备份与同步",
-        parent: None,
-        expandable: false,
-    },
-    SettingsSection {
-        label: "高级设置",
-        parent: None,
-        expandable: false,
-    },
-];
+use crate::domain::settings::GeneralSettings;
+use gpui_kit::component::input::InputState;
+use gpui_kit::{AppContext as _, Context, Entity, IntoElement, Render, Subscription, Window};
 
 pub(super) struct WorkspaceSettings {
-    selected_section: usize,
+    lsp_page: bool,
+    servers: Vec<crate::domain::language_server::ManagedServer>,
+    server_busy: bool,
+    server_message: Option<String>,
+    server_error: Option<String>,
+    draft: GeneralSettings,
+    saved: GeneralSettings,
+    saving: bool,
+    error: Option<String>,
+    search: Entity<InputState>,
+    proxy_url: Entity<InputState>,
+    _proxy_subscription: Subscription,
+    _search_subscription: Subscription,
 }
 
 impl WorkspaceSettings {
-    pub(super) fn new() -> Self {
+    pub(super) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
+        let settings = crate::data_context::DATA_CONTEXT.settings.get();
+        let search = cx.new(|cx| InputState::new(window, cx).placeholder("搜索设置"));
+        let subscription = cx.observe(&search, |this, search, cx| {
+            let query = search.read(cx).value().trim().to_lowercase();
+            if !query.is_empty() {
+                if "常规配置 自动格式化 保存 代理 proxy 网络 下载".contains(&query)
+                {
+                    this.lsp_page = false;
+                } else {
+                    this.lsp_page = true;
+                }
+            }
+            cx.notify();
+        });
+        let proxy_url = cx.new(|cx| {
+            InputState::new(window, cx)
+                .placeholder("http://127.0.0.1:7890")
+                .default_value(settings.lsp_proxy.url.clone())
+        });
+        let proxy_subscription = cx.subscribe(&proxy_url, |this, input, event, cx| {
+            if matches!(event, gpui_kit::component::input::InputEvent::Change) {
+                this.draft.lsp_proxy.url = input.read(cx).value().to_string();
+                this.error = None;
+                cx.notify();
+            }
+        });
+        cx.spawn(async move |this, cx| {
+            let _ = this.update(cx, |this, cx| {
+                this.manage_servers(
+                    crate::domain::language_server::ServerManagementAction::Refresh,
+                    cx,
+                )
+            });
+        })
+        .detach();
         Self {
-            selected_section: 2,
+            lsp_page: false,
+            servers: crate::application::APPLICATION.settings.managed_servers(),
+            server_busy: false,
+            server_message: None,
+            server_error: None,
+            draft: settings.clone(),
+            saved: settings,
+            saving: false,
+            error: None,
+            search,
+            proxy_url,
+            _proxy_subscription: proxy_subscription,
+            _search_subscription: subscription,
         }
     }
 }
@@ -144,8 +82,11 @@ impl Render for WorkspaceSettings {
         use gpui_kit::{ParentElement as _, Styled as _};
         gpui_kit::component::v_flex()
             .size_full()
+            .font_family("Microsoft YaHei UI")
             .child(crate::component::operation_title_bar::render(
-                "设置", true, cx,
+                "设置",
+                !self.saving,
+                cx,
             ))
             .child(self.render_view(cx))
     }

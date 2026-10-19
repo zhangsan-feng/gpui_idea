@@ -10,6 +10,7 @@ pub(super) fn cargo(
     selected: Option<&Path>,
 ) -> Result<RunConfiguration> {
     let mut process = Command::new("cargo");
+    crate::infrastructure::process_environment::sanitize(&mut process);
     #[cfg(windows)]
     {
         use std::os::windows::process::CommandExt;

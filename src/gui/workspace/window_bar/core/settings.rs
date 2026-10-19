@@ -23,7 +23,9 @@ impl WindowBar {
             size(px(1120.), px(680.)),
             window,
             cx,
-            |_, cx| cx.new(|_| crate::gui::workspace::settings::WorkspaceSettings::new()),
+            |window, cx| {
+                cx.new(|cx| crate::gui::workspace::settings::WorkspaceSettings::new(window, cx))
+            },
         ) {
             Ok((handle, _)) => self.state.settings_window = Some(handle),
             Err(error) => {

@@ -54,6 +54,7 @@ pub(super) async fn run(
     environment: &[(String, String)],
 ) -> Result<String> {
     let mut command = tokio::process::Command::new(executable);
+    crate::infrastructure::process_environment::sanitize(command.as_std_mut());
     command
         .args(args)
         .envs(environment.iter().map(|(key, value)| (key, value)))

@@ -1,7 +1,7 @@
 use crate::domain::language_server::LanguageServerStatus;
 use crate::gui::workspace::bottom_bar::BottomBar;
 use crate::gui::workspace::ui::*;
-use gpui_kit::component::tooltip::Tooltip;
+use gpui_kit::base::Popover;
 
 mod lsp;
 
@@ -60,9 +60,10 @@ impl BottomBar {
                 .unwrap_or("自动保存")
         };
         let status = DATA_CONTEXT.language_server_status();
-        let installing = lsp::installing();
+        let installation = lsp::installation_detail();
+        let installing = installation.is_some();
         let (lsp_label, lsp_color, lsp_detail) = if installing {
-            ("LSP 安装中", ACCENT, "正在安装语言服务，请稍候…".to_owned())
+            ("LSP 安装中", ACCENT, installation.unwrap_or_default())
         } else {
             match status {
                 LanguageServerStatus::Stopped => ("LSP 已停止", MUTED, "语言服务未启动".to_owned()),
@@ -85,6 +86,7 @@ impl BottomBar {
                 LanguageServerStatus::Error(detail) => ("LSP 异常", 0xdc2626, detail),
             }
         };
+        let install_detail = installing.then(|| lsp_detail.clone());
         h_flex()
             .w_full()
             .h(px(32.))
@@ -118,47 +120,39 @@ impl BottomBar {
             ))
             .child(div().flex_1())
             .child(
-                h_flex()
-                    .id("language-server-status")
-                    .relative()
-                    .flex_shrink_0()
-                    .items_center()
-                    .gap_1p5()
-                    .px_1()
-                    .rounded_sm()
-                    .hover(|style| style.bg(color(0xe8eaf0)))
-                    .text_color(color(lsp_color))
-                    .child(div().size(px(6.)).rounded_full().bg(color(lsp_color)))
-                    .child(lsp_label)
-                    .when(installing, |indicator| {
-                        indicator.child(
-                            gpui_kit::deferred(
-                                div()
-                                    .absolute()
-                                    .bottom(px(28.))
-                                    .left_0()
-                                    .p_3()
-                                    .rounded_md()
-                                    .border_1()
-                                    .border_color(color(BORDER))
-                                    .bg(color(EDITOR_BG))
-                                    .shadow_lg()
-                                    .occlude()
-                                    .child(lsp::details("正在安装语言服务，请稍候…")),
-                            )
-                            .with_priority(10),
-                        )
+                Popover::new("language-server-popover")
+                    .anchor(Anchor::BottomRight)
+                    .offset(px(8.))
+                    .trigger_with(move |open, _, _| {
+                        h_flex()
+                            .id("language-server-status")
+                            .flex_shrink_0()
+                            .items_center()
+                            .gap_1p5()
+                            .px_1p5()
+                            .py_1()
+                            .rounded_sm()
+                            .cursor_pointer()
+                            .hover(|style| style.bg(color(0xe8eaf0)))
+                            .when(open, |indicator| indicator.bg(color(0xe8eaf0)))
+                            .text_color(color(lsp_color))
+                            .child(div().size(px(6.)).rounded_full().bg(color(lsp_color)))
+                            .child(lsp_label)
+                            .when_some(install_detail, |indicator, detail| {
+                                indicator.child(div().max_w(px(240.)).truncate().child(detail))
+                            })
+                            .child(icon(
+                                if open {
+                                    IconName::ChevronDown
+                                } else {
+                                    IconName::ChevronUp
+                                },
+                                11.,
+                                lsp_color,
+                            ))
+                            .into_any_element()
                     })
-                    .when(!installing, |indicator| {
-                        indicator.tooltip(move |window, cx| {
-                            let detail = lsp_detail.clone();
-                            Tooltip::element(move |_, _| lsp::details(&detail))
-                                .bg(color(EDITOR_BG))
-                                .border_color(color(BORDER))
-                                .p_3()
-                                .build(window, cx)
-                        })
-                    }),
+                    .content(move |_, _, _| lsp::details(&lsp_detail)),
             )
             .child(
                 div()

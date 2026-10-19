@@ -33,6 +33,7 @@ impl Editor {
                 continue;
             }
             let revision = snapshot.revision;
+            let formatted = snapshot.formatted_revision == Some(revision);
             cx.spawn_in(window, async move |this, cx| {
                 // Serialize large buffers off the GUI thread.
                 let result = run_application(async move {
@@ -49,8 +50,13 @@ impl Editor {
                                     editor.update(cx, |state, cx| {
                                         let mut cursor = state.cursor_position();
                                         let scroll = state.scroll_offset();
-                                        // set_value is silent: external reloads must not become local edits.
-                                        state.set_value(text, window, cx);
+                                        if formatted {
+                                            // Formatting is one undoable edit; the Change handler
+                                            // ignores echoes already committed to the snapshot.
+                                            state.replace_all(text, window, cx);
+                                        } else {
+                                            state.set_value(text, window, cx);
+                                        }
                                         cursor.line = cursor.line.min(state.text().lines_len().saturating_sub(1) as u32);
                                         let offset = state.text().position_to_offset(&cursor);
                                         state.set_selected_range(offset..offset, cx);

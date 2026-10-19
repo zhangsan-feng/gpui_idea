@@ -38,16 +38,15 @@ pub(super) fn start(
         },
         0,
     )?;
-    let process_job = process::ProcessJob::new(&pty)?;
     if let Some(command) = &command {
         let text = format!("\x1b[34m{}\x1b[0m\r\n", command.replace('\n', "\r\n"));
         let mut parser: alacritty_terminal::vte::ansi::Processor = Default::default();
         parser.advance(&mut *term.lock(), text.as_bytes());
     }
+    let process_id = process::id(&pty)?;
     let event_loop = EventLoop::new(term.clone(), listener, pty, true, false)?;
     let sender = event_loop.channel();
-    event_loop.spawn();
-    launch.release()?;
+    let reader = Some(event_loop.spawn());
     static GENERATION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
     let generation = GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     Ok((
@@ -58,7 +57,8 @@ pub(super) fn start(
             cell_width: 8,
             cell_height: 18,
             pty_exited,
-            process_job,
+            process_id,
+            reader,
             command,
             exit_code: None,
             generation,

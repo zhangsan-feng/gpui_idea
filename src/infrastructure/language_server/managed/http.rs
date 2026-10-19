@@ -8,12 +8,16 @@ use std::{
 };
 
 pub(super) fn client() -> Result<reqwest::blocking::Client> {
-    Ok(reqwest::blocking::Client::builder()
-        .user_agent("gpui-idea")
-        .https_only(true)
-        .connect_timeout(Duration::from_secs(10))
-        .timeout(Duration::from_secs(300))
-        .redirect(reqwest::redirect::Policy::limited(8))
+    Ok(crate::infrastructure::INFRASTRUCTURE
+        .proxy
+        .lsp_http_client(
+            reqwest::blocking::Client::builder()
+                .user_agent("gpui-idea")
+                .https_only(true)
+                .connect_timeout(Duration::from_secs(10))
+                .timeout(Duration::from_secs(300))
+                .redirect(reqwest::redirect::Policy::limited(8)),
+        )?
         .build()?)
 }
 
@@ -63,6 +67,7 @@ pub(super) fn latest(repo: &str) -> Result<String> {
 pub(super) fn download(url: &str, path: &Path, context: &InstallContext) -> Result<()> {
     tracing::info!(url, "Downloading LSP release with reqwest");
     let mut response = client()?.get(url).send()?.error_for_status()?;
+    let total = response.content_length();
     let limit = 512 * 1024 * 1024;
     anyhow::ensure!(
         response.content_length().unwrap_or(0) <= limit,
@@ -72,6 +77,7 @@ pub(super) fn download(url: &str, path: &Path, context: &InstallContext) -> Resu
     let mut buffer = [0; 65536];
     let mut received = 0u64;
     let mut reported = Instant::now();
+    context.download_progress(0, total)?;
     loop {
         context.check()?;
         let count = response.read(&mut buffer)?;
@@ -81,11 +87,12 @@ pub(super) fn download(url: &str, path: &Path, context: &InstallContext) -> Resu
         received += count as u64;
         anyhow::ensure!(received <= limit, "下载包超过 512 MiB");
         output.write_all(&buffer[..count])?;
-        if reported.elapsed() >= Duration::from_secs(1) {
-            context.progress(format!("正在下载 · {:.1} MiB", received as f64 / 1048576.0))?;
+        if reported.elapsed() >= Duration::from_millis(250) {
+            context.download_progress(received, total)?;
             reported = Instant::now();
         }
     }
+    context.download_progress(received, total)?;
     output.sync_all()?;
     Ok(())
 }

@@ -14,6 +14,7 @@ pub(super) fn initialize() -> Result<()> {
 }
 
 pub(super) async fn prepare_startup() -> Result<()> {
+    APPLICATION.settings.load().await?;
     let mut arguments = std::env::args_os().skip(1).collect::<Vec<_>>().into_iter();
     let mut requested = None;
     while let Some(argument) = arguments.next() {

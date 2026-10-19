@@ -50,10 +50,13 @@ fn prune(state: &mut LocalChanges) {
             let mut pending = pending.lock().unwrap_or_else(|error| error.into_inner());
             pending.event_count = pending.event_count.saturating_add(paths.len() as u64);
             if !pending.rescan {
+                // Suppressed events can include renames/removals from another writer.
+                pending.tree_paths.extend(paths.iter().cloned());
                 pending.paths.extend(paths);
                 if pending.paths.len() > 4096 {
                     pending.rescan = true;
                     pending.paths.clear();
+                    pending.tree_paths.clear();
                 }
             }
         }
@@ -136,6 +139,7 @@ fn apply_finish(id: u64, failed: bool) {
         let mut pending = pending.lock().unwrap_or_else(|error| error.into_inner());
         pending.rescan = true;
         pending.paths.clear();
+        pending.tree_paths.clear();
         pending.event_count = pending.event_count.saturating_add(1);
     }
     tracing::debug!(id, "local change failed; scheduling full refresh");

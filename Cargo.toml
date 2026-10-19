@@ -45,12 +45,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 alacritty_terminal = "0.26.0"
 rust-embed = { version = "8.13.0", features = ["debug-embed", "include-exclude"] }
 
-[target.'cfg(windows)'.dependencies]
-windows-sys = { version = "0.61.2", features = ["Win32_Foundation", "Win32_Security", "Win32_System_JobObjects", "Win32_System_Threading"] }
-tempfile = "3.27.0"
-
-[target.'cfg(unix)'.dependencies]
-libc = "0.2.190"
+[build-dependencies]
+embed-resource = "=3.0.12"
 
 [profile.dev]
 opt-level = 3

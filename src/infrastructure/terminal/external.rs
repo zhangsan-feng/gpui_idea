@@ -131,19 +131,36 @@ impl TerminalStore {
     }
     pub(crate) async fn stop(&'static self, id: TerminalId) -> Result<()> {
         tokio::task::spawn_blocking(move || {
-            let mut sessions = self.sessions.lock().unwrap();
-            if let Some(session) = sessions.get_mut(&id) {
-                session.process_job.terminate()?;
-                if !session.exited {
-                    session.stopped = true;
-                    session.output_finalized = false;
-                    session.exit_code = Some(130);
+            let reader = {
+                let mut sessions = self.sessions.lock().unwrap();
+                if let Some(session) = sessions.get_mut(&id) {
+                    if !session.exited {
+                        session.stopped = true;
+                        session.output_finalized = false;
+                        session.exit_code = Some(130);
+                    }
+                    // Stop cancels the reader and can discard pending tail output.
+                    // Only the reader's drained Event::Exit may finalize a transcript.
+                    session.exited = true;
+                    tracing::info!(?id, "terminal Alacritty shutdown requested");
+                    Some((
+                        session.process_id,
+                        session.pty_exited.clone(),
+                        session.sender.clone(),
+                        session.reader.take(),
+                    ))
+                } else {
+                    None
                 }
-                let _ = session.sender.send(Msg::Shutdown);
-                // Stop cancels the reader and can discard pending tail output.
-                // Only the reader's drained Event::Exit may finalize a transcript.
-                session.exited = true;
-                tracing::info!(?id, "terminal process tree stopped");
+            };
+            // Joining drops Alacritty's PTY/ConPTY outside the shared lock.
+            if let Some((process_id, exited, sender, reader)) = reader {
+                let result = process::terminate(process_id, &exited);
+                let _ = sender.send(Msg::Shutdown);
+                result?;
+                if let Some(reader) = reader {
+                    reader.join().map_err(|_| anyhow!("终端读取线程异常退出"))?;
+                }
             }
             Ok(())
         })
@@ -208,11 +225,6 @@ impl TerminalStore {
                         tracing::info!(?id,code=?status.code(),"terminal process exited");
                     }
                     Event::Exit => {
-                        // Retire remaining jobs immediately, before Unix PIDs can
-                        // be reused while the completed transcript stays open.
-                        if let Err(error) = session.process_job.terminate() {
-                            tracing::warn!(?id, %error, "terminal exit cleanup failed");
-                        }
                         session.exited = true;
                         session.output_finalized = true;
                         tracing::info!(?id, "terminal child exited");
@@ -221,7 +233,17 @@ impl TerminalStore {
                 }
             }
             core::finish_output(session);
-            Ok(core::snapshot(session))
+            let snapshot = core::snapshot(session);
+            let reader = if session.exited {
+                session.reader.take()
+            } else {
+                None
+            };
+            drop(sessions);
+            if let Some(reader) = reader {
+                reader.join().map_err(|_| anyhow!("终端读取线程异常退出"))?;
+            }
+            Ok(snapshot)
         })
         .await
         .context("terminal snapshot task failed")?

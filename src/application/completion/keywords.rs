@@ -27,6 +27,9 @@ pub(super) fn words(language: &str) -> &'static str {
         "css" => {
             "display position relative absolute fixed sticky color background border padding margin width height min-width max-width min-height max-height flex grid gap align-items justify-content font-family font-size font-weight line-height overflow auto none block inline-block solid transparent inherit important"
         }
+        "php" => {
+            "abstract array as break callable case catch class clone const continue declare default die do echo else elseif empty enddeclare endfor endforeach endif endswitch endwhile enum eval exit extends final finally fn for foreach function global goto if implements include include_once instanceof insteadof interface isset list match namespace new null parent print private protected public readonly require require_once return self static switch throw trait true false try unset use var while yield string int float bool mixed void never"
+        }
         "json" => "true false null",
         "toml" | "yaml" => "true false",
         _ => "",

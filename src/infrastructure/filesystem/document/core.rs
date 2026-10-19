@@ -136,6 +136,7 @@ pub(super) fn read(root: &Path, path: &Path) -> Result<LoadedFile> {
     tracing::debug!(path = %path.display(), bytes = bytes.len(), chunks,
         buffer_bytes = BUFFER_SIZE, "document loaded with buffered chunks");
     let document = DocumentSnapshot {
+        formatted_revision: None,
         path: path.to_path_buf(),
         scope_root: root.to_path_buf(),
         text: decoder.builder.finish(),

@@ -30,7 +30,20 @@ impl DocumentService {
         self.open_external_core(path).await
     }
     pub async fn save(&self, path: PathBuf) -> Result<()> {
-        self.save_core(path).await
+        self.save_core(path, false).await
+    }
+    pub(crate) async fn save_dirty(&self) -> Result<()> {
+        self.save_dirty_core().await
+    }
+    pub(crate) fn pause_autosave(&self) {
+        crate::data_context::DATA_CONTEXT
+            .documents
+            .set_autosave_paused(true);
+    }
+    pub(crate) fn resume_autosave(&self) {
+        crate::data_context::DATA_CONTEXT
+            .documents
+            .set_autosave_paused(false);
     }
     pub fn edit(&self, path: &Path, text: Rope) -> Result<()> {
         self.edit_core(path, text, true)

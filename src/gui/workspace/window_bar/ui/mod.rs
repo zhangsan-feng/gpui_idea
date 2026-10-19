@@ -24,7 +24,11 @@ impl WindowBar {
             .pl(px(8.))
             .bg(color(TOOLBAR))
             .text_color(color(0xdfe1e5))
-            .child(icon(IconName::Code, 16., 0xdfe1e5))
+            .child(
+                img(crate::component::assets::APP_ICON)
+                    .size(px(20.))
+                    .flex_shrink_0(),
+            )
             .child(div().w(px(10.)).flex_shrink_0())
             .child(self.main_menu(cx))
             .child(self.top_icon(
@@ -56,7 +60,15 @@ impl WindowBar {
                     .flex_1()
                     .h_full()
                     .min_w(px(20.))
-                    .window_control_area(WindowControlArea::Drag),
+                    .window_control_area(WindowControlArea::Drag)
+                    .on_mouse_down(MouseButton::Left, |event, window, _| {
+                        tracing::debug!(
+                            click_count = event.click_count,
+                            position = ?event.position,
+                            maximized = window.is_maximized(),
+                            "native title bar mouse down"
+                        );
+                    }),
             )
             .child(self.profile_menu(cx))
             .child(self.run_action(cx))

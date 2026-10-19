@@ -10,6 +10,15 @@ type CheckedRelease = Arc<Mutex<Option<Binary>>>;
 static CHECKED: LazyLock<Mutex<HashMap<String, CheckedRelease>>> =
     LazyLock::new(|| Mutex::new(HashMap::new()));
 
+pub(super) fn slot(key: &str) -> CheckedRelease {
+    CHECKED
+        .lock()
+        .unwrap_or_else(|error| error.into_inner())
+        .entry(key.to_owned())
+        .or_insert_with(|| Arc::new(Mutex::new(None)))
+        .clone()
+}
+
 pub(super) fn existing(key: &str) -> Option<Binary> {
     let mut directories = fs::read_dir(core::root())
         .ok()?
@@ -35,15 +44,18 @@ pub(super) fn ensure(
     resolve: impl FnOnce() -> Result<String>,
     prepare: impl FnOnce(&Path, &str) -> Result<Installed>,
 ) -> Result<Binary> {
-    let slot = CHECKED
-        .lock()
-        .unwrap_or_else(|error| error.into_inner())
-        .entry(key.to_owned())
-        .or_insert_with(|| Arc::new(Mutex::new(None)))
-        .clone();
+    let slot = slot(key);
     let mut checked = slot.lock().unwrap_or_else(|error| error.into_inner());
     context.check()?;
-    if let Some(binary) = checked.as_ref() {
+    if !context.force_update {
+        if let Some(directory) = super::management::pin(key)? {
+            let binary = super::management::selected(key, &directory)?;
+            context.target(core::root().join(directory));
+            context.selection(format!("使用固定版本 {}", binary.version))?;
+            return Ok(binary);
+        }
+    }
+    if let Some(binary) = checked.as_ref().filter(|_| !context.force_update) {
         if binary.path.is_file() {
             if let Some(note) = &binary.selection {
                 context.selection(note.clone())?;
@@ -82,11 +94,16 @@ pub(super) fn ensure(
             {
                 context.selection(note.clone())?;
             }
-            *checked = Some(binary.clone());
+            if context.requested_release.is_none() {
+                *checked = Some(binary.clone());
+            }
             Ok(binary)
         }
         Err(error) => {
             context.check()?;
+            if context.force_update {
+                return Err(error);
+            }
             if let Some(binary) = existing(key) {
                 if let Some(note) = &binary.selection {
                     context.selection(note.clone())?;
@@ -119,9 +136,7 @@ pub(in crate::infrastructure::language_server) fn refresh(
 ) {
     // Background maintenance publishes inventory details without overwriting a
     // running session's Ready/Indexing/Warming status.
-    let status =
-        tokio::sync::watch::channel(crate::domain::language_server::LanguageServerStatus::Stopped)
-            .0;
+    let status = crate::infrastructure::language_server::status::StatusRegistry::new().session();
     for (key, family, package, bin) in [
         ("rust-analyzer", "rust", "", ""),
         ("taplo", "toml", "", ""),
@@ -129,6 +144,7 @@ pub(in crate::infrastructure::language_server) fn refresh(
         ("jdtls", "java", "", ""),
         ("gopls", "go", "", ""),
         ("lsp-python", "python", "pyright", "pyright-langserver"),
+        ("lsp-php", "php", "intelephense", "intelephense"),
         (
             "lsp-typescript",
             "javascript",

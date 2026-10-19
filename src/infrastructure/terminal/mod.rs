@@ -6,7 +6,7 @@ use crate::domain::terminal::TerminalId;
 use alacritty_terminal::{
     Term,
     event::{Event, EventListener},
-    event_loop::EventLoopSender,
+    event_loop::{EventLoop, EventLoopSender, State},
     sync::FairMutex,
 };
 use std::{
@@ -37,7 +37,7 @@ struct ShellLaunch {
     options: alacritty_terminal::tty::Options,
     title: String,
     #[cfg(windows)]
-    workspace: tempfile::TempDir,
+    _script: Option<shell::CommandScript>,
 }
 
 struct Session {
@@ -47,7 +47,9 @@ struct Session {
     cell_width: u16,
     cell_height: u16,
     pty_exited: Arc<AtomicBool>,
-    process_job: process::ProcessJob,
+    process_id: u32,
+    reader:
+        Option<std::thread::JoinHandle<(EventLoop<alacritty_terminal::tty::Pty, Listener>, State)>>,
     _launch: ShellLaunch,
     command: Option<String>,
     exit_code: Option<i32>,
@@ -59,6 +61,29 @@ struct Session {
 }
 pub(crate) struct TerminalStore {
     sessions: Mutex<HashMap<TerminalId, Session>>,
+}
+impl Drop for Session {
+    fn drop(&mut self) {
+        if self.reader.is_some() {
+            if let Err(error) = process::terminate(self.process_id, &self.pty_exited) {
+                tracing::warn!(%error, "terminal process cleanup failed");
+                // Do not block the caller forever if the OS rejected termination.
+                self.reader.take();
+            }
+        }
+        // Alacritty owns the PTY and shell lifecycle on every platform.
+        let _ = self
+            .sender
+            .send(alacritty_terminal::event_loop::Msg::Shutdown);
+        if let Some(reader) = self.reader.take() {
+            if reader.join().is_err() {
+                tracing::warn!(
+                    generation = self.generation,
+                    "terminal reader panicked during cleanup"
+                );
+            }
+        }
+    }
 }
 impl TerminalStore {
     pub(crate) fn new() -> Self {

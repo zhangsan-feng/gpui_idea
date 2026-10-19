@@ -45,6 +45,13 @@ const LANGUAGES: &[EditorLanguage] = &[
         extensions: &["py", "pyw", "pyi"],
     },
     EditorLanguage {
+        name: "php",
+        label: "PHP",
+        extensions: &[
+            "php", "phtml", "php3", "php4", "php5", "php7", "php8", "phps",
+        ],
+    },
+    EditorLanguage {
         name: "go",
         label: "Go",
         extensions: &["go"],

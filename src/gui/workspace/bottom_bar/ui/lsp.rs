@@ -1,11 +1,14 @@
 use super::*;
-use crate::domain::language_server::LanguageServerPhase;
+use crate::domain::language_server::{LanguageServerInfo, LanguageServerPhase};
 
-pub(super) fn installing() -> bool {
-    DATA_CONTEXT
+pub(super) fn installation_detail() -> Option<String> {
+    let details = DATA_CONTEXT
         .language_servers()
         .iter()
-        .any(|server| server.phase == LanguageServerPhase::Installing)
+        .filter(|server| server.phase == LanguageServerPhase::Installing)
+        .map(|server| format!("{} · {}", server.name, server.detail))
+        .collect::<Vec<_>>();
+    (!details.is_empty()).then(|| details.join("；"))
 }
 
 pub(super) fn details(detail: &str) -> Div {
@@ -21,106 +24,164 @@ pub(super) fn details(detail: &str) -> Div {
         .filter(|server| server.phase == LanguageServerPhase::Installing)
         .count();
     v_flex()
-        .w(px(380.))
-        .gap_2()
+        .w(px(440.))
+        .rounded_lg()
+        .border_1()
+        .border_color(color(BORDER))
+        .bg(color(EDITOR_BG))
+        .shadow_lg()
         .text_size(px(12.))
+        .line_height(px(18.))
         .text_color(color(TEXT))
         .child(
-            h_flex()
-                .items_center()
-                .justify_between()
-                .child(div().font_weight(FontWeight::SEMIBOLD).child("语言服务"))
-                .child(div().text_size(px(11.)).text_color(color(MUTED)).child(
-                    if installing > 0 {
-                        format!("安装中 {installing} 个 · 已启动 {running} 个")
-                    } else {
-                        format!("已启动 {running} 个")
-                    },
-                )),
+            v_flex()
+                .flex_shrink_0()
+                .p_3()
+                .gap_2()
+                .border_b_1()
+                .border_color(color(BORDER))
+                .child(
+                    h_flex()
+                        .items_center()
+                        .justify_between()
+                        .child(
+                            div()
+                                .text_size(px(13.))
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .child("语言服务"),
+                        )
+                        .child(div().text_size(px(11.)).text_color(color(MUTED)).child(
+                            if installing > 0 {
+                                format!("安装中 {installing} · 已启动 {running}")
+                            } else {
+                                format!("已启动 {running} 个")
+                            },
+                        )),
+                )
+                .child(
+                    div()
+                        .text_size(px(11.))
+                        .text_color(color(MUTED))
+                        .child(detail.to_owned()),
+                ),
         )
-        .child(
-            div()
-                .text_size(px(11.))
-                .text_color(color(MUTED))
-                .child(detail.to_owned()),
-        )
-        .child(div().h(px(1.)).bg(color(BORDER)))
         .when(servers.is_empty(), |panel| {
             panel.child(
                 div()
-                    .py_2()
+                    .p_4()
                     .text_color(color(MUTED))
                     .child("当前没有已启动的语言服务"),
             )
         })
+        .when(!servers.is_empty(), |panel| {
+            panel.child(
+                v_flex()
+                    .id("language-server-details-list")
+                    .max_h(px(340.))
+                    .overflow_y_scroll()
+                    .p_3()
+                    .gap_2()
+                    .children(servers.into_iter().map(server_card)),
+            )
+        })
+}
+
+fn server_card(server: LanguageServerInfo) -> Div {
+    let detail = match &server.runtime_status {
+        Some(LanguageServerStatus::Warning(detail) | LanguageServerStatus::Error(detail)) => {
+            Some(detail.clone())
+        }
+        _ if !server.initialized && !server.detail.is_empty() => Some(server.detail.clone()),
+        _ => None,
+    };
+    let (phase, phase_color, phase_bg) = match (&server.phase, &server.runtime_status) {
+        (_, Some(LanguageServerStatus::Indexing)) => ("索引中", ACCENT, 0xeff6ff),
+        (_, Some(LanguageServerStatus::Warming)) => ("预热中", ACCENT, 0xeff6ff),
+        (_, Some(LanguageServerStatus::Ready)) => ("就绪", 0x15803d, 0xf0fdf4),
+        (_, Some(LanguageServerStatus::Warning(_))) => ("警告", 0xd97706, 0xfffbeb),
+        (_, Some(LanguageServerStatus::Error(_))) => ("异常", 0xdc2626, 0xfef2f2),
+        (phase, _) => match phase {
+            LanguageServerPhase::Installing => ("正在安装", ACCENT, 0xeff6ff),
+            LanguageServerPhase::Starting => ("初始化中", ACCENT, 0xeff6ff),
+            LanguageServerPhase::Ready => ("已启动", 0x15803d, 0xf0fdf4),
+            LanguageServerPhase::Failed => ("安装/启动失败", 0xdc2626, 0xfef2f2),
+        },
+    };
+    v_flex()
+        .w_full()
+        .min_w_0()
+        .flex_shrink_0()
+        .p_3()
+        .gap_2()
+        .rounded_md()
+        .border_1()
+        .border_color(color(BORDER))
         .child(
-            v_flex()
-                .id("language-server-details-list")
-                .max_h(px(320.))
-                .overflow_y_scroll()
-                .gap_3()
-                .children(servers.into_iter().map(|server| {
-                    let (phase, phase_color) = match server.phase {
-                        LanguageServerPhase::Installing => ("正在安装", ACCENT),
-                        LanguageServerPhase::Starting => ("初始化中", ACCENT),
-                        LanguageServerPhase::Ready => ("已启动", 0x16a34a),
-                        LanguageServerPhase::Failed => ("安装/启动失败", 0xdc2626),
-                    };
+            h_flex()
+                .items_start()
+                .justify_between()
+                .gap_2()
+                .child(
                     v_flex()
-                        .gap_1()
+                        .min_w_0()
+                        .flex_1()
                         .child(
-                            h_flex()
-                                .items_center()
-                                .gap_2()
-                                .child(div().font_weight(FontWeight::MEDIUM).child(server.language))
-                                .child(
-                                    div()
-                                        .text_size(px(10.))
-                                        .text_color(color(phase_color))
-                                        .child(phase),
-                                ),
+                            div()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .child(server.language),
                         )
-                        .child(div().child(server.name))
-                        .when(!server.initialized, |row| {
-                            row.child(
-                                div()
-                                    .text_size(px(11.))
-                                    .text_color(color(phase_color))
-                                    .child(server.detail),
-                            )
-                        })
                         .child(
                             div()
                                 .text_size(px(11.))
                                 .text_color(color(MUTED))
-                                .child(format!(
-                                    "版本：{}",
-                                    server.version.as_deref().unwrap_or("版本未提供")
-                                )),
-                        )
-                        .when_some(server.install_directory, |row, path| {
-                            row.child(
-                                div()
-                                    .text_size(px(10.))
-                                    .text_color(color(MUTED))
-                                    .child(format!("安装目录：{}", path.display())),
-                            )
-                        })
-                        .when_some(server.executable, |row, path| {
-                            row.child(
-                                div()
-                                    .text_size(px(10.))
-                                    .text_color(color(MUTED))
-                                    .child(format!("启动程序：{}", path.display())),
-                            )
-                        })
-                        .child(
-                            div()
-                                .text_size(px(10.))
-                                .text_color(color(MUTED))
-                                .truncate()
-                                .child(format!("工作区：{}", server.root.display())),
-                        )
-                })),
+                                .child(server.name),
+                        ),
+                )
+                .child(
+                    div()
+                        .flex_shrink_0()
+                        .px_2()
+                        .rounded_sm()
+                        .bg(color(phase_bg))
+                        .text_size(px(10.))
+                        .text_color(color(phase_color))
+                        .child(phase),
+                ),
         )
+        .when_some(detail, |card, detail| {
+            card.child(
+                div()
+                    .text_size(px(11.))
+                    .text_color(color(phase_color))
+                    .child(detail),
+            )
+        })
+        .child(
+            v_flex()
+                .gap_1p5()
+                .child(info_row(
+                    "版本",
+                    server.version.unwrap_or_else(|| "版本未提供".into()),
+                ))
+                .when_some(server.executable, |rows, path| {
+                    rows.child(info_row("启动程序", path.display().to_string()))
+                }),
+        )
+}
+
+fn info_row(label: &'static str, value: String) -> Div {
+    h_flex()
+        .w_full()
+        .items_start()
+        .gap_2()
+        .text_size(px(11.))
+        .line_height(px(17.))
+        .child(
+            div()
+                .w(px(52.))
+                .flex_shrink_0()
+                .text_color(color(MUTED))
+                .child(label),
+        )
+        .child(div().min_w_0().flex_1().whitespace_normal().child(value))
 }

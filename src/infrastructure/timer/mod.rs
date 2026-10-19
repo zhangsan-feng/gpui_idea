@@ -1,66 +1,53 @@
 mod core;
 mod external;
+mod operations;
 
-use anyhow::Result;
+use crate::event_bus::{FileChanges, timer_event::TimerEvent};
+use anyhow::{Context, Result};
 use std::{
-    future::Future,
-    pin::Pin,
-    sync::{Arc, Mutex, atomic::AtomicU64},
+    path::PathBuf,
+    sync::{Arc, Mutex},
     time::Duration,
 };
-use tokio::{
-    sync::{mpsc, oneshot},
-    task::{AbortHandle, JoinHandle},
-    time::Instant,
-};
+use tokio::{sync::oneshot, task::JoinHandle, time::Instant};
 
-type Operation = Arc<dyn Fn() -> Pin<Box<dyn Future<Output = Result<()>> + Send>> + Send + Sync>;
 pub(crate) struct TimerPipeline {
-    state: Mutex<Option<PipelineState>>,
-    next_id: AtomicU64,
-}
-struct PipelineState {
-    commands: mpsc::UnboundedSender<Command>,
-    task: JoinHandle<()>,
-}
-enum Command {
-    Add {
-        id: u64,
-        name: &'static str,
-        delay: Duration,
-        work: Work,
-    },
-    Cancel(u64),
-}
-enum Work {
-    Delay(oneshot::Sender<()>),
-    Repeating {
-        period: Duration,
-        operation: Operation,
-    },
-}
-struct Scheduled {
-    name: &'static str,
-    deadline: Option<Instant>,
-    running: Option<AbortHandle>,
-    work: Work,
+    state: Mutex<Option<JoinHandle<()>>>,
 }
 
-/// Dropping a registration cancels future ticks and an in-flight operation.
-pub(crate) struct TimerRegistration {
-    id: u64,
-    commands: mpsc::UnboundedSender<Command>,
+struct Scheduled {
+    deadline: Instant,
+    event: ScheduledEvent,
 }
-impl Drop for TimerRegistration {
-    fn drop(&mut self) {
-        let _ = self.commands.send(Command::Cancel(self.id));
-    }
+
+enum ScheduledEvent {
+    Delay {
+        name: &'static str,
+        completion: oneshot::Sender<()>,
+    },
+    WatchFiles {
+        root: PathBuf,
+        pending: Arc<Mutex<FileChanges>>,
+        period: Duration,
+    },
 }
+
 impl TimerPipeline {
+    pub(super) fn start_subscribe(&self) -> Result<()> {
+        let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+        if state.is_some() {
+            return Ok(());
+        }
+        tokio::runtime::Handle::try_current().context("定时事件必须在 Tokio runtime 中订阅")?;
+        let events = crate::event_bus::EVENT_BUS.timer_event.subscribe()?;
+        *state = Some(tokio::spawn(core::run(events)));
+        tracing::info!("timer subscribed to event_bus.timer_event");
+        Ok(())
+    }
+
     pub(super) fn new() -> Self {
         Self {
             state: Mutex::new(None),
-            next_id: AtomicU64::new(1),
         }
     }
 }

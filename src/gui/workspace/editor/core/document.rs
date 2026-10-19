@@ -166,6 +166,9 @@ impl Editor {
                             if matches!(event, InputEvent::Change) {
                                 let committed = Instant::now();
                                 let buffer = state.read(cx).text().clone();
+                                if DATA_CONTEXT.documents.snapshot(&path).is_some_and(|snapshot| snapshot.text == buffer) {
+                                    return;
+                                }
                                 if let Err(error) = APPLICATION.documents.edit(&path, buffer) {
                                     this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!("{error:#}")))));
                                     crate::event_bus::EVENT_BUS.refresh_gui.notify(&[crate::event_bus::refresh_gui::GuiComponent::Editor, crate::event_bus::refresh_gui::GuiComponent::FileTree, crate::event_bus::refresh_gui::GuiComponent::BottomBar, crate::event_bus::refresh_gui::GuiComponent::WindowBar]);

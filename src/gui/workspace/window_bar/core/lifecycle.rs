@@ -14,15 +14,19 @@ impl WindowBar {
         window: &mut Window,
         cx: &mut Context<WindowBar>,
     ) {
-        if self.state.closing
-            || self
-                .peer_file_tree(cx)
-                .read(cx)
-                .state
-                .file_operation_running
+        if self.state.closing || self.state.close_prompt_open {
+            return;
+        }
+        crate::application::APPLICATION.documents.pause_autosave();
+        if self
+            .peer_file_tree(cx)
+            .read(cx)
+            .state
+            .file_operation_running
             || !self.peer_editor(cx).read(cx).state.saving_files.is_empty()
             || DATA_CONTEXT.documents.has_pending_save()
         {
+            self.resume_autosave(cx);
             self.send(crate::event_bus::gui_event::GuiEvent::BottomBar(
                 crate::gui::workspace::bottom_bar::Event::Notice(Some(
                     "文件操作或保存正在进行，请稍后关闭窗口".into(),
@@ -43,6 +47,7 @@ impl WindowBar {
             return;
         }
         if window.has_active_dialog(cx) {
+            self.resume_autosave(cx);
             return;
         }
         self.state.close_prompt_open = true;

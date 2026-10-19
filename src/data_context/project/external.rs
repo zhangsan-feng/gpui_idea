@@ -126,7 +126,7 @@ impl ProjectContext {
     pub(crate) fn set_directory(&self, path: PathBuf, snapshot: DirectorySnapshot) {
         self.replace(path, snapshot);
     }
-    pub(crate) fn set_directory_silent(&self, path: PathBuf, snapshot: DirectorySnapshot) {
-        self.replace_silent(path, snapshot);
+    pub(crate) fn set_directory_silent(&self, path: PathBuf, snapshot: DirectorySnapshot) -> bool {
+        self.replace_silent(path, snapshot)
     }
 }

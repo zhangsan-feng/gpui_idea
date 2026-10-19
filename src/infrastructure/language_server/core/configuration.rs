@@ -13,6 +13,9 @@ pub(super) fn configuration(section: &str) -> Value {
         }
         "python" => python,
         "python.analysis" => python["analysis"].clone(),
+        "intelephense" => {
+            json!({"completion": {"insertUseDeclaration": false, "triggerParameterHints": false}})
+        }
         "gopls" => json!({"completeUnimported": false, "usePlaceholders": false}),
         "javascript" | "typescript" => {
             json!({"suggest": {"autoImports": false, "completeFunctionCalls": false}})
@@ -34,6 +37,12 @@ pub(super) fn initialization_options(family: &str) -> Value {
     match family {
         "rust" => configuration("rust-analyzer"),
         "go" => configuration("gopls"),
+        "php" => {
+            let storage = crate::infrastructure::paths::get()
+                .data
+                .join("lsp/intelephense");
+            json!({"storagePath": storage.join("storage"), "globalStoragePath": storage.join("global")})
+        }
         "javascript" => json!({"preferences": {
             "includeCompletionsForModuleExports": false,
             "includeCompletionsWithInsertText": true,
@@ -48,6 +57,7 @@ pub(super) fn initialization_options(family: &str) -> Value {
 pub(super) fn settings() -> Value {
     json!({
         "python": configuration("python"),
+        "intelephense": configuration("intelephense"),
         "gopls": configuration("gopls"),
         "javascript": configuration("javascript"),
         "typescript": configuration("typescript"),

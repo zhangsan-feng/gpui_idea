@@ -172,15 +172,65 @@ impl DocumentContext {
         })?;
         Ok(())
     }
-    pub(crate) fn begin_save(&self, path: &Path) -> Result<Arc<DocumentSnapshot>> {
-        self.modify(path, |doc| {
-            if doc.saving {
+    pub(crate) fn set_autosave_paused(&self, paused: bool) {
+        // Serialize with begin_save so close checks cannot miss an auto-save start.
+        let _documents = self
+            .documents
+            .lock()
+            .unwrap_or_else(|error| error.into_inner());
+        self.autosave_paused
+            .store(paused, std::sync::atomic::Ordering::Release);
+    }
+
+    pub(crate) fn autosave_paused(&self) -> bool {
+        self.autosave_paused
+            .load(std::sync::atomic::Ordering::Acquire)
+    }
+
+    pub(crate) fn begin_save(
+        &self,
+        path: &Path,
+        automatic: bool,
+        formatted: Option<(u64, Rope)>,
+    ) -> Result<Option<Arc<DocumentSnapshot>>> {
+        let snapshot = {
+            let mut documents = self
+                .documents
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            let current = documents
+                .get(path)
+                .ok_or_else(|| anyhow::anyhow!("文件尚未打开"))?;
+            if automatic
+                && (self.autosave_paused()
+                    || current.saving
+                    || current.save_error.is_some()
+                    || !current.dirty())
+            {
+                return Ok(None);
+            }
+            if current.saving {
                 bail!("文件正在保存，请稍后再试");
             }
-            doc.saving = true;
-            doc.save_error = None;
-            Ok(())
-        })
+            let mut next = (**current).clone();
+            next.saving = true;
+            if let Some((revision, text)) = formatted {
+                if current.revision == revision && current.text != text {
+                    next.text = text;
+                    next.revision += 1;
+                    next.formatted_revision = Some(next.revision);
+                    tracing::debug!(path = %path.display(), revision = next.revision, "LSP formatting applied before save");
+                } else if current.revision != revision {
+                    tracing::debug!(path = %path.display(), revision, current_revision = current.revision, "stale formatting discarded");
+                }
+            }
+            next.save_error = None;
+            let next = Arc::new(next);
+            documents.insert(path.to_owned(), next.clone());
+            next
+        };
+        self.notify();
+        Ok(Some(snapshot))
     }
     pub(crate) fn finish_save(
         &self,

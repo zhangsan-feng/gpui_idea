@@ -27,7 +27,9 @@ pub(crate) fn render(title: &'static str, close_enabled: bool, cx: &App) -> impl
                 .h_full()
                 .px_4()
                 .items_center()
+                .gap_2()
                 .window_control_area(WindowControlArea::Drag)
+                .child(img(super::assets::APP_ICON).size(px(16.)).flex_shrink_0())
                 .child(
                     div()
                         .truncate()

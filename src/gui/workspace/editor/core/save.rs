@@ -36,7 +36,7 @@ impl Editor {
         else {
             return;
         };
-        if !document.dirty()
+        if (!document.dirty() && (automatic || !DATA_CONTEXT.settings.get().auto_format))
             || document.saving
             || (automatic && document.save_error.is_some())
             || !self.state.saving_files.insert(file.clone())

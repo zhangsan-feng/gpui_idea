@@ -1,5 +1,6 @@
 use crate::{
     data_context::DATA_CONTEXT,
+    data_context::refresh::FileRefreshBatch,
     domain::project::DirectorySnapshot,
     event_bus::{FileChanges, RefreshDataContext},
     infrastructure::INFRASTRUCTURE,
@@ -29,11 +30,16 @@ pub(super) async fn refresh(changes: &FileChanges) {
     let mut image_updated = false;
     for image in DATA_CONTEXT.images.snapshots() {
         if image.path.starts_with(root) && affected(&image.path) {
+            let revision = image.revision;
+            let path = image.path.clone();
             crate::application::APPLICATION
                 .documents
                 .refresh_image_preview(image)
                 .await;
-            image_updated = true;
+            image_updated |= DATA_CONTEXT
+                .images
+                .snapshot(&path)
+                .is_some_and(|snapshot| snapshot.revision != revision);
         }
     }
     for document in DATA_CONTEXT.documents.snapshots() {
@@ -44,16 +50,22 @@ pub(super) async fn refresh(changes: &FileChanges) {
             .filesystem
             .read_document(document.scope_root.clone(), document.path.clone())
             .await;
-        document_updates.push((document, result));
+        document_updates.push((document.clone(), match result {
+            Ok(loaded) => Ok(loaded.document),
+            Err(error) => {
+                tracing::warn!(path = %document.path.display(), %error, "watched document reload failed");
+                Err(format!("磁盘文件已删除或无法重新读取：{error:#}；保留编辑器内容"))
+            }
+        }));
     }
     let (_, directories) = DATA_CONTEXT.project.snapshots();
     for relative in directories.keys() {
         let absolute = root.join(relative);
-        if !affected(&absolute)
+        if !changes.rescan
             && !changes
-                .paths
+                .tree_paths
                 .iter()
-                .any(|path| path.parent() == Some(absolute.as_path()))
+                .any(|path| absolute.starts_with(path) || path.parent() == Some(absolute.as_path()))
         {
             continue;
         }
@@ -91,44 +103,16 @@ pub(super) async fn refresh(changes: &FileChanges) {
     };
 
     // Finish all IO first, then publish the batch without per-entry notifications.
-    let mut updated = image_updated;
-    for (document, result) in document_updates {
-        updated |= match result {
-            Ok(loaded) => DATA_CONTEXT
-                .documents
-                .refresh_from_disk_silent(&document, loaded.document),
-            Err(error) => {
-                tracing::warn!(path = %document.path.display(), %error, "watched document reload failed");
-                DATA_CONTEXT.documents.disk_refresh_failed_silent(
-                    &document,
-                    format!("磁盘文件已删除或无法重新读取：{error:#}；保留编辑器内容"),
-                )
-            }
-        };
-    }
-    for (relative, snapshot) in directory_updates {
-        DATA_CONTEXT
-            .project
-            .set_directory_silent(relative, snapshot);
-        updated = true;
-    }
-    if let Some(snapshot) = statistics {
-        DATA_CONTEXT.project.set_statistics_silent(snapshot);
-        updated = true;
-    }
-    if updated {
-        DATA_CONTEXT.notify_gui_refresh(&[
-            crate::event_bus::refresh_gui::GuiComponent::FileTree,
-            crate::event_bus::refresh_gui::GuiComponent::Editor,
-            crate::event_bus::refresh_gui::GuiComponent::BottomBar,
-            crate::event_bus::refresh_gui::GuiComponent::BottomPanel,
-        ]);
-    }
+    DATA_CONTEXT.apply_file_refresh(FileRefreshBatch {
+        documents: document_updates,
+        directories: directory_updates,
+        statistics,
+        image_updated,
+    });
     tracing::debug!(
         paths = changes.paths.len(),
         raw_events = changes.event_count,
         rescan = changes.rescan,
-        gui_notifications = u8::from(updated),
         "filesystem changes applied"
     );
 }

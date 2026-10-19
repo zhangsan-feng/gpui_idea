@@ -1,8 +1,10 @@
+mod cleanup;
 mod compatible;
 mod core;
 mod download;
 mod environment;
 mod http;
+pub(in crate::infrastructure::language_server) mod management;
 mod native;
 mod node;
 mod update;
@@ -25,11 +27,13 @@ pub(super) use node::node_server;
 pub(super) use update::refresh;
 
 pub(super) struct InstallContext {
-    status: watch::Sender<LanguageServerStatus>,
+    status: crate::infrastructure::language_server::status::SessionStatus,
     stopping: Arc<AtomicBool>,
     inventory: watch::Sender<Vec<crate::domain::language_server::LanguageServerInfo>>,
     server_id: u64,
     selection: std::sync::Mutex<Option<String>>,
+    force_update: bool,
+    requested_release: Option<String>,
 }
 
 impl InstallContext {
@@ -42,13 +46,14 @@ impl InstallContext {
                 .find(|server| server.id == self.server_id)
             {
                 server.phase = crate::domain::language_server::LanguageServerPhase::Starting;
+                server.install_progress = None;
                 server.detail = "正在启动并初始化语言服务".into();
             }
         });
         Ok(())
     }
     pub(super) fn new(
-        status: watch::Sender<LanguageServerStatus>,
+        status: crate::infrastructure::language_server::status::SessionStatus,
         stopping: Arc<AtomicBool>,
         inventory: watch::Sender<Vec<crate::domain::language_server::LanguageServerInfo>>,
         server_id: u64,
@@ -59,6 +64,8 @@ impl InstallContext {
             inventory,
             server_id,
             selection: std::sync::Mutex::new(None),
+            force_update: false,
+            requested_release: None,
         }
     }
 
@@ -120,8 +127,35 @@ impl InstallContext {
     }
 
     fn progress(&self, detail: impl Into<String>) -> Result<()> {
+        self.publish_progress(detail.into(), None)
+    }
+
+    fn download_progress(&self, received_bytes: u64, total_bytes: Option<u64>) -> Result<()> {
+        let total_bytes = total_bytes.filter(|total| *total > 0);
+        let received = received_bytes as f64 / 1048576.0;
+        let detail = match total_bytes {
+            Some(total) => format!(
+                "正在下载 {:.0}% · {received:.1} / {:.1} MiB",
+                (received_bytes as f64 / total as f64 * 100.).min(100.),
+                total as f64 / 1048576.0
+            ),
+            None => format!("正在下载 · 已接收 {received:.1} MiB"),
+        };
+        self.publish_progress(
+            detail,
+            Some(crate::domain::language_server::InstallProgress {
+                received_bytes,
+                total_bytes,
+            }),
+        )
+    }
+
+    fn publish_progress(
+        &self,
+        detail: String,
+        progress: Option<crate::domain::language_server::InstallProgress>,
+    ) -> Result<()> {
         self.check()?;
-        let detail = detail.into();
         tracing::debug!(%detail, "Preparing managed language server");
         self.status
             .send_replace(LanguageServerStatus::Preparing(detail.clone()));
@@ -132,6 +166,7 @@ impl InstallContext {
             {
                 server.phase = crate::domain::language_server::LanguageServerPhase::Installing;
                 server.detail = detail.clone();
+                server.install_progress = progress.clone();
             }
         });
         Ok(())

@@ -1,6 +1,8 @@
 use gpui_kit::{AssetSource, Result, SharedString};
 use std::{borrow::Cow, collections::BTreeSet};
 
+pub(crate) const APP_ICON: &str = "app/app-logo-v3.png";
+
 gpui_kit::assets::icon_assets!(
     EditorIcons,
     [
@@ -68,6 +70,11 @@ impl MergedAssets {
 
 impl AssetSource for MergedAssets {
     fn load(&self, path: &str) -> Result<Option<Cow<'static, [u8]>>> {
+        if path == APP_ICON {
+            return Ok(Some(Cow::Borrowed(include_bytes!(
+                "../../assets/app/app-logo-v3.png"
+            ))));
+        }
         if let Some(bytes) = crate::infrastructure::assets::load(path) {
             return Ok(Some(bytes));
         }
@@ -93,6 +100,9 @@ impl AssetSource for MergedAssets {
 
     fn list(&self, path: &str) -> Result<Vec<SharedString>> {
         let mut paths = BTreeSet::new();
+        if APP_ICON.starts_with(path) {
+            paths.insert(APP_ICON.to_owned());
+        }
         paths.extend(crate::infrastructure::assets::list(path).map(str::to_owned));
         paths.extend(super::idea_icons::list(path));
         for asset_path in self.editor_icons.list(path)? {

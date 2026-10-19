@@ -141,6 +141,7 @@ impl WindowBar {
         cx: &mut Context<WindowBar>,
     ) {
         self.state.window_view = Self::window_view_state(window);
+        APPLICATION.documents.pause_autosave();
         self.state.closing = true;
         self.state.persistence_timer.take();
         self.state.session_revision = self.state.session_revision.saturating_add(1);

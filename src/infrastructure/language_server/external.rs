@@ -10,7 +10,7 @@ impl LanguageServers {
     pub(crate) fn new() -> Self {
         Self {
             sessions: Mutex::new(HashMap::new()),
-            status: watch::channel(LanguageServerStatus::Stopped).0,
+            status: super::status::StatusRegistry::new(),
             inventory: watch::channel(Vec::new()).0,
             stopping: Arc::new(std::sync::atomic::AtomicBool::new(false)),
             updates_started: std::sync::atomic::AtomicBool::new(false),
@@ -57,7 +57,7 @@ impl LanguageServers {
         anyhow::ensure!(!self.stopping.load(Ordering::Acquire), "语言服务正在关闭");
         let cell = sessions
             .entry((root.clone(), family))
-            .or_insert_with(|| Arc::new(SessionSlot::new()))
+            .or_insert_with(|| Arc::new(SessionSlot::new(self.status.session())))
             .clone();
         drop(sessions);
         let mut session = cell.session.lock().await;
@@ -125,10 +125,10 @@ impl LanguageServers {
                 if let Some(mut failed) = session.take() {
                     failed.stop().await;
                 }
-                self.status
+                cell.status
                     .send_replace(LanguageServerStatus::Error(format!("{error:#}")));
             } else {
-                self.status
+                cell.status
                     .send_replace(LanguageServerStatus::Warning(format!(
                         "文档预热失败：{error:#}"
                     )));
@@ -141,12 +141,13 @@ impl LanguageServers {
         &self,
         root: &std::path::Path,
         family: &str,
+        status: super::status::SessionStatus,
     ) -> Result<core::Session> {
-        self.status.send_replace(LanguageServerStatus::Starting);
+        status.send_replace(LanguageServerStatus::Starting);
         match core::Session::start(
             root,
             family,
-            self.status.clone(),
+            status.clone(),
             self.inventory.clone(),
             self.stopping.clone(),
         )
@@ -155,8 +156,7 @@ impl LanguageServers {
             Ok(session) => Ok(session),
             Err(error) => {
                 tracing::warn!(%error, "Language server startup failed");
-                self.status
-                    .send_replace(LanguageServerStatus::Error(format!("{error:#}")));
+                status.send_replace(LanguageServerStatus::Error(format!("{error:#}")));
                 Err(error)
             }
         }
@@ -176,7 +176,7 @@ impl LanguageServers {
         if let Some((at, message)) = cached {
             anyhow::ensure!(at.elapsed() >= Duration::from_secs(30), "{message}");
         }
-        let result = self.start_session(root, family).await;
+        let result = self.start_session(root, family, cell.status.clone()).await;
         *cell
             .failure
             .lock()
@@ -213,7 +213,7 @@ impl LanguageServers {
         anyhow::ensure!(!self.stopping.load(Ordering::Acquire), "语言服务正在关闭");
         let cell = sessions
             .entry((root.clone(), family))
-            .or_insert_with(|| Arc::new(SessionSlot::new()))
+            .or_insert_with(|| Arc::new(SessionSlot::new(self.status.session())))
             .clone();
         // The map lock can yield: an older call may have been cancelled while
         // a newer one entered. It must not advance the newer call's generation.
@@ -284,7 +284,7 @@ impl LanguageServers {
                 if let Some(mut failed) = session.take() {
                     failed.stop().await;
                 }
-                self.status.send_replace(LanguageServerStatus::Error(
+                cell.status.send_replace(LanguageServerStatus::Error(
                     "语言服务文档同步或响应等待超时；下次请求将重新建立会话".into(),
                 ));
                 bail!("语言服务文档同步或响应等待超时；下次请求将重新建立会话");
@@ -298,7 +298,7 @@ impl LanguageServers {
                 if let Some(mut failed) = session.take() {
                     failed.stop().await;
                 }
-                self.status
+                cell.status
                     .send_replace(LanguageServerStatus::Error(format!("{error:#}")));
             }
         }
@@ -316,6 +316,6 @@ impl LanguageServers {
             }
         }
         self.inventory.send_replace(Vec::new());
-        self.status.send_replace(LanguageServerStatus::Stopped);
+        self.status.shutdown();
     }
 }

@@ -4,7 +4,10 @@ use gpui_kit::{
     component::{
         Disableable as _, Icon, Sizable as _, Size,
         button::{Button, ButtonVariants as _},
-        h_flex, v_flex,
+        checkbox::Checkbox,
+        h_flex,
+        input::Input,
+        v_flex,
     },
     prelude::*,
     *,
@@ -13,7 +16,7 @@ use gpui_kit::{
 const BACKGROUND: u32 = 0xf7f8fa;
 const BORDER: u32 = 0xe5e7eb;
 const TEXT: u32 = 0x20242b;
-const MUTED: u32 = 0x8a909e;
+const MUTED: u32 = 0x6b7280;
 
 fn settings_icon(name: IconName, size: f32) -> Icon {
     Icon::new(name).with_size(Size::Size(px(size)))
@@ -33,34 +36,40 @@ impl WorkspaceSettings {
                     .min_h_0()
                     .items_start()
                     .child(self.sidebar(cx))
-                    .child(self.content()),
+                    .child(if self.lsp_page {
+                        self.render_servers(cx)
+                    } else {
+                        self.content(cx)
+                    }),
             )
-            .child(self.footer())
+            .when_some(self.error.clone(), |content, error| {
+                content.child(div().px_5().py_2().text_color(rgb(0xd44352)).child(error))
+            })
+            .child(self.footer(cx))
+    }
+
+    fn matches_search(&self, cx: &Context<Self>) -> bool {
+        let query = self.search.read(cx).value().trim().to_lowercase();
+        query.is_empty() || "常规配置 自动格式化 保存 代理 proxy 网络 下载".contains(&query)
     }
 
     fn sidebar(&self, cx: &mut Context<Self>) -> Div {
+        let matches = self.matches_search(cx);
+        let query = self.search.read(cx).value().trim().to_lowercase();
+        let matches_lsp = query.is_empty() || "lsp 管理 语言服务器 server 版本 安装 更新 rust go java toml markdown python javascript typescript html css json yaml php intelephense pyright taplo marksman".contains(&query)
+            || self.servers.iter().any(|server| format!("{} {}", server.name, server.languages).to_lowercase().contains(&query));
         v_flex()
-            .w(px(340.))
+            .w(px(220.))
             .h_full()
             .flex_shrink_0()
             .min_h_0()
+            .bg(rgb(0xf8fafc))
             .border_r_1()
             .border_color(rgb(BORDER))
             .child(
-                div().p_2().child(
-                    h_flex()
-                        .h(px(30.))
-                        .px_2()
-                        .gap_2()
-                        .items_center()
-                        .rounded_sm()
-                        .border_1()
-                        .border_color(rgb(0xc8ceda))
-                        .bg(rgb(0xffffff))
-                        .text_color(rgb(MUTED))
-                        .child(settings_icon(IconName::Search, 14.))
-                        .child(div().text_size(px(12.)).child("搜索设置")),
-                ),
+                div()
+                    .p_3()
+                    .child(Input::new(&self.search).prefix(settings_icon(IconName::Search, 14.))),
             )
             .child(
                 v_flex()
@@ -68,157 +77,177 @@ impl WorkspaceSettings {
                     .flex_1()
                     .min_h_0()
                     .overflow_y_scroll()
+                    .px_2()
                     .pb_3()
-                    .children(SECTIONS.iter().enumerate().map(|(index, section)| {
-                        let selected = self.selected_section == index;
-                        let nested = section.parent.is_some();
-                        h_flex()
-                            .id(("settings-category", index))
-                            .h(px(25.))
-                            .flex_shrink_0()
-                            .items_center()
-                            .gap_1()
-                            .pl(px(if nested { 32. } else { 14. }))
-                            .pr_3()
-                            .bg(rgb(if selected { 0xd6e3ff } else { BACKGROUND }))
-                            .when(!nested, |row| row.font_weight(FontWeight::SEMIBOLD))
-                            .cursor_pointer()
-                            .hover(move |style| {
-                                style.bg(rgb(if selected { 0xd6e3ff } else { 0xebeef4 }))
-                            })
-                            .child(
-                                div()
-                                    .w(px(16.))
-                                    .flex_shrink_0()
-                                    .text_color(rgb(MUTED))
-                                    .when(section.expandable, |slot| {
-                                        slot.child(settings_icon(
-                                            if index == 1 {
-                                                IconName::ChevronDown
-                                            } else {
-                                                IconName::ChevronRight
-                                            },
-                                            12.,
-                                        ))
-                                    }),
-                            )
-                            .child(section.label)
-                            .on_click(
-                                cx.listener(move |this, _, _, cx| this.select_section(index, cx)),
-                            )
-                    })),
+                    .gap_1()
+                    .when(matches, |list| {
+                        list.child(
+                            h_flex()
+                                .id("general-settings-category")
+                                .h(px(36.))
+                                .items_center()
+                                .gap_2()
+                                .px_3()
+                                .rounded_md()
+                                .text_color(rgb(0x4b5563))
+                                .when(!self.lsp_page, |row| {
+                                    row.bg(rgb(0xe8efff))
+                                        .text_color(rgb(0x1d4ed8))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                })
+                                .cursor_pointer()
+                                .hover(|row| row.bg(rgb(0xeef2f7)))
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.lsp_page = false;
+                                    cx.notify();
+                                }))
+                                .child(settings_icon(IconName::SlidersHorizontal, 15.))
+                                .child("常规配置"),
+                        )
+                    })
+                    .when(matches_lsp, |list| {
+                        list.child(
+                            h_flex()
+                                .id("lsp-settings-category")
+                                .h(px(36.))
+                                .items_center()
+                                .px_3()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .rounded_md()
+                                .text_color(rgb(0x4b5563))
+                                .gap_2()
+                                .when(self.lsp_page, |row| {
+                                    row.bg(rgb(0xe8efff)).text_color(rgb(0x1d4ed8))
+                                })
+                                .cursor_pointer()
+                                .hover(|row| row.bg(rgb(0xeef2f7)))
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.lsp_page = true;
+                                    cx.notify();
+                                }))
+                                .child(settings_icon(IconName::Code, 15.))
+                                .child("LSP 管理"),
+                        )
+                    })
+                    .when(!matches && !matches_lsp, |list| {
+                        list.child(
+                            div()
+                                .px_4()
+                                .py_3()
+                                .text_color(rgb(MUTED))
+                                .child("未找到匹配的设置"),
+                        )
+                    }),
             )
     }
 
-    fn content(&self) -> Div {
-        let section = &SECTIONS[self.selected_section];
+    fn content(&self, cx: &mut Context<Self>) -> Div {
+        v_flex().h_full().flex_1().min_w_0().min_h_0()
+            .child(h_flex().h(px(60.)).flex_shrink_0().px_5().gap_2().text_size(px(15.)).items_center().font_weight(FontWeight::SEMIBOLD)
+                .child("常规配置"))
+            .child(v_flex().flex_1().min_h_0().mx_4().mb_4().pt_5().gap_3().border_t_1().border_color(rgb(BORDER))
+                .id("general-settings-content").overflow_y_scroll()
+                .when(self.matches_search(cx), |content| content
+                    .child(Checkbox::new("auto-format-on-save").checked(self.draft.auto_format).disabled(self.saving)
+                        .label("保存时自动格式化")
+                        .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                            this.draft.auto_format = *checked; this.error = None; cx.notify();
+                        })))
+                    .child(div().pl_6().text_size(px(12.)).text_color(rgb(MUTED))
+                        .child("保存文件时使用当前语言的 LSP 格式化，适用于手动保存和自动保存。"))
+                    .child(div().pl_6().text_size(px(12.)).text_color(rgb(MUTED))
+                        .child("语言服务不支持格式化或格式化失败时，仍会保存原内容。"))
+                    .child(self.proxy_settings(cx))))
+    }
+
+    fn proxy_settings(&self, cx: &mut Context<Self>) -> Div {
         v_flex()
-            .h_full()
-            .flex_1()
-            .min_w_0()
-            .min_h_0()
+            .mt_4()
+            .p_4()
+            .gap_3()
+            .rounded_lg()
+            .bg(rgb(0xffffff))
+            .border_1()
+            .border_color(rgb(BORDER))
+            .child(div().font_weight(FontWeight::SEMIBOLD).child("下载代理"))
             .child(
-                h_flex()
-                    .h(px(52.))
-                    .flex_shrink_0()
-                    .px_4()
-                    .gap_2()
-                    .items_center()
-                    .font_weight(FontWeight::SEMIBOLD)
-                    .when_some(section.parent, |row, parent| {
-                        row.child(parent)
-                            .child(settings_icon(IconName::ChevronRight, 12.))
-                    })
-                    .child(section.label)
-                    .child(div().flex_1())
-                    .child(
-                        div()
-                            .text_color(rgb(0xc4c8d0))
-                            .child(settings_icon(IconName::ArrowLeft, 14.)),
-                    )
-                    .child(
-                        div()
-                            .text_color(rgb(0xc4c8d0))
-                            .child(settings_icon(IconName::ArrowRight, 14.)),
-                    ),
+                Checkbox::new("lsp-download-proxy")
+                    .checked(self.draft.lsp_proxy.enabled)
+                    .disabled(self.saving)
+                    .label("为 LSP 下载使用代理")
+                    .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                        this.draft.lsp_proxy.enabled = *checked;
+                        this.error = None;
+                        cx.notify();
+                    })),
             )
             .child(
                 v_flex()
-                    .flex_1()
-                    .min_h_0()
-                    .mx_4()
-                    .mb_4()
-                    .border_t_1()
-                    .border_color(rgb(BORDER))
-                    .items_center()
-                    .justify_center()
-                    .gap_3()
+                    .gap_2()
+                    .pl_6()
+                    .child(div().text_color(rgb(MUTED)).child("代理地址"))
                     .child(
-                        div()
-                            .size(px(48.))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .rounded_lg()
-                            .bg(rgb(0xebeef4))
-                            .text_color(rgb(0x9aa3b2))
-                            .child(settings_icon(IconName::Settings, 24.)),
-                    )
-                    .child(
-                        div()
-                            .text_size(px(14.))
-                            .font_weight(FontWeight::MEDIUM)
-                            .child(section.label),
+                        Input::new(&self.proxy_url)
+                            .disabled(self.saving || !self.draft.lsp_proxy.enabled),
                     )
                     .child(
                         div()
                             .text_size(px(12.))
                             .text_color(rgb(MUTED))
-                            .child("设置内容待添加"),
+                            .child("支持 HTTP / HTTPS 代理，包含协议、主机和端口。"),
                     ),
+            )
+            .child(
+                div()
+                    .pl_6()
+                    .text_size(px(12.))
+                    .text_color(rgb(MUTED))
+                    .child("范围：LSP 版本检查、安装与更新下载，包含 npm 和 Go 安装。"),
+            )
+            .child(
+                div()
+                    .pl_6()
+                    .text_size(px(12.))
+                    .text_color(rgb(MUTED))
+                    .child("应用后对新请求生效；关闭后沿用系统环境代理设置。"),
             )
     }
 
-    fn footer(&self) -> Div {
+    fn footer(&self, cx: &mut Context<Self>) -> Div {
         h_flex()
             .h(px(52.))
             .flex_shrink_0()
-            .px_4()
+            .px_5()
+            .bg(rgb(0xffffff))
             .gap_2()
             .items_center()
             .border_t_1()
             .border_color(rgb(BORDER))
-            .child(
-                div()
-                    .size(px(22.))
-                    .flex()
-                    .items_center()
-                    .justify_center()
-                    .rounded_full()
-                    .border_1()
-                    .border_color(rgb(0xc8ceda))
-                    .text_color(rgb(MUTED))
-                    .child("?"),
-            )
             .child(div().flex_1())
+            .when(self.saving, |row| {
+                row.child(div().text_color(rgb(MUTED)).child("正在保存…"))
+            })
             .child(
                 Button::new("settings-ok")
                     .primary()
                     .w(px(76.))
                     .label("确定")
-                    .on_click(|_, window, _| window.remove_window()),
+                    .disabled(self.saving)
+                    .on_click(cx.listener(|this, _, window, cx| this.apply(true, window, cx))),
             )
             .child(
                 Button::new("settings-cancel")
                     .w(px(76.))
                     .label("取消")
+                    .disabled(self.saving)
                     .on_click(|_, window, _| window.remove_window()),
             )
             .child(
                 Button::new("settings-apply")
                     .w(px(76.))
                     .label("应用")
-                    .disabled(true),
+                    .disabled(self.saving || self.draft == self.saved)
+                    .on_click(cx.listener(|this, _, window, cx| this.apply(false, window, cx))),
             )
     }
 }

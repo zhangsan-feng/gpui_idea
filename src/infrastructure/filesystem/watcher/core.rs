@@ -19,6 +19,9 @@ pub(super) fn start(root: PathBuf) -> Result<FileSubscription> {
                     return;
                 }
                 let rescan = event.need_rescan();
+                let tree_changed = !matches!(event.kind,
+                    EventKind::Modify(notify::event::ModifyKind::Data(_))
+                    | EventKind::Modify(notify::event::ModifyKind::Metadata(_)));
                 let paths: Vec<_> = event
                     .paths
                     .into_iter()
@@ -40,6 +43,9 @@ pub(super) fn start(root: PathBuf) -> Result<FileSubscription> {
                 let mut batch = events.lock().unwrap_or_else(|error| error.into_inner());
                 batch.rescan |= rescan;
                 if !batch.rescan {
+                    if tree_changed {
+                        batch.tree_paths.extend(paths.iter().cloned());
+                    }
                     batch.paths.extend(paths);
                     if batch.paths.len() > 4096 {
                         batch.rescan = true;
@@ -47,6 +53,7 @@ pub(super) fn start(root: PathBuf) -> Result<FileSubscription> {
                 }
                 if batch.rescan {
                     batch.paths.clear();
+                    batch.tree_paths.clear();
                 }
                 batch.event_count = batch.event_count.saturating_add(1);
             }
@@ -55,6 +62,7 @@ pub(super) fn start(root: PathBuf) -> Result<FileSubscription> {
                 let mut batch = events.lock().unwrap_or_else(|error| error.into_inner());
                 batch.rescan = true;
                 batch.paths.clear();
+                batch.tree_paths.clear();
                 batch.event_count = batch.event_count.saturating_add(1);
             }
         }
@@ -83,7 +91,22 @@ fn ignored(path: &Path) -> bool {
     })
 }
 
-pub(super) fn take_changes(pending: &Mutex<FileChanges>) -> Option<FileChanges> {
+pub(super) async fn register_gui_file_change(
+    root: PathBuf,
+    paths: Vec<PathBuf>,
+) -> Result<super::LocalChangeGuard> {
+    super::super::core::run("begin_gui_file_change", root.clone(), move || {
+        let paths = paths
+            .iter()
+            .map(|path| super::super::core::path::resolve(&root, path, true))
+            .collect::<Result<Vec<_>>>()?;
+        Ok(local_changes::begin(paths))
+    })
+    .await
+}
+
+pub(super) fn take_watch_changes(pending: &Mutex<FileChanges>) -> Option<FileChanges> {
+    local_changes::reconcile_expired();
     let mut pending = pending.lock().unwrap_or_else(|error| error.into_inner());
     if pending.event_count == 0 {
         return None;

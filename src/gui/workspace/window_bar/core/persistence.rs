@@ -1,7 +1,7 @@
 use super::super::*;
 use crate::application::{APPLICATION, lifecycle::run_application};
 use crate::gui::workspace::window_bar::WindowBar;
-use std::{collections::HashSet, time::Duration};
+use std::time::Duration;
 impl WindowBar {
     pub(in crate::gui::workspace) const AUTOSAVE_DELAY: Duration = Duration::from_secs(3);
     pub(in crate::gui::workspace) fn schedule_save(&mut self, cx: &mut Context<WindowBar>) {
@@ -25,33 +25,23 @@ impl WindowBar {
                 tracing::warn!(%error, "workspace autosave timer stopped");
                 return;
             }
-            let Ok((session, dirty_files)) = this.update(cx, |this, cx| {
+            let Ok(session) = this.update(cx, |this, cx| {
                 if let Some(timer) = this.state.persistence_timer.take() {
                     timer.detach();
                 }
-                let dirty_files = DATA_CONTEXT
-                    .documents
-                    .dirty_documents()
-                    .iter()
-                    .map(|document| ProjectFile::for_path(&document.path))
-                    .collect::<HashSet<_>>();
-                for file in &dirty_files {
-                    this.send(crate::event_bus::gui_event::GuiEvent::Editor(
-                        crate::gui::workspace::editor::Event::SaveFile(file.clone(), true),
-                    ));
-                }
-                (this.workspace_session(cx), dirty_files.len())
+                this.workspace_session(cx)
             }) else {
                 return;
             };
             tracing::debug!(
                 revision = session.revision,
-                dirty_files,
                 "workspace and document save timer fired"
             );
-            let history = &APPLICATION.history;
-            if let Err(error) =
-                run_application(async move { history.save_session(session).await }).await
+            if let Err(error) = run_application(async move {
+                APPLICATION.documents.save_dirty().await?;
+                APPLICATION.history.save_session(session).await
+            })
+            .await
             {
                 tracing::error!(error = %error, "workspace session save failed");
                 let _ = this.update(cx, |this, _cx| {
@@ -71,6 +61,7 @@ impl WindowBar {
         self.state.persistence_timer = Some(timer);
     }
     pub(in crate::gui::workspace) fn resume_autosave(&mut self, cx: &mut Context<WindowBar>) {
+        APPLICATION.documents.resume_autosave();
         self.schedule_save(cx);
     }
 }

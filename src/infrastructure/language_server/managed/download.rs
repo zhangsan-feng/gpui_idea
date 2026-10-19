@@ -115,6 +115,9 @@ fn architecture() -> Result<&'static str> {
 }
 
 fn version(server: &str, context: &InstallContext) -> Result<String> {
+    if let Some(version) = &context.requested_release {
+        return Ok(version.clone());
+    }
     match server {
         "rust-analyzer" => http::latest("rust-lang/rust-analyzer"),
         "taplo" => http::latest("tamasfe/taplo"),

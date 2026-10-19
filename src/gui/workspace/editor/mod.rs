@@ -129,7 +129,6 @@ pub(crate) enum Event {
     SelectFile(ProjectFile),
     SaveCurrent,
     CloseAllEditorTabs,
-    SaveFile(ProjectFile, bool),
     Navigate(bool),
     OpenContentMatch(crate::domain::project::ContentMatch),
     OpenDroppedFiles(gpui_kit::ExternalPaths),
@@ -191,9 +190,6 @@ impl Editor {
                 }
                 Event::CloseAllEditorTabs => {
                     self.close_all_editor_tabs(cx);
-                }
-                Event::SaveFile(value0, value1) => {
-                    self.save_file(value0, value1, cx);
                 }
                 Event::Navigate(value) => {
                     self.navigate(value, window, cx);

@@ -9,11 +9,19 @@ impl ProjectContext {
         crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::FileTree]);
     }
 
-    pub(super) fn replace_silent(&self, path: PathBuf, snapshot: DirectorySnapshot) {
+    pub(super) fn replace_silent(&self, path: PathBuf, snapshot: DirectorySnapshot) -> bool {
         {
             let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
+            if state
+                .directories
+                .get(&path)
+                .is_some_and(|current| **current == snapshot)
+            {
+                return false;
+            }
             state.directories.insert(path, Arc::new(snapshot));
             state.revision += 1;
         }
+        true
     }
 }

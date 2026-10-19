@@ -30,7 +30,7 @@ impl LanguageServers {
             .lock()
             .await
             .entry((root.clone(), family))
-            .or_insert_with(|| std::sync::Arc::new(SessionSlot::new()))
+            .or_insert_with(|| std::sync::Arc::new(SessionSlot::new(self.status.session())))
             .clone();
         // Yield outstanding warmup/requests before synchronizing this snapshot.
         anyhow::ensure!(

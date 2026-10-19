@@ -3,6 +3,8 @@ mod external;
 mod history;
 mod image_preview;
 mod project;
+pub(crate) mod refresh;
+mod settings;
 mod terminal;
 
 use std::{
@@ -20,6 +22,7 @@ pub(crate) struct WorkspaceStartup {
 }
 
 pub struct DataContext {
+    pub(crate) settings: settings::SettingsContext,
     pub terminal: terminal::TerminalContext,
     pub documents: document::DocumentContext,
     pub project: project::ProjectContext,
@@ -32,6 +35,7 @@ pub struct DataContext {
 impl DataContext {
     fn new() -> Self {
         Self {
+            settings: Default::default(),
             terminal: terminal::TerminalContext::new(),
             documents: document::DocumentContext::new(),
             project: project::ProjectContext::new(),

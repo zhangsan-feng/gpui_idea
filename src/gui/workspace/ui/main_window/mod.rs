@@ -46,14 +46,10 @@ impl Workspace {
             .text_size(px(12.))
             .bg(color(EDITOR_BG))
             .text_color(color(TEXT))
-            .child(
-                AnyView::from(self.window_bar.clone()).cached(
-                    StyleRefinement::default()
-                        .w_full()
-                        .h(px(40.))
-                        .flex_shrink_0(),
-                ),
-            )
+            // GPUI's cached paint replay omits window_control_hitboxes. Keep the
+            // title bar uncached so native drag/minimize/maximize regions are
+            // registered on every frame, including editor-only redraws.
+            .child(self.window_bar.clone())
             .child(self.render_body(cx))
             .child(
                 AnyView::from(self.bottom_bar.clone()).cached(

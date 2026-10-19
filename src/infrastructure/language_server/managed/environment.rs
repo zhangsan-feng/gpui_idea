@@ -21,7 +21,10 @@ pub(in crate::infrastructure::language_server) fn go_server(
         "gopls",
         "gopls",
         context,
-        || compatible::go(&compatible::runtime(&go, "version")?, context),
+        || match &context.requested_release {
+            Some(version) => Ok(version.clone()),
+            None => compatible::go(&compatible::runtime(&go, "version")?, context),
+        },
         |stage, version| {
             context.progress("正在使用本机 Go 安装 gopls…")?;
             fs::create_dir_all(stage.join("tmp"))?;

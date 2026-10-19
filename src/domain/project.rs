@@ -1,6 +1,6 @@
 use std::{path::PathBuf, sync::Arc};
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub struct ProjectEntry {
     pub relative_path: PathBuf,
     pub name: String,
@@ -9,7 +9,7 @@ pub struct ProjectEntry {
     pub is_link: bool,
 }
 
-#[derive(Clone)]
+#[derive(Clone, PartialEq, Eq)]
 pub struct DirectorySnapshot {
     pub entries: Arc<[ProjectEntry]>,
     pub error: Option<String>,

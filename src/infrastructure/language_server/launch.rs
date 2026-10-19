@@ -56,9 +56,10 @@ pub(super) fn spawn(
             command
         }
         "java" => native::java(root, preparation)?,
-        "python" | "javascript" | "html" | "css" | "json" | "yaml" => {
+        "python" | "php" | "javascript" | "html" | "css" | "json" | "yaml" => {
             let (package, binary) = match family {
                 "python" => ("pyright", "pyright-langserver"),
+                "php" => ("intelephense", "intelephense"),
                 "javascript" => ("typescript-language-server", "typescript-language-server"),
                 "html" => (
                     "vscode-langservers-extracted",
@@ -73,6 +74,14 @@ pub(super) fn spawn(
                 _ => unreachable!(),
             };
             let (command, version) = super::managed::node_server(package, binary, preparation)?;
+            if family == "php" {
+                let storage = crate::infrastructure::paths::get()
+                    .data
+                    .join("lsp/intelephense");
+                for directory in ["storage", "global"] {
+                    std::fs::create_dir_all(storage.join(directory))?;
+                }
+            }
             installed_version = version;
             command
         }
@@ -80,6 +89,7 @@ pub(super) fn spawn(
     };
     let version_program = matches!(family, "rust" | "go" | "toml" | "markdown")
         .then(|| PathBuf::from(command.as_std().get_program()));
+    crate::infrastructure::process_environment::sanitize(command.as_std_mut());
     preparation.before_launch()?;
     preparation.launcher(
         PathBuf::from(command.as_std().get_program()),
@@ -118,13 +128,14 @@ pub(super) async fn native_version(program: PathBuf, argument: &str) -> Option<S
     String::from_utf8_lossy(&output.stdout)
         .lines()
         .find(|line| !line.trim().is_empty())
-        .map(|line| line.trim().to_owned())
+        .and_then(super::inventory::version_label)
 }
 
 fn markers(language: &str) -> &'static [&'static str] {
     match language {
         "rust" => &["Cargo.toml"],
         "go" => &["go.work", "go.mod"],
+        "php" => &["composer.json", "composer.lock", ".phpactor.json"],
         "python" => &[
             "pyrightconfig.json",
             "pyproject.toml",
@@ -186,6 +197,7 @@ pub(super) fn workspace_language(root: &Path) -> Option<&'static str> {
         "rust",
         "go",
         "python",
+        "php",
         "javascript",
         "java",
         "toml",

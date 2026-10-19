@@ -5,15 +5,18 @@ mod history;
 mod language_server;
 pub mod logging;
 pub(crate) mod paths;
+mod process_environment;
+mod proxy;
 mod projects;
 mod runtime;
+mod settings;
 mod timer;
-pub(crate) use timer::TimerRegistration;
+pub(crate) use crate::event_bus::timer_event::TimerRegistration;
 mod terminal;
 // File-management capabilities are exposed through INFRASTRUCTURE.filesystem.
 #[allow(dead_code)]
 mod filesystem;
-pub(crate) use filesystem::FileSubscription;
+pub(crate) use filesystem::{FileSubscription, LocalChangeGuard};
 
 use std::sync::{LazyLock, OnceLock};
 
@@ -21,6 +24,8 @@ pub(crate) static INFRASTRUCTURE: LazyLock<InfrastructureContext> =
     LazyLock::new(InfrastructureContext::new);
 
 pub(crate) struct InfrastructureContext {
+    pub(crate) proxy: proxy::ProxyStore,
+    pub(crate) settings: settings::SettingsStore,
     pub(crate) git: git::Git,
     pub(crate) projects: projects::ProjectStore,
     pub(crate) timer: timer::TimerPipeline,
@@ -34,6 +39,8 @@ pub(crate) struct InfrastructureContext {
 impl InfrastructureContext {
     fn new() -> Self {
         Self {
+            proxy: proxy::ProxyStore::new(),
+            settings: settings::SettingsStore,
             git: git::Git,
             projects: projects::ProjectStore,
             timer: timer::TimerPipeline::new(),
