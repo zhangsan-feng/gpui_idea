@@ -145,11 +145,17 @@ impl WindowBar {
         self.state.closing = true;
         self.state.persistence_timer.take();
         self.state.session_revision = self.state.session_revision.saturating_add(1);
-        let session = self.workspace_session(cx);
+        let session = DATA_CONTEXT
+            .has_project()
+            .then(|| self.workspace_session(cx));
 
         let history = &APPLICATION.history;
         cx.spawn_in(window, async move |this, cx| {
-            let result = run_application(async move { history.save_session(session).await }).await;
+            let result = if let Some(session) = session {
+                run_application(async move { history.save_session(session).await }).await
+            } else {
+                Ok(())
+            };
             let _ = this.update_in(cx, |this, window, cx| {
                 {
                     if let Err(error) = result {

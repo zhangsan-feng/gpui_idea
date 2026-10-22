@@ -195,6 +195,7 @@ impl Editor {
                         this.prune_editors();
                         let initialize_us = initialization.elapsed().as_micros();
                         tracing::info!(file = %file.relative_path().display(), initialize_us, elapsed_ms = started.elapsed().as_millis(), "document editor ready");
+                        crate::infrastructure::logging::log_memory("document_editor_ready");
                         if initialize_us > 16_000 { tracing::warn!(file = %file.relative_path().display(), initialize_us, "editor initialization exceeded frame budget"); }
                     }
                     Err(error) => {

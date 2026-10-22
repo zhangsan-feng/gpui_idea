@@ -15,6 +15,7 @@ impl WindowBar {
             delay_ms = Self::AUTOSAVE_DELAY.as_millis(),
             "workspace and document save scheduled"
         );
+        let revision = self.state.session_revision;
         let timer = cx.spawn(async move |this, cx| {
             if let Err(error) = crate::application::lifecycle::wait_timer(
                 "workspace-autosave",
@@ -29,17 +30,19 @@ impl WindowBar {
                 if let Some(timer) = this.state.persistence_timer.take() {
                     timer.detach();
                 }
-                this.workspace_session(cx)
+                DATA_CONTEXT
+                    .has_project()
+                    .then(|| this.workspace_session(cx))
             }) else {
                 return;
             };
-            tracing::debug!(
-                revision = session.revision,
-                "workspace and document save timer fired"
-            );
+            tracing::debug!(revision, "workspace and document save timer fired");
             if let Err(error) = run_application(async move {
                 APPLICATION.documents.save_dirty().await?;
-                APPLICATION.history.save_session(session).await
+                if let Some(session) = session {
+                    APPLICATION.history.save_session(session).await?;
+                }
+                Ok(())
             })
             .await
             {

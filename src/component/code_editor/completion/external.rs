@@ -37,6 +37,15 @@ pub(in crate::component::code_editor) fn attach(
     cx.global_mut::<CompletionRegistry>()
         .0
         .insert(editor.entity_id(), menu);
+    // The global registry owns dropdowns strongly. Remove one when its editor
+    // releases so its results/subscriptions do not linger until another file opens.
+    let editor_id = editor.entity_id();
+    cx.observe_release(editor, move |_, cx| {
+        if cx.has_global::<CompletionRegistry>() {
+            cx.global_mut::<CompletionRegistry>().0.remove(&editor_id);
+        }
+    })
+    .detach();
 }
 
 pub(in crate::component::code_editor) fn dismiss(editor: &Entity<EditorState>, cx: &mut App) {

@@ -18,10 +18,12 @@ pub(in crate::gui::workspace) fn init_component_data(
 ) -> State {
     State {
         layout_subscriptions: Vec::new(),
-        project_panel_open: session
-            .as_ref()
-            .is_none_or(|saved| saved.project_panel_open),
-        run_panel_open: session.as_ref().is_none_or(|saved| saved.run_panel_open),
+        project_panel_open: DATA_CONTEXT.has_project()
+            && session
+                .as_ref()
+                .is_none_or(|saved| saved.project_panel_open),
+        run_panel_open: DATA_CONTEXT.has_project()
+            && session.as_ref().is_none_or(|saved| saved.run_panel_open),
         project_resize: cx.new(|_| ResizableState::default()),
         run_resize: cx.new(|_| ResizableState::default()),
     }

@@ -15,7 +15,7 @@ impl Editor {
             self.release_image_tab(&file);
         }
         self.state.open_files.clear();
-        // As with closing one tab, dirty buffers and pending autosave stay alive.
+        // Dirty buffers stay alive until autosave completes; clean buffers release now.
         self.prune_editors();
         self.send(crate::event_bus::gui_event::GuiEvent::WindowBar(
             crate::gui::workspace::window_bar::Event::ScheduleSave,
@@ -61,7 +61,7 @@ impl Editor {
         };
         self.state.open_files.remove(index);
         self.release_image_tab(file);
-        // Retain the buffer, undo history and pending autosave when a tab closes.
+        // Keep unsaved buffers until autosave finishes; release clean closed editors.
         if self.state.selected_file == *file && !self.state.open_files.is_empty() {
             let next = self.state.open_files[index.min(self.state.open_files.len() - 1)].clone();
             self.select_file(next, window, cx);

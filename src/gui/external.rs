@@ -8,7 +8,8 @@ use gpui_kit::{
 
 pub fn open_workspace(cx: &mut App) -> Result<()> {
     crate::component::code_editor::init(cx)?;
-    tracing::info!("main window opening: title=GPUI Editor");
+    crate::infrastructure::logging::log_memory("highlighting_initialized");
+    tracing::info!("main window opening: title=gpui_idea");
     let minimum_size = size(px(1200.), px(700.));
     let saved_view = DATA_CONTEXT
         .startup()
@@ -38,7 +39,7 @@ pub fn open_workspace(cx: &mut App) -> Result<()> {
         window_bounds: Some(window_bounds),
         window_min_size: Some(minimum_size),
         titlebar: Some(TitlebarOptions {
-            title: Some(SharedString::from("")),
+            title: Some(SharedString::from("gpui_idea")),
             appears_transparent: true,
             traffic_light_position: None,
         }),
@@ -70,6 +71,7 @@ pub fn open_workspace(cx: &mut App) -> Result<()> {
         workspace
     })?;
     tracing::info!("main window opened");
+    crate::infrastructure::logging::log_memory("workspace_created");
     Ok(())
 }
 

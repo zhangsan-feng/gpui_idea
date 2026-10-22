@@ -23,10 +23,18 @@ impl HistoryService {
             .iter()
             .find(|session| normalize(&session.project_root) == normalize(&root))
             .cloned();
-        if let Some(session) = &session {
-            validate_session(session)?;
+        match session {
+            Some(session) => {
+                validate_session(&session)?;
+                Ok(Some(
+                    INFRASTRUCTURE
+                        .history
+                        .prune_expanded_directories(session)
+                        .await?,
+                ))
+            }
+            None => Ok(None),
         }
-        Ok(session)
     }
     pub(super) async fn load_core(&self) -> Result<()> {
         let _guard = self.operations.lock().await;
@@ -76,10 +84,14 @@ impl HistoryService {
             return Ok(None);
         };
         validate_session(&session)?;
-        // Missing files remain as error tabs; an unavailable project falls back to the default workspace.
+        // Missing files remain as error tabs; an unavailable project opens an empty workspace.
         INFRASTRUCTURE
             .history
             .validate_target(OpenKind::Project, session.project_root.clone())
+            .await?;
+        let session = INFRASTRUCTURE
+            .history
+            .prune_expanded_directories(session)
             .await?;
         tracing::info!(project = %session.project_root.display(), files = session.open_files.len(), directories = session.expanded_directories.len(), "last workspace session loaded");
         Ok(Some(session))

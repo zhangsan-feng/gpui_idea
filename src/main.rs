@@ -1,3 +1,5 @@
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 mod application;
 mod component;
 mod data_context;
@@ -19,12 +21,14 @@ async fn main() -> anyhow::Result<()> {
     .await
     .context("initialize logging task failed")??;
     tracing::info!(root = %infrastructure::paths::get().root.display(), "application directories initialized");
+    infrastructure::logging::log_memory("logging_initialized");
     tokio::task::spawn_blocking(|| {
         infrastructure::assets::initialize(&infrastructure::paths::get().assets)
     })
     .await
     .context("preload assets task failed")??;
     tracing::info!(application = "GPUI Editor", "application startup");
+    infrastructure::logging::log_memory("assets_loaded");
 
     if let Err(error) = application::lifecycle::initialize() {
         tracing::error!(error = %error, "application initialization failed");
@@ -34,6 +38,7 @@ async fn main() -> anyhow::Result<()> {
         tracing::error!(error = %error, "application startup restoration failed");
         return Err(error);
     }
+    infrastructure::logging::log_memory("startup_prepared");
     // Keep GPUI on the main thread without inheriting this Tokio poll's coop budget.
     tokio::task::block_in_place(move || {
         tracing::info!(
@@ -43,7 +48,9 @@ async fn main() -> anyhow::Result<()> {
         gpui_kit::application()
             .with_assets(component::assets::MergedAssets::new())
             .run(move |cx| {
+                infrastructure::logging::log_memory("platform_initialized");
                 gpui_kit::init(cx);
+                infrastructure::logging::log_memory("components_initialized");
                 gui::terminal::init(cx);
                 Theme::change(ThemeMode::Light, None, cx);
                 Theme::set_scrollbar_mode(ScrollbarMode::Always, cx);

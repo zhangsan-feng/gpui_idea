@@ -15,6 +15,7 @@ use std::{
 pub(crate) static DATA_CONTEXT: LazyLock<DataContext> = LazyLock::new(DataContext::new);
 
 pub(crate) struct WorkspaceStartup {
+    // Empty means no project. IO callers must use require_project_root().
     pub(crate) project_root: PathBuf,
     pub(crate) session: Option<crate::domain::history::WorkspaceSession>,
     pub(crate) notice: Option<String>,

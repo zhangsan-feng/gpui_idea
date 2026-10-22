@@ -6,6 +6,7 @@ mod environment;
 mod http;
 pub(in crate::infrastructure::language_server) mod management;
 mod native;
+mod network;
 mod node;
 mod update;
 

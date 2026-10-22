@@ -1,5 +1,6 @@
 mod core;
 mod language_servers;
+mod system;
 mod ui;
 
 use crate::domain::settings::GeneralSettings;
@@ -7,9 +8,15 @@ use gpui_kit::component::input::InputState;
 use gpui_kit::{AppContext as _, Context, Entity, IntoElement, Render, Subscription, Window};
 
 pub(super) struct WorkspaceSettings {
-    lsp_page: bool,
+    page: SettingsPage,
+    system_status: Option<crate::domain::settings::ContextMenuStatus>,
+    system_busy: bool,
+    system_message: Option<String>,
+    system_error: Option<String>,
     servers: Vec<crate::domain::language_server::ManagedServer>,
     server_busy: bool,
+    server_cleaning: bool,
+    server_actions: std::collections::HashMap<String, language_servers::ServerOperationState>,
     server_message: Option<String>,
     server_error: Option<String>,
     draft: GeneralSettings,
@@ -22,6 +29,13 @@ pub(super) struct WorkspaceSettings {
     _search_subscription: Subscription,
 }
 
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum SettingsPage {
+    General,
+    LanguageServers,
+    System,
+}
+
 impl WorkspaceSettings {
     pub(super) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let settings = crate::data_context::DATA_CONTEXT.settings.get();
@@ -31,9 +45,18 @@ impl WorkspaceSettings {
             if !query.is_empty() {
                 if "常规配置 自动格式化 保存 代理 proxy 网络 下载".contains(&query)
                 {
-                    this.lsp_page = false;
+                    this.page = SettingsPage::General;
+                } else if "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query)
+                {
+                    this.page = SettingsPage::System;
+                    if this.system_status.is_none() && !this.system_busy {
+                        this.manage_context_menu(
+                            crate::domain::settings::ContextMenuAction::Refresh,
+                            cx,
+                        );
+                    }
                 } else {
-                    this.lsp_page = true;
+                    this.page = SettingsPage::LanguageServers;
                 }
             }
             cx.notify();
@@ -60,9 +83,15 @@ impl WorkspaceSettings {
         })
         .detach();
         Self {
-            lsp_page: false,
+            page: SettingsPage::General,
+            system_status: crate::data_context::DATA_CONTEXT.settings.context_menu(),
+            system_busy: false,
+            system_message: None,
+            system_error: None,
             servers: crate::application::APPLICATION.settings.managed_servers(),
             server_busy: false,
+            server_cleaning: false,
+            server_actions: std::collections::HashMap::new(),
             server_message: None,
             server_error: None,
             draft: settings.clone(),
@@ -85,7 +114,7 @@ impl Render for WorkspaceSettings {
             .font_family("Microsoft YaHei UI")
             .child(crate::component::operation_title_bar::render(
                 "设置",
-                !self.saving,
+                !self.saving && !self.system_busy,
                 cx,
             ))
             .child(self.render_view(cx))

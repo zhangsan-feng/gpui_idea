@@ -100,16 +100,16 @@ impl BottomBar {
             .text_size(px(11.))
             .text_color(color(0x626a76))
             .child(icon(IconName::Folder, 13., ACCENT))
-            .child(
-                div().child(
-                    DATA_CONTEXT
-                        .project_root()
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .into_owned(),
-                ),
-            )
+            .child(div().child(if DATA_CONTEXT.has_project() {
+                DATA_CONTEXT
+                    .project_root()
+                    .file_name()
+                    .unwrap_or_default()
+                    .to_string_lossy()
+                    .into_owned()
+            } else {
+                "未打开项目".to_owned()
+            }))
             .child(icon(IconName::ChevronRight, 11., 0x9ca3ad))
             .child(div().child(
                 if !self.peer_editor(cx).read(cx).state.open_files.is_empty() {

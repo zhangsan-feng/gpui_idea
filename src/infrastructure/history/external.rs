@@ -4,6 +4,15 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 impl HistoryStore {
+    pub(crate) async fn prune_expanded_directories(
+        &self,
+        session: WorkspaceSession,
+    ) -> Result<WorkspaceSession> {
+        tokio::task::spawn_blocking(move || core::prune_expanded_directories(session))
+            .await
+            .context("工作区展开目录检查任务中止")
+    }
+
     pub(crate) async fn forget_project(&self, project: PathBuf) -> Result<OpenHistory> {
         let path = self.path.clone();
         let lock = self.io_lock.clone();

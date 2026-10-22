@@ -8,6 +8,7 @@ use std::{
 };
 
 pub(super) fn client() -> Result<reqwest::blocking::Client> {
+    super::network::require_online()?;
     Ok(crate::infrastructure::INFRASTRUCTURE
         .proxy
         .lsp_http_client(

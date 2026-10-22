@@ -1,6 +1,11 @@
 use super::{Binary, core, management, update};
 use anyhow::{Context, Result, ensure};
-use std::{cmp::Ordering, fs, path::PathBuf, time::SystemTime};
+use std::{
+    cmp::Ordering,
+    fs,
+    path::{Path, PathBuf},
+    time::SystemTime,
+};
 
 struct Version {
     directory: String,
@@ -15,11 +20,19 @@ pub(in crate::infrastructure::language_server) fn clean_history() -> Result<()> 
         return Ok(());
     }
     let resolved_root = root.canonicalize().context("无法定位 LSP 安装目录")?;
+    // npm installations share a cache across server families. Hold every
+    // installation slot so no background installer can use a cache we remove.
+    let slots = management::SERVERS
+        .iter()
+        .map(|(key, _, _)| update::slot(key))
+        .collect::<Vec<_>>();
+    let mut guards = slots
+        .iter()
+        .map(|slot| slot.lock().unwrap_or_else(|error| error.into_inner()))
+        .collect::<Vec<_>>();
+    let removed_caches = clean_caches(&root, &resolved_root)?;
     let mut removed = 0;
-    for (key, _, _) in management::SERVERS {
-        // Serialize cleanup with installation and version selection.
-        let slot = update::slot(key);
-        let mut checked = slot.lock().unwrap_or_else(|error| error.into_inner());
+    for ((key, _, _), checked) in management::SERVERS.iter().zip(guards.iter_mut()) {
         let mut versions = Vec::new();
         for entry in fs::read_dir(&root)? {
             let entry = entry?;
@@ -68,7 +81,7 @@ pub(in crate::infrastructure::language_server) fn clean_history() -> Result<()> 
         if management::pin(key)?.is_some_and(|pin| pin != latest.directory) {
             management::save_pin(key, &Some(latest.directory.clone()))?;
         }
-        *checked = Some(latest.binary);
+        **checked = Some(latest.binary);
         tracing::info!(
             key,
             directory = latest.directory,
@@ -88,8 +101,83 @@ pub(in crate::infrastructure::language_server) fn clean_history() -> Result<()> 
     }
     tracing::info!(
         removed,
+        removed_caches,
         "Historical LSP versions cleaned; only latest installed versions retained"
     );
+    Ok(())
+}
+
+fn clean_caches(root: &Path, resolved_root: &Path) -> Result<usize> {
+    let mut removed = 0;
+    for name in ["go-build-cache", "go-mod-cache", "go-path", "npm-cache"] {
+        let path = root.join(name);
+        let metadata = match fs::symlink_metadata(&path) {
+            Ok(metadata) => metadata,
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => continue,
+            Err(error) => return Err(error).with_context(|| format!("无法读取 LSP 缓存 {name}")),
+        };
+        ensure!(
+            is_directory(&metadata),
+            "LSP 缓存 {name} 不是普通目录，未清理"
+        );
+        let resolved = path.canonicalize()?;
+        ensure!(
+            resolved.parent() == Some(resolved_root),
+            "LSP 缓存目录超出安装目录"
+        );
+        tracing::info!(directory = name, "Removing LSP installation cache");
+        // Go's module cache contains read-only source files/directories.
+        make_removable(&resolved)
+            .and_then(|()| fs::remove_dir_all(&resolved))
+            .with_context(|| format!("无法清理 LSP 缓存 {name}；文件被占用时请稍后重试"))?;
+        removed += 1;
+    }
+    Ok(removed)
+}
+
+fn is_directory(metadata: &fs::Metadata) -> bool {
+    if !metadata.is_dir() || metadata.file_type().is_symlink() {
+        return false;
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        if metadata.file_attributes() & 0x400 != 0 {
+            return false;
+        }
+    }
+    true
+}
+
+fn make_removable(path: &Path) -> std::io::Result<()> {
+    let metadata = fs::symlink_metadata(path)?;
+    if metadata.file_type().is_symlink() {
+        return Ok(());
+    }
+    #[cfg(windows)]
+    {
+        use std::os::windows::fs::MetadataExt;
+        if metadata.file_attributes() & 0x400 != 0 {
+            return Ok(());
+        }
+        if metadata.permissions().readonly() {
+            let mut permissions = metadata.permissions();
+            permissions.set_readonly(false);
+            fs::set_permissions(path, permissions)?;
+        }
+    }
+    #[cfg(unix)]
+    if metadata.is_dir() {
+        use std::os::unix::fs::PermissionsExt;
+        let mut permissions = metadata.permissions();
+        permissions.set_mode(permissions.mode() | 0o700);
+        fs::set_permissions(path, permissions)?;
+    }
+    if metadata.is_dir() {
+        for entry in fs::read_dir(path)? {
+            make_removable(&entry?.path())?;
+        }
+    }
     Ok(())
 }
 

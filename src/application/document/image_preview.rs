@@ -58,7 +58,7 @@ impl DocumentService {
                     .any(|part| matches!(part, Component::ParentDir)),
             "无效的图片路径"
         );
-        let root = if path.starts_with(DATA_CONTEXT.project_root()) {
+        let root = if DATA_CONTEXT.has_project() && path.starts_with(DATA_CONTEXT.project_root()) {
             DATA_CONTEXT.project_root()
         } else {
             path.parent().context("图片没有父目录")?

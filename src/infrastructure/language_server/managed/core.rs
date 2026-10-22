@@ -138,6 +138,7 @@ fn run_output(
     capture: bool,
 ) -> Result<PathBuf> {
     context.check()?;
+    super::network::require_online()?;
     crate::infrastructure::INFRASTRUCTURE
         .proxy
         .configure_lsp_command(&mut command);

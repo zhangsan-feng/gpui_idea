@@ -45,7 +45,9 @@ impl ProjectManager {
             directory: cx.new(|cx| {
                 InputState::new(window, cx)
                     .placeholder("选择项目目录")
-                    .default_value(if mode == ProjectWindowKind::Create {
+                    .default_value(if !crate::data_context::DATA_CONTEXT.has_project() {
+                        String::new()
+                    } else if mode == ProjectWindowKind::Create {
                         initial.join("untitled").to_string_lossy().into_owned()
                     } else {
                         initial.to_string_lossy().into_owned()
@@ -111,6 +113,7 @@ impl Render for ProjectManager {
         use gpui_kit::{ParentElement as _, Styled as _};
         gpui_kit::component::v_flex()
             .size_full()
+            .font_family("Microsoft YaHei UI")
             .child(crate::component::operation_title_bar::render(
                 self.mode.title(),
                 !self.busy,

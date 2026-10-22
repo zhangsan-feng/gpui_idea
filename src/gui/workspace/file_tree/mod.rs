@@ -119,12 +119,7 @@ impl FileTree {
         let expanded = session
             .as_ref()
             .map(|s| s.expanded_directories.iter().cloned().collect())
-            .unwrap_or_else(|| {
-                std::collections::HashSet::from([
-                    std::path::PathBuf::new(),
-                    std::path::PathBuf::from("src"),
-                ])
-            });
+            .unwrap_or_else(|| std::collections::HashSet::from([std::path::PathBuf::new()]));
         let mut this = Self {
             state: init_component_data(window, cx, &session, expanded),
             workspace,

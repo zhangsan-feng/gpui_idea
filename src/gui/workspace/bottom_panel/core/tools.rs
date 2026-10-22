@@ -107,6 +107,9 @@ impl BottomPanel {
         cx.notify();
     }
     pub(in crate::gui::workspace) fn refresh_git(&mut self, cx: &mut Context<BottomPanel>) {
+        if !crate::data_context::DATA_CONTEXT.has_project() {
+            return;
+        }
         if self.state.git_loading {
             return;
         }
@@ -129,6 +132,9 @@ impl BottomPanel {
         .detach();
     }
     pub(in crate::gui::workspace) fn refresh_statistics(&mut self, cx: &mut Context<BottomPanel>) {
+        if !crate::data_context::DATA_CONTEXT.has_project() {
+            return;
+        }
         if self.state.statistics_loading {
             return;
         }

@@ -8,15 +8,18 @@ impl ProjectService {
         sources: Vec<PathBuf>,
         target: Option<PathBuf>,
     ) -> Result<crate::domain::file_tree::FileTreeBatchOutcome> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.operate_entries_core(sources, target).await
     }
     pub(crate) async fn search_content(&self, query: String, request: u64) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.search_content_core(query, request).await
     }
     pub(crate) async fn file_tree_operation(
         &self,
         operation: crate::domain::file_tree::FileTreeOperation,
     ) -> Result<crate::domain::file_tree::FileTreeOutcome> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.file_tree_operation_core(operation).await
     }
     pub async fn rerun_instance(&self, id: crate::domain::terminal::TerminalId) -> Result<()> {
@@ -26,6 +29,7 @@ impl ProjectService {
         self.select_run_configuration_core(id)
     }
     pub fn add_run_configuration(&self, duplicate: bool) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.add_run_configuration_core(duplicate)
     }
     pub fn delete_run_configuration(&self, id: u64) -> Result<()> {
@@ -35,6 +39,7 @@ impl ProjectService {
         &self,
         edit: crate::domain::run::RunConfigurationEdit,
     ) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.save_run_configuration_core(edit)
     }
     pub fn select_run_instance(&self, id: crate::domain::terminal::TerminalId) -> Result<()> {
@@ -50,27 +55,36 @@ impl ProjectService {
         self.stop_run_configuration_core(id).await
     }
     pub async fn initialize_run_configuration(&self) -> Result<()> {
+        if !crate::data_context::DATA_CONTEXT.has_project() {
+            return Ok(());
+        }
         self.initialize_run_configuration_core().await
     }
     pub async fn refresh_run_configuration(&self, id: u64, file: Option<PathBuf>) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.run_configuration_core(file, Some(id)).await
     }
     pub fn select_run_profile(&self, name: &str) -> Result<()> {
         self.select_run_profile_core(name)
     }
     pub async fn execute_run(&self, action: crate::domain::run::RunAction) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.execute_run_core(action).await
     }
     pub async fn git_details(&self, hash: String) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.git_details_core(hash).await
     }
     pub async fn statistics(&self) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.statistics_core().await
     }
     pub async fn git_status(&self) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.git_status_core().await
     }
     pub async fn load_directory(&self, relative: PathBuf) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.load_core(relative).await
     }
 }

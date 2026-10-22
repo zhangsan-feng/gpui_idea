@@ -4,10 +4,8 @@ use crate::{
 use anyhow::Result;
 
 pub(super) async fn start(id: TerminalId, command: Option<String>) -> Result<()> {
-    if let Some((generation, mut events)) = INFRASTRUCTURE
-        .terminal
-        .start(id, DATA_CONTEXT.project_root().to_owned(), command)
-        .await?
+    let root = DATA_CONTEXT.require_project_root()?.to_owned();
+    if let Some((generation, mut events)) = INFRASTRUCTURE.terminal.start(id, root, command).await?
     {
         publish(id).await?;
         tokio::spawn(async move {

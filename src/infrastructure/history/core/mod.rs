@@ -30,13 +30,47 @@ pub(super) fn read(path: &Path) -> Result<OpenHistory> {
     storage::hydrate(path, storage::load_index(path)?)
 }
 
+pub(super) fn prune_expanded_directories(mut session: WorkspaceSession) -> WorkspaceSession {
+    session.expanded_directories.retain(|relative| {
+        // Only inspect project-relative paths, even if a caller bypasses session validation.
+        if relative
+            .components()
+            .any(|part| !matches!(part, std::path::Component::Normal(_)))
+        {
+            return false;
+        }
+        let path = session.project_root.join(relative);
+        let stale = match fs::metadata(&path) {
+            Ok(metadata) => !metadata.is_dir(),
+            Err(error) if error.kind() == std::io::ErrorKind::NotFound => true,
+            Err(error) => {
+                tracing::warn!(path = %path.display(), %error, "restored directory validation failed; keeping directory for retry");
+                false
+            }
+        };
+        if stale {
+            tracing::info!(path = %path.display(), "stale expanded directory removed from restored session");
+        }
+        !stale
+    });
+    session
+}
+
 pub(super) fn forget_project(path: &Path, project: &Path) -> Result<OpenHistory> {
     let mut index = storage::load_index(path)?;
     index
         .entries
         .retain(|entry| !same_path(&entry.path, project));
-    // Removing a recent entry does not discard its window/tab restoration state.
+    // Keep tabs/layout for an explicit reopen, but stop automatic restoration.
+    if index
+        .last_project
+        .as_ref()
+        .is_some_and(|root| same_path(root, project))
+    {
+        index.last_project = None;
+    }
     storage::write_index(path, &index)?;
+    tracing::info!(project = %project.display(), "recent project removed; automatic restoration disabled for this project");
     storage::hydrate(path, index)
 }
 
@@ -109,7 +143,15 @@ pub(super) fn save_session(path: &Path, session: WorkspaceSession) -> Result<Ope
     } else {
         Vec::new()
     };
-    index.last_project = Some(session.project_root);
+    // An already-open window can keep saving after its recent entry was removed.
+    // Only explicitly opening the project again may make it restorable at startup.
+    if index
+        .entries
+        .iter()
+        .any(|entry| same_path(&entry.path, &session.project_root))
+    {
+        index.last_project = Some(session.project_root);
+    }
     // Frequent cursor/layout saves rewrite only this project's session file.
     if index != previous {
         storage::write_index(path, &index)?;

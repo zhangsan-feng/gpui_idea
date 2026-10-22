@@ -118,7 +118,12 @@ impl FileTree {
             .overflow_hidden()
             .bg(palette.panel)
             .child(self.project_header(cx))
-            .child(self.project_root_row(cx))
+            .when(DATA_CONTEXT.has_project(), |panel| {
+                panel.child(self.project_root_row(cx))
+            })
+            .when(!DATA_CONTEXT.has_project(), |panel| {
+                panel.child(div().p_4().text_color(palette.muted).child("尚未打开项目"))
+            })
             .child(
                 h_flex()
                     .relative()

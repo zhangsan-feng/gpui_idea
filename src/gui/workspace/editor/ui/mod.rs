@@ -4,6 +4,7 @@ use crate::gui::workspace::ui::*;
 use gpui_kit::component::input::Editor as CodeEditor;
 use std::cell::Cell;
 
+mod empty;
 mod image_preview;
 mod tabs;
 
@@ -25,6 +26,9 @@ impl Editor {
             .overflow_hidden()
             .bg(color(EDITOR_BG));
         if self.state.open_files.is_empty() {
+            if !DATA_CONTEXT.has_project() {
+                return editor.child(self.empty_workspace(cx));
+            }
             return editor
                 .child(
                     div()

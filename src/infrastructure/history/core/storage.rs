@@ -57,11 +57,21 @@ pub(super) fn load_index(path: &Path) -> Result<HistoryIndex> {
         return Ok(HistoryIndex::default());
     };
     let mut index: HistoryIndex = match value.get("version").and_then(|value| value.as_u64()) {
-        Some(1) => return super::migration::migrate(path, value),
+        Some(1) => super::migration::migrate(path, value)?,
         Some(2) => serde_json::from_value(value).context("项目历史索引格式无效")?,
         _ => bail!("不支持的打开历史版本"),
     };
     normalize_entries(&mut index.entries);
+    // Older versions left this pointer behind when a recent project was removed.
+    if index.last_project.as_ref().is_some_and(|root| {
+        !index
+            .entries
+            .iter()
+            .any(|entry| same_path(&entry.path, root))
+    }) {
+        tracing::info!(project = ?index.last_project, "ignoring startup project absent from recent history");
+        index.last_project = None;
+    }
     Ok(index)
 }
 

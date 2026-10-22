@@ -1,4 +1,5 @@
 use super::super::*;
+use super::ServerOperationState;
 use crate::domain::language_server::ServerManagementAction;
 use gpui_kit::{
     component::{
@@ -59,7 +60,7 @@ impl WorkspaceSettings {
                             .small()
                             .icon(gpui_kit::assets::IconName::Trash)
                             .label("清理历史 LSP 版本")
-                            .disabled(self.server_busy)
+                            .disabled(self.server_busy || self.any_server_busy())
                             .on_click(cx.listener(|this, _, _, cx| {
                                 this.manage_servers(ServerManagementAction::CleanHistory, cx)
                             })),
@@ -110,6 +111,8 @@ impl WorkspaceSettings {
     ) -> Div {
         let key = server.key.clone();
         let auto_key = key.clone();
+        let busy = self.server_is_busy(&key);
+        let disabled = busy || self.server_cleaning;
         v_flex()
             .p_4()
             .gap_3()
@@ -122,16 +125,21 @@ impl WorkspaceSettings {
                     .gap_3()
                     .items_center()
                     .child(
-                        v_flex()
+                        h_flex()
                             .flex_1()
                             .min_w_0()
+                            .items_center()
+                            .gap_2()
                             .child(
                                 div()
+                                    .min_w_0()
+                                    .truncate()
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .child(server.name.clone()),
                             )
                             .child(
                                 div()
+                                    .flex_shrink_0()
                                     .text_size(px(12.))
                                     .text_color(rgb(0x6b7280))
                                     .child(server.languages.clone()),
@@ -140,55 +148,68 @@ impl WorkspaceSettings {
                     .child(
                         Button::new(SharedString::from(format!("update-{key}")))
                             .small()
-                            .label(if server.versions.is_empty() {
+                            .label(if busy {
+                                "处理中…"
+                            } else if server.versions.is_empty() {
                                 "安装"
                             } else {
                                 "检查并更新"
                             })
-                            .disabled(self.server_busy)
+                            .disabled(disabled)
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.manage_servers(ServerManagementAction::Update(key.clone()), cx)
                             })),
                     ),
             )
-            .child(
-                h_flex()
-                    .gap_2()
-                    .items_center()
-                    .child(
-                        div()
-                            .flex_1()
-                            .text_size(px(12.))
-                            .text_color(rgb(0x64748b))
-                            .child(if server.configuration_error.is_some() {
-                                "版本配置异常"
-                            } else if server.pinned.is_none() {
-                                "自动更新 · 启动时选择最新兼容版本"
-                            } else {
-                                "固定版本 · 启动时不自动更新"
-                            }),
-                    )
-                    .when(
-                        server.pinned.is_some() || server.configuration_error.is_some(),
-                        |row| {
-                            row.child(
-                                Button::new(SharedString::from(format!("auto-{auto_key}")))
-                                    .small()
-                                    .label("恢复自动更新")
-                                    .disabled(self.server_busy)
-                                    .on_click(cx.listener(move |this, _, _, cx| {
-                                        this.manage_servers(
-                                            ServerManagementAction::Select {
-                                                key: auto_key.clone(),
-                                                directory: None,
-                                            },
-                                            cx,
-                                        )
-                                    })),
+            .when(
+                server.pinned.is_some() || server.configuration_error.is_some(),
+                |card| {
+                    card.child(
+                        h_flex()
+                            .gap_2()
+                            .items_center()
+                            .child(
+                                div()
+                                    .flex_1()
+                                    .text_size(px(12.))
+                                    .text_color(rgb(0x64748b))
+                                    .child(if server.configuration_error.is_some() {
+                                        "版本配置异常"
+                                    } else {
+                                        "固定版本 · 启动时不自动更新"
+                                    }),
                             )
-                        },
-                    ),
+                            .when(
+                                server.pinned.is_some() || server.configuration_error.is_some(),
+                                |row| {
+                                    row.child(
+                                        Button::new(SharedString::from(format!("auto-{auto_key}")))
+                                            .small()
+                                            .label("恢复自动更新")
+                                            .disabled(disabled)
+                                            .on_click(cx.listener(move |this, _, _, cx| {
+                                                this.manage_servers(
+                                                    ServerManagementAction::Select {
+                                                        key: auto_key.clone(),
+                                                        directory: None,
+                                                    },
+                                                    cx,
+                                                )
+                                            })),
+                                    )
+                                },
+                            ),
+                    )
+                },
             )
+            .when_some(self.server_actions.get(&server.key), |card, state| {
+                let (text, color) = match state {
+                    ServerOperationState::Busy(text) => ((*text).to_owned(), 0x2563eb),
+                    ServerOperationState::Success(text) => (text.clone(), 0x15803d),
+                    ServerOperationState::Error(text) => (text.clone(), 0xdc2626),
+                };
+                card.child(div().text_size(px(12.)).text_color(rgb(color)).child(text))
+            })
             .when_some(server.configuration_error.clone(), |card, error| {
                 card.child(
                     div()
@@ -254,7 +275,7 @@ impl WorkspaceSettings {
                             } else {
                                 "使用此版本"
                             })
-                            .disabled(self.server_busy || selected)
+                            .disabled(disabled || selected)
                             .on_click(cx.listener(move |this, _, _, cx| {
                                 this.manage_servers(
                                     ServerManagementAction::Select {

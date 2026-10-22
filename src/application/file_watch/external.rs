@@ -13,6 +13,9 @@ impl FileWatchService {
     }
 
     pub(crate) async fn start(&self) -> Result<()> {
+        if !DATA_CONTEXT.has_project() {
+            return Ok(());
+        }
         let mut task = self.task.lock().await;
         if task.is_some() {
             return Ok(());

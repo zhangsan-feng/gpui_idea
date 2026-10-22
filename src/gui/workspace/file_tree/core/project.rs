@@ -56,6 +56,9 @@ impl FileTree {
         path: PathBuf,
         cx: &mut Context<FileTree>,
     ) {
+        if !DATA_CONTEXT.has_project() {
+            return;
+        }
         if !self.state.loading_directories.insert(path.clone()) {
             return;
         }

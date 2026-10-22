@@ -3,8 +3,6 @@ use crate::data_context::DATA_CONTEXT;
 use crate::gui::workspace::ProjectFile;
 use crate::gui::workspace::editor::Editor;
 
-const CLEAN_EDITOR_LIMIT: usize = 16;
-
 impl Editor {
     pub(in crate::gui::workspace) fn touch_editor(&mut self, file: &ProjectFile) {
         self.state.editor_order.retain(|cached| cached != file);
@@ -25,11 +23,8 @@ impl Editor {
             })
             .cloned()
             .collect();
-        let mut remaining = candidates.len().saturating_sub(CLEAN_EDITOR_LIMIT);
+        let mut released = 0;
         for file in candidates {
-            if remaining == 0 {
-                break;
-            }
             if self.state.open_files.contains(&file)
                 || self.state.loading_files.contains(&file)
                 || self.state.saving_files.contains(&file)
@@ -45,9 +40,16 @@ impl Editor {
                 self.state.external_source_files.remove(&file);
                 self.state.editor_revisions.remove(&file);
                 self.state.editor_order.retain(|cached| *cached != file);
-                remaining -= 1;
+                released += 1;
                 tracing::debug!(file = %file.relative_path().display(), "clean document and editor cache released");
             }
+        }
+        if released > 0 {
+            tracing::info!(
+                released,
+                cached = self.state.editors.len(),
+                "closed clean editors released"
+            );
         }
     }
 }

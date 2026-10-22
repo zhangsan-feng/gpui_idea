@@ -15,7 +15,7 @@ notify = "=8.2.0"
 chrono = "0.4.45"
 fern = "0.7.1"
 log = "0.4.34"
-gpui-kit = { version = "=0.7.3", features = [
+gpui-kit = { version = "=0.8.0", features = [
     "tree-sitter-java",
     "tree-sitter-python",
     "tree-sitter-go",
@@ -47,6 +47,10 @@ rust-embed = { version = "8.13.0", features = ["debug-embed", "include-exclude"]
 
 [build-dependencies]
 embed-resource = "=3.0.12"
+
+[target.'cfg(windows)'.dependencies]
+windows = { version = "=0.62.2", features = ["Win32_UI_Shell", "Win32_System_ProcessStatus", "Win32_System_Threading", "Win32_Networking_NetworkListManager", "Win32_System_Com"] }
+windows-registry = "=0.6.1"
 
 [profile.dev]
 opt-level = 3

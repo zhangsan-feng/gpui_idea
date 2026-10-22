@@ -10,12 +10,26 @@ use std::path::Path;
 
 #[cfg(windows)]
 pub(super) fn prepare(root: &Path, command: Option<&str>) -> Result<ShellLaunch> {
+    // cmd.exe treats verbatim disk paths as UNC and falls back to C:\Windows.
+    // Keep canonical paths elsewhere; normalize only this shell boundary.
+    let mut components = root.components();
+    let directory = match components.next() {
+        Some(std::path::Component::Prefix(prefix)) => match prefix.kind() {
+            std::path::Prefix::VerbatimDisk(drive) => {
+                std::path::PathBuf::from(format!("{}:", char::from(drive)))
+                    .join(components.as_path())
+            }
+            _ => root.to_owned(),
+        },
+        _ => root.to_owned(),
+    };
+    tracing::debug!(project_root = %root.display(), working_directory = %directory.display(), "prepared Windows terminal directory");
     let program = std::env::var("COMSPEC")
         .ok()
         .filter(|value| !value.trim().is_empty())
         .unwrap_or_else(|| "cmd.exe".into());
     let mut options = Options {
-        working_directory: Some(root.to_owned()),
+        working_directory: Some(directory),
         drain_on_exit: true,
         ..Default::default()
     };

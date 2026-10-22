@@ -12,6 +12,9 @@ impl Editor {
         if self.peer_window_bar(cx).read(cx).state.closing {
             return;
         }
+        // Autosave also publishes document refreshes. Release a closed dirty tab
+        // only after its save completes, without waiting for another tab action.
+        self.prune_editors();
         self.sync_image_previews(window, cx);
         for file in self.state.editors.keys().cloned().collect::<Vec<_>>() {
             let path = file.path(DATA_CONTEXT.project_root());

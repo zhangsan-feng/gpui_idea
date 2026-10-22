@@ -4,7 +4,7 @@ use std::sync::atomic::{AtomicBool, Ordering};
 static STARTED: AtomicBool = AtomicBool::new(false);
 
 pub(super) fn warm_document(snapshot: std::sync::Arc<crate::domain::document::DocumentSnapshot>) {
-    if !snapshot.path.starts_with(DATA_CONTEXT.project_root()) {
+    if !DATA_CONTEXT.has_project() || !snapshot.path.starts_with(DATA_CONTEXT.project_root()) {
         return;
     }
     let Some(language) = crate::domain::language_server::language_for_path(&snapshot.path) else {
@@ -36,6 +36,9 @@ pub(super) fn warm_document(snapshot: std::sync::Arc<crate::domain::document::Do
 }
 
 pub(super) async fn start() -> anyhow::Result<()> {
+    if !DATA_CONTEXT.has_project() {
+        return Ok(());
+    }
     if STARTED.swap(true, Ordering::AcqRel) {
         return Ok(());
     }

@@ -3,10 +3,7 @@ use crate::domain::language_server::{ManagedServer, ServerManagementAction};
 use anyhow::Result;
 
 impl LanguageServers {
-    pub(crate) async fn manage(
-        &self,
-        action: ServerManagementAction,
-    ) -> Result<Vec<ManagedServer>> {
+    pub(crate) async fn manage(&self, action: ServerManagementAction) -> Result<()> {
         tokio::task::spawn_blocking(move || {
             use super::managed::management;
             match action {
@@ -20,8 +17,12 @@ impl LanguageServers {
                     management::install_latest(&key, &management::install_context(None)?)?;
                 }
             }
-            management::snapshot()
+            Ok(())
         })
         .await?
+    }
+
+    pub(crate) async fn managed_servers(&self) -> Result<Vec<ManagedServer>> {
+        tokio::task::spawn_blocking(super::managed::management::snapshot).await?
     }
 }

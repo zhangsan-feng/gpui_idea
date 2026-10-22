@@ -36,10 +36,10 @@ impl WorkspaceSettings {
                     .min_h_0()
                     .items_start()
                     .child(self.sidebar(cx))
-                    .child(if self.lsp_page {
-                        self.render_servers(cx)
-                    } else {
-                        self.content(cx)
+                    .child(match self.page {
+                        SettingsPage::LanguageServers => self.render_servers(cx),
+                        SettingsPage::System => self.render_system(cx),
+                        SettingsPage::General => self.content(cx),
                     }),
             )
             .when_some(self.error.clone(), |content, error| {
@@ -56,6 +56,8 @@ impl WorkspaceSettings {
     fn sidebar(&self, cx: &mut Context<Self>) -> Div {
         let matches = self.matches_search(cx);
         let query = self.search.read(cx).value().trim().to_lowercase();
+        let matches_system = query.is_empty()
+            || "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query);
         let matches_lsp = query.is_empty() || "lsp 管理 语言服务器 server 版本 安装 更新 rust go java toml markdown python javascript typescript html css json yaml php intelephense pyright taplo marksman".contains(&query)
             || self.servers.iter().any(|server| format!("{} {}", server.name, server.languages).to_lowercase().contains(&query));
         v_flex()
@@ -90,7 +92,7 @@ impl WorkspaceSettings {
                                 .px_3()
                                 .rounded_md()
                                 .text_color(rgb(0x4b5563))
-                                .when(!self.lsp_page, |row| {
+                                .when(self.page == SettingsPage::General, |row| {
                                     row.bg(rgb(0xe8efff))
                                         .text_color(rgb(0x1d4ed8))
                                         .font_weight(FontWeight::SEMIBOLD)
@@ -98,7 +100,7 @@ impl WorkspaceSettings {
                                 .cursor_pointer()
                                 .hover(|row| row.bg(rgb(0xeef2f7)))
                                 .on_click(cx.listener(|this, _, _, cx| {
-                                    this.lsp_page = false;
+                                    this.page = SettingsPage::General;
                                     cx.notify();
                                 }))
                                 .child(settings_icon(IconName::SlidersHorizontal, 15.))
@@ -116,20 +118,49 @@ impl WorkspaceSettings {
                                 .rounded_md()
                                 .text_color(rgb(0x4b5563))
                                 .gap_2()
-                                .when(self.lsp_page, |row| {
+                                .when(self.page == SettingsPage::LanguageServers, |row| {
                                     row.bg(rgb(0xe8efff)).text_color(rgb(0x1d4ed8))
                                 })
                                 .cursor_pointer()
                                 .hover(|row| row.bg(rgb(0xeef2f7)))
                                 .on_click(cx.listener(|this, _, _, cx| {
-                                    this.lsp_page = true;
+                                    this.page = SettingsPage::LanguageServers;
                                     cx.notify();
                                 }))
                                 .child(settings_icon(IconName::Code, 15.))
                                 .child("LSP 管理"),
                         )
                     })
-                    .when(!matches && !matches_lsp, |list| {
+                    .when(matches_system, |list| {
+                        list.child(
+                            h_flex()
+                                .id("system-settings-category")
+                                .h(px(36.))
+                                .items_center()
+                                .gap_2()
+                                .px_3()
+                                .rounded_md()
+                                .text_color(rgb(0x4b5563))
+                                .when(self.page == SettingsPage::System, |row| {
+                                    row.bg(rgb(0xe8efff))
+                                        .text_color(rgb(0x1d4ed8))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                })
+                                .cursor_pointer()
+                                .hover(|row| row.bg(rgb(0xeef2f7)))
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.page = SettingsPage::System;
+                                    this.manage_context_menu(
+                                        crate::domain::settings::ContextMenuAction::Refresh,
+                                        cx,
+                                    );
+                                    cx.notify();
+                                }))
+                                .child(settings_icon(IconName::Settings, 15.))
+                                .child("系统设置"),
+                        )
+                    })
+                    .when(!matches && !matches_lsp && !matches_system, |list| {
                         list.child(
                             div()
                                 .px_4()
@@ -173,7 +204,7 @@ impl WorkspaceSettings {
             .child(
                 Checkbox::new("lsp-download-proxy")
                     .checked(self.draft.lsp_proxy.enabled)
-                    .disabled(self.saving)
+                    .disabled(self.saving || self.system_busy)
                     .label("为 LSP 下载使用代理")
                     .on_click(cx.listener(|this, checked: &bool, _, cx| {
                         this.draft.lsp_proxy.enabled = *checked;
@@ -232,21 +263,21 @@ impl WorkspaceSettings {
                     .primary()
                     .w(px(76.))
                     .label("确定")
-                    .disabled(self.saving)
+                    .disabled(self.saving || self.system_busy)
                     .on_click(cx.listener(|this, _, window, cx| this.apply(true, window, cx))),
             )
             .child(
                 Button::new("settings-cancel")
                     .w(px(76.))
                     .label("取消")
-                    .disabled(self.saving)
+                    .disabled(self.saving || self.system_busy)
                     .on_click(|_, window, _| window.remove_window()),
             )
             .child(
                 Button::new("settings-apply")
                     .w(px(76.))
                     .label("应用")
-                    .disabled(self.saving || self.draft == self.saved)
+                    .disabled(self.saving || self.system_busy || self.draft == self.saved)
                     .on_click(cx.listener(|this, _, window, cx| this.apply(false, window, cx))),
             )
     }

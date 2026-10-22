@@ -2,7 +2,7 @@ use super::*;
 
 impl WorkspaceSettings {
     pub(super) fn apply(&mut self, close: bool, window: &mut Window, cx: &mut Context<Self>) {
-        if self.saving {
+        if self.saving || self.system_busy {
             return;
         }
         if self.draft == self.saved {

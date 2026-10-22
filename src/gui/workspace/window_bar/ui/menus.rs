@@ -51,11 +51,14 @@ impl WindowBar {
     pub(super) fn project_menu(&self, cx: &Context<WindowBar>) -> impl IntoElement {
         let view = cx.entity().downgrade();
         let root = DATA_CONTEXT.project_root();
-        let name = root
-            .file_name()
-            .unwrap_or_default()
-            .to_string_lossy()
-            .into_owned();
+        let name = if DATA_CONTEXT.has_project() {
+            root.file_name()
+                .unwrap_or_default()
+                .to_string_lossy()
+                .into_owned()
+        } else {
+            "打开项目".to_owned()
+        };
         let initials: String = name
             .split(['_', '-', ' '])
             .filter_map(|part| part.chars().next())
@@ -64,7 +67,11 @@ impl WindowBar {
             .collect();
         self.toolbar_button("project-menu", cx)
             .max_w(px(190.))
-            .tooltip(root.display().to_string())
+            .tooltip(if DATA_CONTEXT.has_project() {
+                display_project_path(root)
+            } else {
+                "最近项目与项目管理".to_owned()
+            })
             .child(
                 div()
                     .w(px(20.))
@@ -77,13 +84,51 @@ impl WindowBar {
                     .bg(color(0x159cab))
                     .text_color(color(0xffffff))
                     .text_size(px(11.))
-                    .child(initials),
+                    .when(DATA_CONTEXT.has_project(), |tile| tile.child(initials))
+                    .when(!DATA_CONTEXT.has_project(), |tile| {
+                        tile.child(icon(IconName::FolderOpen, 13., 0xffffff))
+                    }),
             )
             .child(div().min_w_0().truncate().child(name))
             .child(icon(IconName::ChevronDown, 12., 0x9399a5))
             .dropdown_menu(move |menu, _, _| {
                 let history = DATA_CONTEXT.history.snapshot();
-                let mut menu = menu.label("最近打开的项目");
+                let total = history
+                    .entries
+                    .iter()
+                    .filter(|entry| entry.kind == crate::domain::history::OpenKind::Project)
+                    .count();
+                let mut menu = menu
+                    .min_w(px(328.))
+                    .max_w(px(328.))
+                    .max_h(px(520.))
+                    .scrollable(true)
+                    .item(
+                        PopupMenuItem::element(move |_, _| {
+                            project_menu_row()
+                                .h(px(32.))
+                                .px_1()
+                                .child(
+                                    div()
+                                        .flex_1()
+                                        .text_size(px(12.))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .text_color(color(0x64748b))
+                                        .child("最近项目"),
+                                )
+                                .child(
+                                    div()
+                                        .px_2()
+                                        .py_0p5()
+                                        .rounded_md()
+                                        .bg(color(0xf1f5f9))
+                                        .text_size(px(11.))
+                                        .text_color(color(0x64748b))
+                                        .child(total.to_string()),
+                                )
+                        })
+                        .disabled(true),
+                    );
                 let mut count = 0;
                 for entry in history
                     .entries
@@ -94,37 +139,115 @@ impl WindowBar {
                     let path = entry.path.clone();
                     let name = path
                         .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .into_owned();
-                    let current = path
-                        .to_string_lossy()
-                        .trim_start_matches("\\\\?\\")
-                        .eq_ignore_ascii_case(
-                            DATA_CONTEXT
-                                .project_root()
-                                .to_string_lossy()
-                                .trim_start_matches("\\\\?\\"),
-                        );
-                    menu = menu.item(Self::toolbar_item(
-                        name,
-                        ToolbarAction::OpenRecentProject(path),
-                        true,
-                        current,
-                        &view,
-                    ));
+                        .map(|name| name.to_string_lossy().into_owned())
+                        .unwrap_or_else(|| display_project_path(&path));
+                    let display_path = display_project_path(&path);
+                    let current = DATA_CONTEXT.has_project()
+                        && crate::domain::history::project_identity(&path)
+                            == crate::domain::history::project_identity(
+                                DATA_CONTEXT.project_root(),
+                            );
+                    let open_view = view.clone();
+                    menu = menu.item(
+                        PopupMenuItem::element(move |_, _| {
+                            project_menu_row()
+                                .h(px(56.))
+                                .px_1()
+                                .child(
+                                    div()
+                                        .flex()
+                                        .items_center()
+                                        .justify_center()
+                                        .size(px(32.))
+                                        .flex_shrink_0()
+                                        .rounded_md()
+                                        .bg(color(0xeff6ff))
+                                        .child(icon(IconName::Folder, 17., 0x3b82f6)),
+                                )
+                                .child(
+                                    v_flex()
+                                        .flex_1()
+                                        .min_w_0()
+                                        .gap_1()
+                                        .child(
+                                            h_flex()
+                                                .items_center()
+                                                .gap_2()
+                                                .child(
+                                                    div()
+                                                        .min_w_0()
+                                                        .truncate()
+                                                        .font_weight(FontWeight::SEMIBOLD)
+                                                        .text_color(color(0x20242b))
+                                                        .child(name.clone()),
+                                                )
+                                                .when(current, |row| {
+                                                    row.child(
+                                                        div()
+                                                            .flex_shrink_0()
+                                                            .px_1()
+                                                            .rounded_sm()
+                                                            .bg(color(0xeff6ff))
+                                                            .text_size(px(10.))
+                                                            .text_color(color(0x2563eb))
+                                                            .child("当前"),
+                                                    )
+                                                }),
+                                        )
+                                        .child(
+                                            div()
+                                                .truncate()
+                                                .text_size(px(11.))
+                                                .text_color(color(0x7b8494))
+                                                .child(display_path.clone()),
+                                        ),
+                                )
+                        })
+                        .on_click(move |_, window, cx| {
+                            let _ = open_view.update(cx, |this, cx| {
+                                this.toolbar_action(
+                                    ToolbarAction::OpenRecentProject(path.clone()),
+                                    window,
+                                    cx,
+                                )
+                            });
+                        }),
+                    );
                     count += 1;
                 }
                 if count == 0 {
-                    menu = menu.label("暂无最近项目");
+                    menu = menu.item(
+                        PopupMenuItem::element(|_, _| {
+                            project_menu_row()
+                                .h(px(48.))
+                                .px_1()
+                                .child(icon(IconName::FolderOpen, 18., 0x94a3b8))
+                                .child(
+                                    div()
+                                        .text_size(px(12.))
+                                        .text_color(color(0x7b8494))
+                                        .child("暂无最近项目"),
+                                )
+                        })
+                        .disabled(true),
+                    );
                 }
-                menu.separator().item(Self::toolbar_item(
-                    "管理项目…",
-                    ToolbarAction::ManageProjects,
-                    true,
-                    false,
-                    &view,
-                ))
+                let manage_view = view.clone();
+                menu.separator().item(
+                    PopupMenuItem::element(|_, _| {
+                        project_menu_row()
+                            .h(px(36.))
+                            .px_1()
+                            .child(icon(IconName::Settings, 16., 0x64748b))
+                            .child(div().flex_1().child("管理项目"))
+                            .child(icon(IconName::ChevronRight, 13., 0x94a3b8))
+                    })
+                    .on_click(move |_, window, cx| {
+                        let _ = manage_view.update(cx, |this, cx| {
+                            this.toolbar_action(ToolbarAction::ManageProjects, window, cx)
+                        });
+                    }),
+                )
             })
     }
 
@@ -208,5 +331,32 @@ impl WindowBar {
             .tooltip("工作区配置")
             .child(icon(IconName::Settings, 18., 0xb9bdc5))
             .on_click(cx.listener(|this, _, window, cx| this.open_settings(window, cx)))
+    }
+}
+
+fn project_menu_row() -> Div {
+    h_flex()
+        .w(px(300.))
+        .min_w_0()
+        .items_center()
+        .gap_3()
+        .font_family("Microsoft YaHei UI")
+        .text_size(px(13.))
+        .text_color(color(0x20242b))
+}
+
+fn display_project_path(path: &std::path::Path) -> String {
+    let path = path.to_string_lossy();
+    #[cfg(windows)]
+    {
+        if let Some(network) = path.strip_prefix(r"\\?\UNC\") {
+            format!(r"\\{network}")
+        } else {
+            path.strip_prefix(r"\\?\").unwrap_or(&path).to_owned()
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        path.into_owned()
     }
 }

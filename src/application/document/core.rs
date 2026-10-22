@@ -64,7 +64,7 @@ impl DocumentService {
         {
             bail!("无效的项目文件路径");
         }
-        Ok(DATA_CONTEXT.project_root().join(relative))
+        Ok(DATA_CONTEXT.require_project_root()?.join(relative))
     }
     pub(super) async fn open_core(&self, relative: PathBuf) -> Result<OpenedDocument> {
         let path = self.resolve(&relative)?;
@@ -83,7 +83,7 @@ impl DocumentService {
             .parent()
             .ok_or_else(|| anyhow::anyhow!("文件没有父目录"))?
             .to_owned();
-        tracing::info!(file = %path.display(), "standalone file open requested by external drop");
+        tracing::info!(file = %path.display(), "standalone file open requested");
         self.open_at_root(root, path).await
     }
     async fn open_at_root(&self, root: PathBuf, path: PathBuf) -> Result<OpenedDocument> {

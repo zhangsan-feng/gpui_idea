@@ -70,6 +70,27 @@ pub(super) fn ensure(
             return Ok(binary.clone());
         }
     }
+    if let Err(error) = super::network::require_online() {
+        tracing::info!(label, "Offline; skipping LSP release check and download");
+        if !context.force_update {
+            if let Some(binary) = existing(key) {
+                if let Some(directory) = binary
+                    .path
+                    .ancestors()
+                    .find(|path| path.join("installed.json").is_file())
+                {
+                    context.target(directory.to_owned());
+                }
+                context.selection(format!(
+                    "当前离线，已跳过下载，使用本地 {label} {}",
+                    binary.version
+                ))?;
+                // Do not mark the release checked: a later online start may update it.
+                return Ok(binary);
+            }
+        }
+        return Err(error.context(format!("{label} 安装或更新已跳过")));
+    }
     context.progress(format!("正在检查 {label} 更新…"))?;
     let result = (|| {
         let version = resolve()?;
@@ -165,6 +186,10 @@ pub(in crate::infrastructure::language_server) fn refresh(
         ),
     ] {
         if stopping.load(std::sync::atomic::Ordering::Acquire) {
+            break;
+        }
+        if !super::network::is_online() {
+            tracing::info!("Offline; skipping background LSP updates");
             break;
         }
         if existing(key).is_none() {

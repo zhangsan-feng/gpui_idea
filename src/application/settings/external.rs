@@ -3,6 +3,13 @@ use crate::domain::settings::GeneralSettings;
 use anyhow::Result;
 
 impl SettingsService {
+    pub(crate) async fn context_menu(
+        &self,
+        action: crate::domain::settings::ContextMenuAction,
+    ) -> Result<crate::domain::settings::ContextMenuStatus> {
+        self.context_menu_core(action).await
+    }
+
     pub(crate) fn managed_servers(&self) -> Vec<crate::domain::language_server::ManagedServer> {
         crate::data_context::DATA_CONTEXT.settings.servers()
     }

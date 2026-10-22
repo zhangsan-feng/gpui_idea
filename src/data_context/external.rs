@@ -65,6 +65,13 @@ impl DataContext {
     pub(crate) fn project_root(&self) -> &std::path::Path {
         &self.startup().project_root
     }
+    pub(crate) fn has_project(&self) -> bool {
+        !self.project_root().as_os_str().is_empty()
+    }
+    pub(crate) fn require_project_root(&self) -> anyhow::Result<&std::path::Path> {
+        anyhow::ensure!(self.has_project(), "请先打开或创建项目");
+        Ok(self.project_root())
+    }
     pub(crate) fn notify_gui_refresh(&self, components: &[GuiComponent]) {
         crate::event_bus::EVENT_BUS.refresh_gui.notify(components);
     }

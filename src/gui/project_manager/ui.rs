@@ -2,7 +2,7 @@ use super::*;
 use crate::{data_context::DATA_CONTEXT, domain::history::OpenKind};
 use gpui_kit::assets::IconName;
 use gpui_kit::component::{
-    ActiveTheme as _, Disableable as _, Sizable as _,
+    ActiveTheme as _, Disableable as _, Icon, Sizable as _, Size,
     button::{Button, ButtonVariants as _},
     h_flex,
     input::Input,
@@ -21,8 +21,9 @@ impl ProjectManager {
             .size_full()
             .p_5()
             .gap_4()
-            .bg(theme.background)
-            .text_color(theme.foreground);
+            .bg(rgb(0xf7f8fa))
+            .text_size(px(13.))
+            .text_color(rgb(0x20242b));
         if self.mode != ProjectWindowKind::Manage {
             view = view.child(
                 v_flex().gap_2().child("项目目录").child(
@@ -57,42 +58,69 @@ impl ProjectManager {
                 .flex_1()
                 .min_h_0()
                 .overflow_y_scroll()
-                .gap_2();
+                .gap_3();
             for (index, project) in projects.iter().enumerate() {
                 let path = project.path.clone();
                 let open_path = path.clone();
                 let remove_path = path.clone();
+                let display_path = display_project_path(&path);
                 let name = path
                     .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .into_owned();
+                    .map(|name| name.to_string_lossy().into_owned())
+                    .unwrap_or_else(|| display_path.clone());
                 list = list.child(
                     h_flex()
                         .id(("recent-project-row", index))
                         .w_full()
-                        .p_3()
+                        .min_h(px(84.))
+                        .items_center()
+                        .p_4()
                         .gap_3()
-                        .rounded_md()
+                        .rounded_lg()
+                        .bg(rgb(0xffffff))
                         .border_1()
-                        .border_color(theme.border)
+                        .border_color(rgb(0xe5e7eb))
+                        .when(!self.busy, |row| {
+                            row.hover(|style| style.border_color(rgb(0xbfdbfe)).bg(rgb(0xfcfdff)))
+                        })
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .size(px(40.))
+                                .flex_shrink_0()
+                                .rounded_lg()
+                                .bg(rgb(0xeff6ff))
+                                .text_color(rgb(0x3b82f6))
+                                .child(Icon::new(IconName::Folder).with_size(Size::Size(px(20.)))),
+                        )
                         .child(
                             v_flex()
                                 .flex_1()
                                 .min_w_0()
                                 .gap_1()
-                                .child(div().font_weight(FontWeight(600.)).child(name))
+                                .child(
+                                    div()
+                                        .truncate()
+                                        .text_size(px(14.))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .child(name),
+                                )
                                 .child(
                                     div()
                                         .truncate()
                                         .text_size(px(12.))
-                                        .text_color(theme.muted_foreground)
-                                        .child(path.display().to_string()),
+                                        .text_color(rgb(0x7b8494))
+                                        .child(display_path),
                                 ),
                         )
                         .child(
                             Button::new(("open-recent-project", index))
                                 .small()
+                                .w(px(72.))
+                                .h(px(30.))
+                                .rounded_md()
                                 .label("打开")
                                 .icon(IconName::FolderOpen)
                                 .disabled(self.busy)
@@ -105,7 +133,12 @@ impl ProjectManager {
                                 Button::new(("forget-project", index))
                                     .ghost()
                                     .small()
-                                    .label("移除记录")
+                                    .icon(IconName::Trash)
+                                    .tooltip("移除记录，保留项目文件")
+                                    .text_color(rgb(0x9ca3af))
+                                    .hover(|style| {
+                                        style.bg(rgb(0xfef2f2)).text_color(rgb(0xdc2626))
+                                    })
                                     .disabled(self.busy)
                                     .on_click(cx.listener(move |this, _, _, cx| {
                                         this.forget_project(remove_path.clone(), cx)
@@ -116,17 +149,69 @@ impl ProjectManager {
             }
             if projects.is_empty() {
                 list = list.child(
-                    div()
-                        .text_color(theme.muted_foreground)
-                        .child("暂无最近打开的项目"),
+                    v_flex()
+                        .flex_1()
+                        .items_center()
+                        .justify_center()
+                        .gap_3()
+                        .py_5()
+                        .child(
+                            div()
+                                .flex()
+                                .items_center()
+                                .justify_center()
+                                .size(px(64.))
+                                .rounded_lg()
+                                .bg(rgb(0xeef1f6))
+                                .text_color(rgb(0x94a3b8))
+                                .child(
+                                    Icon::new(IconName::FolderOpen).with_size(Size::Size(px(28.))),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .font_weight(FontWeight::SEMIBOLD)
+                                .child("暂无最近项目"),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(12.))
+                                .text_color(rgb(0x7b8494))
+                                .child("打开项目文件夹后会显示在这里"),
+                        ),
                 );
             }
             view = view
                 .child(
-                    div()
-                        .text_size(px(13.))
-                        .font_weight(FontWeight(600.))
-                        .child("最近打开的项目"),
+                    v_flex()
+                        .gap_1()
+                        .child(
+                            h_flex()
+                                .items_center()
+                                .gap_2()
+                                .child(
+                                    div()
+                                        .text_size(px(17.))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                        .child("最近项目"),
+                                )
+                                .child(
+                                    div()
+                                        .px_2()
+                                        .py_0p5()
+                                        .rounded_md()
+                                        .bg(rgb(0xe9edf3))
+                                        .text_size(px(11.))
+                                        .text_color(rgb(0x64748b))
+                                        .child(projects.len().to_string()),
+                                ),
+                        )
+                        .child(
+                            div()
+                                .text_size(px(12.))
+                                .text_color(rgb(0x7b8494))
+                                .child("快速返回最近使用的项目"),
+                        ),
                 )
                 .child(list);
         }
@@ -142,12 +227,20 @@ impl ProjectManager {
                         .child(status),
                 )
             });
-        let mut footer = h_flex().justify_end().gap_2().child(
-            Button::new("close-project-window")
-                .label("关闭")
-                .disabled(self.busy)
-                .on_click(|_, window, _| window.remove_window()),
-        );
+        let mut footer = h_flex()
+            .items_center()
+            .justify_end()
+            .gap_2()
+            .pt_4()
+            .border_t_1()
+            .border_color(rgb(0xe5e7eb))
+            .child(
+                Button::new("close-project-window")
+                    .w(px(76.))
+                    .label("关闭")
+                    .disabled(self.busy)
+                    .on_click(|_, window, _| window.remove_window()),
+            );
         if self.mode != ProjectWindowKind::Manage {
             footer = footer.child(
                 Button::new("submit-project-window")
@@ -162,5 +255,21 @@ impl ProjectManager {
             );
         }
         view.child(footer)
+    }
+}
+
+fn display_project_path(path: &std::path::Path) -> String {
+    let path = path.to_string_lossy();
+    #[cfg(windows)]
+    {
+        if let Some(network) = path.strip_prefix(r"\\?\UNC\") {
+            format!(r"\\{network}")
+        } else {
+            path.strip_prefix(r"\\?\").unwrap_or(&path).to_owned()
+        }
+    }
+    #[cfg(not(windows))]
+    {
+        path.into_owned()
     }
 }

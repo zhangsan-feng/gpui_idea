@@ -146,7 +146,7 @@ impl ProjectService {
         };
         tracing::info!(directory = %relative.display(), entries = snapshot.entries.len(), elapsed_ms = started.elapsed().as_millis(), success = result.is_ok(), "project directory loaded");
         if let Err(error) = &result {
-            tracing::error!(directory = %relative.display(), error = %error, "project directory load failed");
+            tracing::error!(root = %DATA_CONTEXT.project_root().display(), directory = %relative.display(), error = %format!("{error:#}"), "project directory load failed");
         }
         DATA_CONTEXT.project.set_directory(relative, snapshot);
         result.map(|_| ())
