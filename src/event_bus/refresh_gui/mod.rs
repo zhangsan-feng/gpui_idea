@@ -12,7 +12,7 @@ pub(crate) enum GuiComponent {
     BottomPanel,
     FileTree,
     Editor,
-    ProjectManager,
+    ProjectManagerWindow,
     RunConfiguration,
     Terminal(crate::domain::terminal::TerminalId),
 }

@@ -24,7 +24,7 @@ impl WindowBar {
             window,
             cx,
             |window, cx| {
-                cx.new(|cx| crate::gui::workspace::settings::WorkspaceSettings::new(window, cx))
+                cx.new(|cx| crate::gui::settings_window::SettingsWindow::new(window, cx))
             },
         ) {
             Ok((handle, _)) => self.state.settings_window = Some(handle),

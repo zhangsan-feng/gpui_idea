@@ -23,24 +23,9 @@ impl Registration {
         version: Option<String>,
     ) -> Self {
         let id = NEXT_ID.fetch_add(1, Ordering::Relaxed);
-        let (language, name) = match family {
-            "rust" => ("Rust", "rust-analyzer"),
-            "go" => ("Go", "gopls"),
-            "python" => ("Python", "Pyright"),
-            "php" => ("PHP", "Intelephense"),
-            "javascript" => (
-                "JavaScript / TypeScript / JSX / TSX",
-                "typescript-language-server",
-            ),
-            "java" => ("Java", "Eclipse JDT LS"),
-            "toml" => ("TOML", "Taplo"),
-            "yaml" => ("YAML", "yaml-language-server"),
-            "markdown" => ("Markdown", "Marksman"),
-            "html" => ("HTML", "vscode-html-language-server"),
-            "css" => ("CSS", "vscode-css-language-server"),
-            "json" => ("JSON", "vscode-json-language-server"),
-            _ => (family, family),
-        };
+        let (language, name) = super::languages::get(family)
+            .map(|language| (language.language, language.name))
+            .unwrap_or((family, family));
         inventory.send_modify(|servers| {
             servers.retain(|server| {
                 !(server.root == root

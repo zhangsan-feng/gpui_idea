@@ -1,6 +1,18 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+pub fn supports_file(path: &std::path::Path) -> bool {
+    let extension = path
+        .extension()
+        .and_then(|ext| ext.to_str())
+        .unwrap_or_default()
+        .to_ascii_lowercase();
+    matches!(
+        extension.as_str(),
+        "go" | "rs" | "py" | "pyw" | "js" | "mjs" | "cjs"
+    )
+}
+
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum RunAction {
     #[default]

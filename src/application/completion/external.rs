@@ -2,6 +2,14 @@ use anyhow::{Context as _, Result};
 use lsp_types::CompletionResponse;
 use ropey::Rope;
 
+pub(crate) fn prepare_insertion(
+    item: lsp_types::CompletionItem,
+    text: &Rope,
+    cursor: usize,
+) -> (lsp_types::CompletionItem, Option<std::ops::Range<usize>>) {
+    super::insertion::prepare(item, text, cursor)
+}
+
 pub(crate) async fn complete(
     path: std::path::PathBuf,
     text: Rope,

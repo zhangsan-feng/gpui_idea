@@ -62,6 +62,12 @@ pub(super) async fn refresh(changes: &FileChanges) {
     for relative in directories.keys() {
         let absolute = root.join(relative);
         if !changes.rescan
+            && !changes.paths.iter().any(|path| {
+                (path.extension().is_some_and(|ext| ext == "go")
+                    && path.parent() == Some(absolute.as_path()))
+                    || (path.file_name().is_some_and(|name| name == "Cargo.toml")
+                        && path.parent().is_some_and(|parent| absolute.starts_with(parent)))
+            })
             && !changes
                 .tree_paths
                 .iter()

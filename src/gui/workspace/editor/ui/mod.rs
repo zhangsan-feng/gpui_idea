@@ -24,7 +24,7 @@ impl Editor {
             .min_w_0()
             .min_h_0()
             .overflow_hidden()
-            .bg(color(EDITOR_BG));
+            .bg(crate::component::appearance::background(EDITOR_BG));
         if self.state.open_files.is_empty() {
             if !DATA_CONTEXT.has_project() {
                 return editor.child(self.empty_workspace(cx));
@@ -35,8 +35,8 @@ impl Editor {
                         .h(px(TAB_HEIGHT + TAB_SCROLLBAR_HEIGHT + 1.))
                         .flex_shrink_0()
                         .border_b_1()
-                        .border_color(color(BORDER))
-                        .bg(color(EDITOR_BG)),
+                        .border_color(crate::component::appearance::border(BORDER))
+                        .bg(crate::component::appearance::background(EDITOR_BG)),
                 )
                 .child(
                     div()
@@ -44,7 +44,7 @@ impl Editor {
                         .flex()
                         .items_center()
                         .justify_center()
-                        .text_color(color(MUTED))
+                        .text_color(crate::component::appearance::foreground(MUTED))
                         .child("双击项目树文件，或将文件拖入这里打开"),
                 );
         }
@@ -63,8 +63,8 @@ impl Editor {
                         .px_3()
                         .py_2()
                         .text_size(px(12.))
-                        .text_color(color(0xb42318))
-                        .bg(color(0xfff0ec))
+                        .text_color(crate::component::appearance::foreground(0xb42318))
+                        .bg(crate::component::appearance::background(0xfff0ec))
                         .child(format!("自动保存已暂停：{error}。可按 Ctrl+S 重试。")),
                 );
             }
@@ -104,8 +104,8 @@ impl Editor {
                 )
                 .h(relative(1.))
                 .w_full()
-                .font_family("Cascadia Mono")
-                .text_size(px(13.));
+                .font_family(crate::component::appearance::editor_font())
+                .text_size(px(DATA_CONTEXT.settings.get().appearance.editor_size as f32));
             editor.child(
                 div()
                     .relative()
@@ -114,16 +114,21 @@ impl Editor {
                     .min_w_0()
                     .overflow_hidden()
                     .child(
-                        crate::gui::workspace::ui::diagnostics::MeasuredWorkspace::new(
-                            "editor",
+                        crate::gui::component::measured_element::MeasuredElement::new(
                             crate::component::code_editor::completion_dropdown(state, input, cx)
                                 .into_any_element(),
-                            self.peer_window_bar(cx)
-                                .read(cx)
-                                .state
-                                .window_diagnostics
-                                .clone(),
                             started,
+                            {
+                                let diagnostics = self
+                                    .peer_window_bar(cx)
+                                    .read(cx)
+                                    .state
+                                    .window_diagnostics
+                                    .clone();
+                                move |times, window, cx| {
+                                    diagnostics.borrow_mut().record("editor", times, window, cx)
+                                }
+                            },
                         ),
                     )
                     .child(self.editor_wheel_handler(state, cx)),
@@ -134,7 +139,7 @@ impl Editor {
                     .px_3()
                     .py_2()
                     .text_size(px(12.))
-                    .text_color(color(MUTED))
+                    .text_color(crate::component::appearance::foreground(MUTED))
                     .child(
                         self.state
                             .load_errors

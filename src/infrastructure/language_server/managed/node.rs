@@ -2,26 +2,30 @@ use super::{InstallContext, Installed, compatible, core, update};
 use anyhow::{Context, Result};
 use std::{fs, path::Path, process::Command};
 
+type CompanionVersion = fn(&Path, &str, &InstallContext) -> Result<String>;
+
+#[derive(Clone, Copy)]
+pub(in crate::infrastructure::language_server) struct NodeServer {
+    pub key: &'static str,
+    pub package: &'static str,
+    pub binary: &'static str,
+    pub companion: Option<(&'static str, CompanionVersion)>,
+}
+
 pub(in crate::infrastructure::language_server) fn node_server(
-    package: &str,
-    binary: &str,
+    server: &NodeServer,
     context: &InstallContext,
 ) -> Result<(tokio::process::Command, Option<String>)> {
-    let group = match package {
-        "pyright" => "python",
-        "intelephense" => "php",
-        "typescript-language-server" => "typescript",
-        "vscode-langservers-extracted" => "web",
-        "yaml-language-server" => "yaml",
-        _ => anyhow::bail!("未知 Node 语言服务器：{package}"),
-    };
+    let NodeServer {
+        package, binary, ..
+    } = *server;
     let node = super::super::launch::executable("node")
         .context("未找到 Node.js，请自行安装包含 npm 的 Node.js 并加入 PATH，然后重试语言服务")?;
     let node_version = node_semver::Version::parse(
         compatible::runtime(&node, "--version")?.trim_start_matches('v'),
     )?;
     let installed = update::ensure(
-        &format!("lsp-{group}"),
+        server.key,
         package,
         context,
         || {
@@ -29,10 +33,10 @@ pub(in crate::infrastructure::language_server) fn node_server(
                 Some(version) => version.clone(),
                 None => compatible::npm(package, &node_version, context)?,
             };
-            if package == "typescript-language-server" {
+            if let Some((_, select_version)) = server.companion {
                 Ok(format!(
                     "{version}__{}",
-                    typescript_version(&node, &version, context)?
+                    select_version(&node, &version, context)?
                 ))
             } else {
                 Ok(version)
@@ -59,10 +63,13 @@ pub(in crate::infrastructure::language_server) fn node_server(
                 .env("npm_config_cache", core::root().join("npm-cache"))
                 .env("npm_config_engine_strict", "true")
                 .env("npm_config_update_notifier", "false");
-            if package == "typescript-language-server" {
+            if let Some((companion, _)) = server.companion {
                 command.arg(format!(
-                    "typescript@{}",
-                    release.split_once("__").context("TypeScript 版本无效")?.1
+                    "{companion}@{}",
+                    release
+                        .split_once("__")
+                        .context("语言服务器依赖版本无效")?
+                        .1
                 ));
             }
             core::run(command, context, package).context(
@@ -98,51 +105,9 @@ pub(in crate::infrastructure::language_server) fn node_server(
     Ok((command, Some(version)))
 }
 
-fn typescript_version(node: &Path, server: &str, context: &InstallContext) -> Result<String> {
-    // TLS 6 documents TypeScript 6; TLS 5 uses the JavaScript TypeScript 5 API.
-    // TypeScript 7's native compiler is not a drop-in tsserver.js replacement.
-    let major = if server
-        .split('.')
-        .next()
-        .and_then(|value| value.parse::<u32>().ok())
-        .unwrap_or(0)
-        >= 6
-    {
-        6
-    } else {
-        5
-    };
-    let mut command = Command::new(node);
-    command.arg(npm_cli(node)?).args([
-        "view",
-        &format!("typescript@{major}"),
-        "version",
-        "--json",
-        "--registry=https://registry.npmjs.org",
-    ]);
-    command.env("npm_config_update_notifier", "false");
-    let output = core::capture(command, context, "查询兼容 TypeScript 版本")?;
-    let value: serde_json::Value = serde_json::from_slice(&fs::read(output)?)?;
-    let versions: Vec<&str> = match &value {
-        serde_json::Value::String(value) => vec![value],
-        serde_json::Value::Array(values) => {
-            values.iter().filter_map(|value| value.as_str()).collect()
-        }
-        _ => anyhow::bail!("npm TypeScript 版本列表无效"),
-    };
-    versions
-        .into_iter()
-        .filter_map(|text| {
-            node_semver::Version::parse(text)
-                .ok()
-                .map(|version| (version, text))
-        })
-        .max_by(|a, b| a.0.cmp(&b.0))
-        .map(|(_, text)| text.to_owned())
-        .context("没有兼容的 TypeScript 版本")
-}
-
-fn npm_cli(node: &Path) -> Result<std::path::PathBuf> {
+pub(in crate::infrastructure::language_server) fn npm_cli(
+    node: &Path,
+) -> Result<std::path::PathBuf> {
     let mut directories = vec![node.parent().context("Node 路径无效")?.to_owned()];
     if let Some(appdata) = std::env::var_os("APPDATA") {
         directories.push(std::path::PathBuf::from(appdata).join("npm"));

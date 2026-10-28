@@ -6,7 +6,7 @@ use crate::gui::workspace::ui::*;
 use std::{collections::HashMap, path::PathBuf};
 pub(in crate::gui::workspace) struct State {
     pub(in crate::gui::workspace) project_windows:
-        HashMap<crate::gui::project_manager::ProjectWindowKind, AnyWindowHandle>,
+        HashMap<crate::gui::project_manager_window::ProjectWindowKind, AnyWindowHandle>,
     pub(in crate::gui::workspace) settings_window: Option<AnyWindowHandle>,
     pub(in crate::gui::workspace) layout_subscriptions: Vec<Subscription>,
     pub(in crate::gui::workspace) persistence_timer: Option<Task<()>>,

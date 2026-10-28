@@ -92,6 +92,7 @@ pub(in crate::gui) struct DraggedProjectEntry {
 
 #[derive(Clone, Copy)]
 pub(in crate::gui) enum FileTreeMenuAction {
+    Run,
     NewFile,
     NewDirectory,
     Delete,

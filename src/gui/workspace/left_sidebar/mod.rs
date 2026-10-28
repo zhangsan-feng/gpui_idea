@@ -16,6 +16,11 @@ pub(in crate::gui::workspace) fn init_component_data(
     cx: &mut App,
     session: &Option<crate::domain::history::WorkspaceSession>,
 ) -> State {
+    tracing::debug!(
+        project_width = ?session.as_ref().and_then(|saved| saved.project_width),
+        run_height = ?session.as_ref().and_then(|saved| saved.run_height),
+        "workspace panel dimensions loaded for restoration"
+    );
     State {
         layout_subscriptions: Vec::new(),
         project_panel_open: DATA_CONTEXT.has_project()

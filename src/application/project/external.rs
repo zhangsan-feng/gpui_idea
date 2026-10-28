@@ -3,6 +3,10 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 impl ProjectService {
+    pub(crate) async fn run_file(&self, file: PathBuf) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
+        self.run_file_core(file).await
+    }
     pub(crate) async fn operate_entries(
         &self,
         sources: Vec<PathBuf>,

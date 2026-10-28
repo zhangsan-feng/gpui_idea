@@ -9,7 +9,7 @@ impl BottomPanel {
     pub(in crate::gui::workspace) fn add_terminal(&mut self, cx: &mut Context<BottomPanel>) {
         self.state.terminal_sequence += 1;
         let id = crate::domain::terminal::TerminalId::Local(self.state.terminal_sequence);
-        let view = cx.new(|cx| crate::gui::terminal::TerminalView::new(id, cx));
+        let view = cx.new(|cx| crate::gui::component::terminal::TerminalView::new(id, cx));
         view.update(cx, |terminal, cx| terminal.start(cx));
         self.state
             .terminal_tabs
@@ -54,7 +54,7 @@ impl BottomPanel {
                 .push(crate::gui::workspace::TerminalTab {
                     id,
                     label: "Local".into(),
-                    view: cx.new(|cx| crate::gui::terminal::TerminalView::new(id, cx)),
+                    view: cx.new(|cx| crate::gui::component::terminal::TerminalView::new(id, cx)),
                 });
             self.state.active_terminal = 0;
             self.send(crate::event_bus::gui_event::GuiEvent::LeftSidebar(

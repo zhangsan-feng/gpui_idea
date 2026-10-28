@@ -5,15 +5,9 @@ impl BottomPanel {
     pub(super) fn render_git_panel(&self, cx: &mut Context<BottomPanel>) -> AnyElement {
         let snapshot = DATA_CONTEXT.project.git();
         let query = self.state.git_filter.read(cx).value().to_lowercase();
-        let header = h_flex()
-            .h(px(40.))
-            .flex_shrink_0()
+        let header = crate::gui::component::panel::header(40., PANEL_BG, BORDER)
             .px_3()
             .gap_3()
-            .items_center()
-            .bg(color(PANEL_BG))
-            .border_b_1()
-            .border_color(color(BORDER))
             .child(div().font_weight(FontWeight(600.)).child("Git"))
             .child(
                 h_flex()
@@ -24,7 +18,8 @@ impl BottomPanel {
                     .items_center()
                     .cursor_pointer()
                     .when(!self.state.git_console_selected, |tab| {
-                        tab.border_b_2().border_color(color(ACCENT))
+                        tab.border_b_2()
+                            .border_color(crate::component::appearance::border(ACCENT))
                     })
                     .child("Log")
                     .on_click(cx.listener(|this, _, _, _cx| {
@@ -42,7 +37,8 @@ impl BottomPanel {
                     .items_center()
                     .cursor_pointer()
                     .when(self.state.git_console_selected, |tab| {
-                        tab.border_b_2().border_color(color(ACCENT))
+                        tab.border_b_2()
+                            .border_color(crate::component::appearance::border(ACCENT))
                     })
                     .child("Console")
                     .on_click(cx.listener(|this, _, _, _cx| {
@@ -54,15 +50,9 @@ impl BottomPanel {
             )
             .child(div().flex_1())
             .child(
-                div()
-                    .id("hide-git")
-                    .w(px(26.))
-                    .h(px(26.))
-                    .flex()
-                    .items_center()
-                    .justify_center()
+                crate::gui::component::controls::icon_button("hide-git", 26., 26.)
                     .cursor_pointer()
-                    .hover(|style| style.bg(color(0xe7e9ed)))
+                    .hover(|style| style.bg(crate::component::appearance::background(0xe7e9ed)))
                     .child(icon(IconName::Minus, 14., MUTED))
                     .on_click(cx.listener(|this, _, _, cx| this.toggle_tool(ToolWindow::Git, cx))),
             );
@@ -73,18 +63,12 @@ impl BottomPanel {
             .gap_2()
             .items_center()
             .border_b_1()
-            .border_color(color(BORDER))
+            .border_color(crate::component::appearance::border(BORDER))
             .child(
-                div()
-                    .id("git-refresh")
-                    .w(px(26.))
-                    .h(px(26.))
-                    .flex()
-                    .items_center()
-                    .justify_center()
+                crate::gui::component::controls::icon_button("git-refresh", 26., 26.)
                     .rounded_sm()
                     .cursor_pointer()
-                    .hover(|style| style.bg(color(0xe7e9ed)))
+                    .hover(|style| style.bg(crate::component::appearance::background(0xe7e9ed)))
                     .child(icon(IconName::RefreshCw, 14., MUTED))
                     .on_click(cx.listener(|this, _, _, cx| this.refresh_git(cx))),
             )
@@ -95,7 +79,7 @@ impl BottomPanel {
             )
             .child(
                 div()
-                    .text_color(color(MUTED))
+                    .text_color(crate::component::appearance::foreground(MUTED))
                     .child(if self.state.git_loading {
                         "正在读取 Git…".into()
                     } else {
@@ -105,9 +89,9 @@ impl BottomPanel {
         let panel = v_flex()
             .size_full()
             .min_h_0()
-            .bg(color(PANEL_BG))
+            .bg(crate::component::appearance::background(PANEL_BG))
             .border_t_1()
-            .border_color(color(BORDER))
+            .border_color(crate::component::appearance::border(BORDER))
             .child(header)
             .child(toolbar);
         if self.state.git_console_selected {
@@ -119,7 +103,7 @@ impl BottomPanel {
                         .min_h_0()
                         .overflow_scroll()
                         .p_3()
-                        .font_family("Cascadia Mono")
+                        .font_family(crate::component::appearance::editor_font())
                         .children(
                             snapshot
                                 .status
@@ -151,7 +135,7 @@ impl BottomPanel {
                             .w(px(200.))
                             .flex_shrink_0()
                             .border_r_1()
-                            .border_color(color(BORDER))
+                            .border_color(crate::component::appearance::border(BORDER))
                             .p_2()
                             .gap_2()
                             .child(
@@ -175,7 +159,7 @@ impl BottomPanel {
                                     .gap_1()
                                     .items_center()
                                     .rounded_sm()
-                                    .bg(color(0xe7edf8))
+                                    .bg(crate::component::appearance::background(0xe7edf8))
                                     .child(icon(IconName::GitBranch, 14., 0xc89020))
                                     .child(snapshot.branch.clone()),
                             ),
@@ -186,7 +170,7 @@ impl BottomPanel {
                             .min_w_0()
                             .min_h_0()
                             .border_r_1()
-                            .border_color(color(BORDER))
+                            .border_color(crate::component::appearance::border(BORDER))
                             .child(
                                 h_flex()
                                     .h(px(28.))
@@ -195,8 +179,8 @@ impl BottomPanel {
                                     .gap_2()
                                     .items_center()
                                     .border_b_1()
-                                    .border_color(color(BORDER))
-                                    .text_color(color(MUTED))
+                                    .border_color(crate::component::appearance::border(BORDER))
+                                    .text_color(crate::component::appearance::foreground(MUTED))
                                     .child(div().flex_1().child("Commit"))
                                     .child(div().w(px(130.)).child("Author"))
                                     .child(div().w(px(88.)).child("Date")),
@@ -209,7 +193,7 @@ impl BottomPanel {
                                     .overflow_y_scroll()
                                     .when_some(snapshot.error.clone(), |list, error| {
                                         list.child(
-                                            div().p_3().text_color(color(0xc42b35)).child(error),
+                                            div().p_3().text_color(crate::component::appearance::foreground(0xc42b35)).child(error),
                                         )
                                     })
                                     .children(
@@ -239,13 +223,13 @@ impl BottomPanel {
                                                     .gap_2()
                                                     .items_center()
                                                     .cursor_pointer()
-                                                    .bg(color(if active {
+                                                    .bg(crate::component::appearance::background(if active {
                                                         0xdce8ff
                                                     } else {
                                                         PANEL_BG
                                                     }))
                                                     .hover(|style| {
-                                                        style.bg(color(if active {
+                                                        style.bg(crate::component::appearance::background(if active {
                                                             0xdce8ff
                                                         } else {
                                                             0xedf0f5
@@ -264,7 +248,7 @@ impl BottomPanel {
                                                             h_flex()
                                                                 .gap_1()
                                                                 .items_center()
-                                                                .text_color(color(0x7e8e49))
+                                                                .text_color(crate::component::appearance::foreground(0x7e8e49))
                                                                 .child(icon(
                                                                     IconName::GitBranch,
                                                                     12.,
@@ -286,7 +270,7 @@ impl BottomPanel {
                                                     .child(
                                                         div()
                                                             .w(px(88.))
-                                                            .text_color(color(MUTED))
+                                                            .text_color(crate::component::appearance::foreground(MUTED))
                                                             .child(commit.date.clone()),
                                                     )
                                                     .on_click(cx.listener(move |this, _, _, cx| {
@@ -312,7 +296,7 @@ impl BottomPanel {
                                     .when(selected.is_none(), |view| {
                                         view.child(
                                             div()
-                                                .text_color(color(MUTED))
+                                                .text_color(crate::component::appearance::foreground(MUTED))
                                                 .child("Select commit to view changes"),
                                         )
                                     })
@@ -324,7 +308,7 @@ impl BottomPanel {
                                         }
                                         view.when_some(details.error.clone(), |view, error| {
                                             view.child(
-                                                div().text_color(color(0xc42b35)).child(error),
+                                                div().text_color(crate::component::appearance::foreground(0xc42b35)).child(error),
                                             )
                                         })
                                         .children(
@@ -341,7 +325,7 @@ impl BottomPanel {
                                                 .child(
                                                     div()
                                                         .w(px(16.))
-                                                        .text_color(color(
+                                                        .text_color(crate::component::appearance::foreground(
                                                             match file.status.as_str() {
                                                                 "A" => 0x248a3d,
                                                                 "D" => 0xc42b35,
@@ -364,7 +348,7 @@ impl BottomPanel {
                                     .p_3()
                                     .gap_1()
                                     .border_t_1()
-                                    .border_color(color(BORDER))
+                                    .border_color(crate::component::appearance::border(BORDER))
                                     .when_some(selected, |view, commit| {
                                         view.child(
                                             div()
@@ -384,7 +368,7 @@ impl BottomPanel {
                                             div()
                                                 .h(px(20.))
                                                 .flex_shrink_0()
-                                                .text_color(color(MUTED))
+                                                .text_color(crate::component::appearance::foreground(MUTED))
                                                 .child(commit.short_hash),
                                         )
                                     })
@@ -392,7 +376,7 @@ impl BottomPanel {
                                         div()
                                             .h(px(20.))
                                             .flex_shrink_0()
-                                            .text_color(color(MUTED))
+                                            .text_color(crate::component::appearance::foreground(MUTED))
                                             .child("Commit details"),
                                     ),
                             ),

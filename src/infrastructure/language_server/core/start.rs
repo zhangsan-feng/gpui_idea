@@ -143,7 +143,7 @@ impl Session {
                 "general":{"positionEncodings":["utf-16"]},
                 "workspace":{"configuration":true,"workspaceFolders":true},
                 "textDocument":{
-                    "completion":{"completionItem":{"snippetSupport":matches!(family, "html" | "css" | "json"),"insertReplaceSupport":true}},
+                    "completion":{"completionItem":{"snippetSupport":true,"insertReplaceSupport":true}},
                     "definition":{"linkSupport":true},"synchronization":{"didSave":true},
                     "formatting":{"dynamicRegistration":false},
                     "semanticTokens":{
@@ -209,11 +209,9 @@ impl Session {
         inventory::initialized(&inventory, server_id, &capabilities, version);
         if needs_version_query {
             if let Some(program) = version_program {
-                let argument = if family == "go" {
-                    "version"
-                } else {
-                    "--version"
-                };
+                let argument = super::super::languages::get(family)?
+                    .native_version
+                    .unwrap_or("--version");
                 tokio::spawn(async move {
                     if let Some(version) = launch::native_version(program, argument).await {
                         inventory.send_modify(|servers| {

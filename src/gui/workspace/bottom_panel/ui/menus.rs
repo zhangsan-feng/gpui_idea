@@ -9,22 +9,16 @@ impl BottomPanel {
         checked: bool,
         view: &WeakEntity<BottomPanel>,
     ) -> PopupMenuItem {
-        let view = view.clone();
-        PopupMenuItem::new(label)
-            .disabled(!enabled)
-            .checked(checked)
-            .on_click(move |_, _window, cx| {
-                if enabled {
-                    let _ = view.update(cx, |this, _cx| {
-                        {
-                            this.send(crate::event_bus::gui_event::GuiEvent::WindowBar(
-                                crate::gui::workspace::window_bar::Event::ToolbarAction(
-                                    action.clone(),
-                                ),
-                            ))
-                        }
-                    });
-                }
-            })
+        crate::gui::component::menu::item(
+            label,
+            enabled,
+            checked,
+            view,
+            move |this, _window, _cx| {
+                this.send(crate::event_bus::gui_event::GuiEvent::WindowBar(
+                    crate::gui::workspace::window_bar::Event::ToolbarAction(action.clone()),
+                ))
+            },
+        )
     }
 }

@@ -83,7 +83,7 @@ pub(in crate::infrastructure::filesystem) fn resolve(
         "c" | "cc" | "cpp" | "cxx" => {
             native::cpp(directory, &root, file.as_deref().unwrap(), &extension)?
         }
-        "py" | "pyw" | "rb" | "php" | "ps1" | "sh" | "lua" | "pl" => {
+        "java" | "py" | "pyw" | "rb" | "php" | "ps1" | "sh" | "lua" | "pl" => {
             interpreted::resolve(directory, &root, file.as_deref().unwrap(), &extension)
         }
         _ => project(directory, &root)?,

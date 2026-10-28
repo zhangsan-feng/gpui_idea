@@ -30,7 +30,7 @@ impl BottomPanel {
             cx,
             move |window, cx| {
                 cx.new(|cx| {
-                    crate::gui::workspace::run_editor::RunConfigurationEditor::new(
+                    crate::gui::run_configuration_window::RunConfigurationWindow::new(
                         parent,
                         parent_window,
                         window,
@@ -193,7 +193,7 @@ impl BottomPanel {
         });
         for instance in &sessions.instances {
             self.state.run_views.entry(instance.id).or_insert_with(|| {
-                cx.new(|cx| crate::gui::terminal::TerminalView::new(instance.id, cx))
+                cx.new(|cx| crate::gui::component::terminal::TerminalView::new(instance.id, cx))
             });
         }
         let selected = sessions

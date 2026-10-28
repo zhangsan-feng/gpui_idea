@@ -139,6 +139,10 @@ impl Editor {
                 match result {
                     Ok(opened) => {
                         let initialization = Instant::now();
+                        let tab_count = opened.initial_text.bytes().filter(|byte| *byte == b'\t').count();
+                        if tab_count > 0 {
+                            tracing::debug!(file = %file.relative_path().display(), tab_count, tab_size = 4, "document contains hard tabs; preserving buffer offsets for display");
+                        }
                         let editor = cx.new(|cx| EditorState::new(window, cx)
                             .language(crate::component::code_editor::language_for_path(file.relative_path()))
                             .soft_wrap(false)

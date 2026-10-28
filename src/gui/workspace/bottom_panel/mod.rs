@@ -18,15 +18,18 @@ pub(in crate::gui::workspace) struct State {
     pub(in crate::gui::workspace) git_console_selected: bool,
     pub(in crate::gui::workspace) selected_git_commit: Option<String>,
     pub(in crate::gui::workspace) git_details_loading: bool,
-    pub(in crate::gui::workspace) run_views:
-        HashMap<crate::domain::terminal::TerminalId, Entity<crate::gui::terminal::TerminalView>>,
+    pub(in crate::gui::workspace) run_views: HashMap<
+        crate::domain::terminal::TerminalId,
+        Entity<crate::gui::component::terminal::TerminalView>,
+    >,
     pub(in crate::gui::workspace) statistics_loading: bool,
     pub(in crate::gui::workspace) statistics_sort: usize,
     pub(in crate::gui::workspace) statistics_descending: bool,
     pub(in crate::gui::workspace) statistics_selected: Option<String>,
     pub(in crate::gui::workspace) statistics_scroll: UniformListScrollHandle,
     pub(in crate::gui::workspace) active_tool: ToolWindow,
-    pub(in crate::gui::workspace) run_terminal: Entity<crate::gui::terminal::TerminalView>,
+    pub(in crate::gui::workspace) run_terminal:
+        Entity<crate::gui::component::terminal::TerminalView>,
     pub(in crate::gui::workspace) git_loading: bool,
 }
 
@@ -52,7 +55,7 @@ pub(in crate::gui::workspace) fn init_component_data(
             id: crate::domain::terminal::TerminalId::Shell,
             label: "Local".into(),
             view: cx.new(|cx| {
-                crate::gui::terminal::TerminalView::new(
+                crate::gui::component::terminal::TerminalView::new(
                     crate::domain::terminal::TerminalId::Shell,
                     cx,
                 )
@@ -73,7 +76,10 @@ pub(in crate::gui::workspace) fn init_component_data(
             .as_ref()
             .map_or(ToolWindow::Run, |saved| saved.active_tool),
         run_terminal: cx.new(|cx| {
-            crate::gui::terminal::TerminalView::new(crate::domain::terminal::TerminalId::Run, cx)
+            crate::gui::component::terminal::TerminalView::new(
+                crate::domain::terminal::TerminalId::Run,
+                cx,
+            )
         }),
         git_loading: false,
     }
@@ -82,7 +88,7 @@ pub(in crate::gui::workspace) fn init_component_data(
 pub(in crate::gui) struct TerminalTab {
     pub(in crate::gui::workspace) id: crate::domain::terminal::TerminalId,
     pub(in crate::gui::workspace) label: String,
-    pub(in crate::gui::workspace) view: Entity<crate::gui::terminal::TerminalView>,
+    pub(in crate::gui::workspace) view: Entity<crate::gui::component::terminal::TerminalView>,
 }
 
 pub(super) use crate::domain::history::ToolWindow;
@@ -105,6 +111,7 @@ pub(crate) enum Event {
     OpenRunConfiguration,
     ResetRunAutomatic,
     StartExecution(crate::domain::run::RunAction),
+    RunFile(std::path::PathBuf),
     StopRun,
     SetRunProfile(String),
 }
@@ -172,6 +179,7 @@ impl BottomPanel {
                 Event::StartExecution(value) => {
                     self.start_execution(value, window, cx);
                 }
+                Event::RunFile(file) => self.run_file(file, cx),
                 Event::StopRun => {
                     self.stop_run(cx);
                 }

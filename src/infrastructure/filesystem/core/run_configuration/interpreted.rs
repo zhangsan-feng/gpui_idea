@@ -10,6 +10,7 @@ pub(super) fn resolve(
 ) -> RunConfiguration {
     let file_arg = quote(file);
     let (label, command, build, debug) = match extension {
+        "java" => ("Java", format!("java {file_arg}"), None, None),
         "py" | "pyw" => {
             let interpreter = [
                 ".venv/Scripts/python.exe",

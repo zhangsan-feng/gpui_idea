@@ -61,9 +61,16 @@ impl HistoryService {
         validate_session(&session)?;
         let _guard = self.operations.lock().await;
         let revision = session.revision;
+        let project_width = session.project_width;
+        let run_height = session.run_height;
         let history = INFRASTRUCTURE.history.save_session(session).await?;
         DATA_CONTEXT.history.set_history(history);
-        tracing::debug!(revision, "workspace session persisted");
+        tracing::debug!(
+            revision,
+            ?project_width,
+            ?run_height,
+            "workspace session persisted"
+        );
         Ok(())
     }
 

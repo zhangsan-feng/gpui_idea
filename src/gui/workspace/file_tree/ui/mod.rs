@@ -1,3 +1,6 @@
+use crate::gui::component::icon::tinted as project_icon;
+use crate::gui::component::path::display_path as display_project_path;
+use crate::gui::component::project_icon::project_icon as project_entry_icon;
 use crate::gui::workspace::file_tree::FileTree;
 mod search;
 use super::*;
@@ -84,15 +87,18 @@ impl FileTree {
         .min_w_0()
         .h_full()
         .track_scroll(&self.state.project_tree_scroll);
-        let tree = crate::gui::workspace::ui::diagnostics::MeasuredWorkspace::new(
-            "tree",
+        let tree = crate::gui::component::measured_element::MeasuredElement::new(
             tree.into_any_element(),
-            self.peer_window_bar(cx)
-                .read(cx)
-                .state
-                .window_diagnostics
-                .clone(),
             started,
+            {
+                let diagnostics = self
+                    .peer_window_bar(cx)
+                    .read(cx)
+                    .state
+                    .window_diagnostics
+                    .clone();
+                move |times, window, cx| diagnostics.borrow_mut().record("tree", times, window, cx)
+            },
         );
         v_flex()
             .id("project-panel")
@@ -218,6 +224,13 @@ impl FileTree {
         let palette = ProjectTreePalette::from_theme(cx.theme());
         let menu_view = cx.entity().downgrade();
         let expanded = self.state.expanded_directories.contains(Path::new(""));
+        let display_path = display_project_path(DATA_CONTEXT.project_root());
+        let tooltip_path = display_path.clone();
+        let project_name = DATA_CONTEXT
+            .project_root()
+            .file_name()
+            .map(|name| name.to_string_lossy().into_owned())
+            .unwrap_or_else(|| display_path.clone());
         h_flex()
             .id("project-root")
             .relative()
@@ -252,27 +265,30 @@ impl FileTree {
                 PROJECT_TREE_CHEVRON_SIZE,
                 palette.muted,
             ))
-            .child(project_entry_icon(Path::new(""), true, expanded, palette))
+            .child(project_entry_icon(Path::new(""), true))
             .child(
-                div().font_weight(FontWeight(600.)).child(
-                    DATA_CONTEXT
-                        .project_root()
-                        .file_name()
-                        .unwrap_or_default()
-                        .to_string_lossy()
-                        .into_owned(),
-                ),
+                div()
+                    .min_w_0()
+                    .max_w(relative(0.55))
+                    .flex_shrink_0()
+                    .truncate()
+                    .font_weight(FontWeight(600.))
+                    .child(project_name),
             )
             .child(
                 div()
+                    .flex_1()
                     .min_w_0()
                     .overflow_hidden()
                     .pl_1()
                     .text_xs()
                     .text_color(palette.muted)
-                    .child(DATA_CONTEXT.project_root().to_string_lossy().into_owned())
+                    .child(display_path)
                     .truncate(),
             )
+            .tooltip(move |window, cx| {
+                gpui_kit::component::tooltip::Tooltip::new(tooltip_path.clone()).build(window, cx)
+            })
             .on_click(cx.listener(|this, _, window, cx| {
                 this.state.project_selection.clear();
                 this.state.project_tree_focus.focus(window, cx);
@@ -316,13 +332,7 @@ impl FileTree {
         cx: &mut Context<FileTree>,
     ) -> impl IntoElement {
         let palette = ProjectTreePalette::from_theme(cx.theme());
-        let button = div()
-            .id(id)
-            .w(px(23.))
-            .h(px(23.))
-            .flex()
-            .items_center()
-            .justify_center()
+        let button = crate::gui::component::controls::icon_button(id, 23., 23.)
             .rounded_sm()
             .hover(|style| style.bg(palette.hover))
             .child(project_icon(name, 14., palette.muted));
@@ -383,45 +393,18 @@ impl Render for DraggedProjectEntry {
         cx: &mut Context<DraggedProjectEntry>,
     ) -> impl IntoElement {
         let palette = ProjectTreePalette::from_theme(cx.theme());
-        h_flex()
-            .h(px(32.))
-            .max_w(px(280.))
-            .px_2()
-            .gap_2()
-            .items_center()
-            .rounded_sm()
-            .border_1()
-            .border_color(palette.drag_border)
-            .bg(palette.panel)
-            .shadow_md()
-            .font_family("Microsoft YaHei UI")
-            .text_size(px(12.))
-            .text_color(palette.foreground)
-            .child(project_entry_icon(
-                &self.path,
-                self.is_directory,
-                false,
-                palette,
-            ))
-            .child(div().truncate().child(if self.paths.len() > 1 {
-                format!("{} 等 {} 项", self.name, self.paths.len())
-            } else {
-                self.name.clone()
-            }))
+        crate::gui::component::drag_preview::render(
+            32.,
+            8.,
+            palette.drag_border,
+            palette.panel,
+            palette.foreground,
+        )
+        .child(project_entry_icon(&self.path, self.is_directory))
+        .child(div().truncate().child(if self.paths.len() > 1 {
+            format!("{} 等 {} 项", self.name, self.paths.len())
+        } else {
+            self.name.clone()
+        }))
     }
-}
-
-fn project_icon(name: IconName, size: f32, tint: Hsla) -> Icon {
-    Icon::new(name)
-        .with_size(Size::Size(px(size)))
-        .text_color(tint)
-}
-
-fn project_entry_icon(
-    path: &Path,
-    is_directory: bool,
-    _expanded: bool,
-    _palette: ProjectTreePalette,
-) -> gpui_kit::Img {
-    crate::component::project_icon::project_icon(path, is_directory)
 }

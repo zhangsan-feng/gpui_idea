@@ -239,6 +239,6 @@ impl ProjectService {
         &self,
         action: RunAction,
     ) -> Result<()> {
-        self.execute_run_instances(action, None).await
+        self.execute_run_instances(action, None, None).await
     }
 }

@@ -1,7 +1,6 @@
 #![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
 
 mod application;
-mod component;
 mod data_context;
 mod domain;
 mod event_bus;
@@ -11,6 +10,7 @@ mod infrastructure;
 use anyhow::Context as _;
 use gpui_kit::component::scroll::ScrollbarMode;
 use gpui_kit::component::{Theme, ThemeMode};
+use gui::component;
 
 #[tokio::main(flavor = "multi_thread", worker_threads = 2)]
 async fn main() -> anyhow::Result<()> {
@@ -51,7 +51,7 @@ async fn main() -> anyhow::Result<()> {
                 infrastructure::logging::log_memory("platform_initialized");
                 gpui_kit::init(cx);
                 infrastructure::logging::log_memory("components_initialized");
-                gui::terminal::init(cx);
+                gui::component::terminal::init(cx);
                 Theme::change(ThemeMode::Light, None, cx);
                 Theme::set_scrollbar_mode(ScrollbarMode::Always, cx);
 

@@ -27,6 +27,9 @@ pub(super) fn read(root: &Path, relative: &Path) -> Result<Vec<ProjectEntry>> {
             name: name.to_string_lossy().into_owned(),
             is_directory: metadata.is_dir(),
             is_link: super::super::core::path::is_link(&metadata),
+            runnable: metadata.is_file()
+                && !super::super::core::path::is_link(&metadata)
+                && super::super::core::file_runnable(root, &entry.path()),
         });
     }
     entries.sort_by_cached_key(|entry| {

@@ -18,7 +18,7 @@ impl Editor {
             )
             .child(
                 div()
-                    .text_color(color(MUTED))
+                    .text_color(crate::component::appearance::foreground(MUTED))
                     .child("打开已有项目或创建项目，开始编辑。"),
             )
             .child(

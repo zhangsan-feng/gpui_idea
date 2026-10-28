@@ -1,14 +1,12 @@
 mod cleanup;
-mod compatible;
-mod core;
-mod download;
-mod environment;
-mod http;
+pub(in crate::infrastructure::language_server) mod compatible;
+pub(in crate::infrastructure::language_server) mod core;
+pub(in crate::infrastructure::language_server) mod download;
+pub(in crate::infrastructure::language_server) mod http;
 pub(in crate::infrastructure::language_server) mod management;
-mod native;
 mod network;
-mod node;
-mod update;
+pub(in crate::infrastructure::language_server) mod node;
+pub(in crate::infrastructure::language_server) mod update;
 
 use crate::domain::language_server::LanguageServerStatus;
 use anyhow::Result;
@@ -22,8 +20,6 @@ use std::{
 use tokio::sync::watch;
 
 pub(super) use download::download_server;
-pub(super) use environment::{go_server, java_requirement, java_runtime};
-pub(super) use native::rust_server;
 pub(super) use node::node_server;
 pub(super) use update::refresh;
 
@@ -34,7 +30,7 @@ pub(super) struct InstallContext {
     server_id: u64,
     selection: std::sync::Mutex<Option<String>>,
     force_update: bool,
-    requested_release: Option<String>,
+    pub(in crate::infrastructure::language_server) requested_release: Option<String>,
 }
 
 impl InstallContext {
@@ -105,7 +101,10 @@ impl InstallContext {
             .clone()
     }
 
-    fn selection(&self, detail: String) -> Result<()> {
+    pub(in crate::infrastructure::language_server) fn selection(
+        &self,
+        detail: String,
+    ) -> Result<()> {
         *self
             .selection
             .lock()
@@ -122,12 +121,15 @@ impl InstallContext {
         self.progress(detail)
     }
 
-    fn check(&self) -> Result<()> {
+    pub(in crate::infrastructure::language_server) fn check(&self) -> Result<()> {
         anyhow::ensure!(!self.stopping.load(Ordering::Acquire), "语言服务准备已取消");
         Ok(())
     }
 
-    fn progress(&self, detail: impl Into<String>) -> Result<()> {
+    pub(in crate::infrastructure::language_server) fn progress(
+        &self,
+        detail: impl Into<String>,
+    ) -> Result<()> {
         self.publish_progress(detail.into(), None)
     }
 
@@ -175,12 +177,12 @@ impl InstallContext {
 }
 
 #[derive(serde::Serialize, serde::Deserialize)]
-struct Installed {
-    entry: PathBuf,
-    version: String,
-    source: String,
+pub(in crate::infrastructure::language_server) struct Installed {
+    pub(in crate::infrastructure::language_server) entry: PathBuf,
+    pub(in crate::infrastructure::language_server) version: String,
+    pub(in crate::infrastructure::language_server) source: String,
     #[serde(default)]
-    selection: Option<String>,
+    pub(in crate::infrastructure::language_server) selection: Option<String>,
 }
 
 #[derive(Clone)]

@@ -32,6 +32,25 @@ pub(super) fn project_menu(
     let can_paste = clipboard.is_some_and(|item| {
         item.kind == "gpui-idea-project-entry" && item.project_root == DATA_CONTEXT.project_root()
     });
+    let runnable = view.upgrade().is_some_and(|view| {
+        view.read(cx).state.tree_rows.iter().any(|row| {
+            matches!(row, crate::gui::workspace::TreeRow::Entry(entry, _) if entry.relative_path == path && entry.runnable)
+        })
+    });
+    let menu = if !is_directory && !is_link && runnable {
+        menu.item(menu_item(
+            "运行",
+            IconName::Play,
+            FileTreeMenuAction::Run,
+            enabled && !multiple && !DATA_CONTEXT.project.run_sessions().starting,
+            &view,
+            &path,
+            is_directory,
+        ))
+        .separator()
+    } else {
+        menu
+    };
     menu.item(menu_item(
         "新建文件",
         IconName::FilePlus,
@@ -130,16 +149,9 @@ fn menu_item(
     path: &Path,
     is_directory: bool,
 ) -> PopupMenuItem {
-    let view = view.clone();
     let path = path.to_owned();
-    PopupMenuItem::new(label)
-        .icon(Icon::new(icon))
-        .disabled(!enabled)
-        .on_click(move |_, window, cx| {
-            if enabled {
-                let _ = view.update(cx, |this, cx| {
-                    this.file_tree_menu_action(action, path.clone(), is_directory, window, cx)
-                });
-            }
-        })
+    crate::gui::component::menu::item(label, enabled, false, view, move |this, window, cx| {
+        this.file_tree_menu_action(action, path.clone(), is_directory, window, cx)
+    })
+    .icon(Icon::new(icon))
 }

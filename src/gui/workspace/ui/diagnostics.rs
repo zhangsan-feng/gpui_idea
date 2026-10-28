@@ -1,5 +1,6 @@
+use crate::gui::component::measured_element::RenderTimings;
 use gpui_kit::*;
-use std::{cell::RefCell, rc::Rc, time::Instant};
+use std::time::Instant;
 
 /// CPU diagnostics only: painting here builds the scene; GPU submission/present
 /// happens later in GPUI and must not be attributed to these timings.
@@ -35,7 +36,20 @@ impl WindowDiagnostics {
         changed
     }
 
-    fn record(&mut self, area: &'static str, times: [u128; 5], window: &Window, cx: &App) {
+    pub(in crate::gui::workspace) fn record(
+        &mut self,
+        area: &'static str,
+        times: RenderTimings,
+        window: &Window,
+        cx: &App,
+    ) {
+        let times = [
+            times.build_us,
+            times.layout_us,
+            times.prepaint_us,
+            times.paint_us,
+            times.cpu_us,
+        ];
         if self.report_at.is_none() {
             return;
         }
@@ -95,111 +109,5 @@ impl WindowDiagnostics {
         self.max_us = [0; 5];
         self.editor_max_us = [0; 5];
         self.tree_max_us = [0; 5];
-    }
-}
-
-pub(in crate::gui::workspace) struct MeasuredWorkspace {
-    area: &'static str,
-    child: AnyElement,
-    diagnostics: Rc<RefCell<WindowDiagnostics>>,
-    started: Instant,
-    build_us: u128,
-    layout_started: Option<Instant>,
-    layout_us: u128,
-    prepaint_us: u128,
-}
-
-impl MeasuredWorkspace {
-    pub(in crate::gui::workspace) fn new(
-        area: &'static str,
-        child: AnyElement,
-        diagnostics: Rc<RefCell<WindowDiagnostics>>,
-        started: Instant,
-    ) -> Self {
-        Self {
-            area,
-            child,
-            diagnostics,
-            started,
-            build_us: started.elapsed().as_micros(),
-            layout_started: None,
-            layout_us: 0,
-            prepaint_us: 0,
-        }
-    }
-}
-
-impl IntoElement for MeasuredWorkspace {
-    type Element = Self;
-    fn into_element(self) -> Self {
-        self
-    }
-}
-
-impl Element for MeasuredWorkspace {
-    type RequestLayoutState = ();
-    type PrepaintState = ();
-
-    fn id(&self) -> Option<ElementId> {
-        None
-    }
-    fn source_location(&self) -> Option<&'static std::panic::Location<'static>> {
-        None
-    }
-
-    fn request_layout(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        window: &mut Window,
-        cx: &mut App,
-    ) -> (LayoutId, ()) {
-        self.layout_started = Some(Instant::now());
-        (self.child.request_layout(window, cx), ())
-    }
-
-    fn prepaint(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        _: Bounds<Pixels>,
-        _: &mut (),
-        window: &mut Window,
-        cx: &mut App,
-    ) {
-        // Includes layout requests and the intervening Taffy computation.
-        // Subtree intervals also include work on siblings before their prepaint;
-        // only prepaint/paint are isolated subtree timings.
-        self.layout_us = self.layout_started.map_or(0, |at| at.elapsed().as_micros());
-        let started = Instant::now();
-        self.child.prepaint(window, cx);
-        self.prepaint_us = started.elapsed().as_micros();
-    }
-
-    fn paint(
-        &mut self,
-        _: Option<&GlobalElementId>,
-        _: Option<&InspectorElementId>,
-        _: Bounds<Pixels>,
-        _: &mut (),
-        _: &mut (),
-        window: &mut Window,
-        cx: &mut App,
-    ) {
-        let started = Instant::now();
-        self.child.paint(window, cx);
-        let paint_us = started.elapsed().as_micros();
-        self.diagnostics.borrow_mut().record(
-            self.area,
-            [
-                self.build_us,
-                self.layout_us,
-                self.prepaint_us,
-                paint_us,
-                self.started.elapsed().as_micros(),
-            ],
-            window,
-            cx,
-        );
     }
 }

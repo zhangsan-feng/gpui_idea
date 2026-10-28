@@ -86,14 +86,8 @@ impl FileSystem {
         )
         .await
     }
-    pub async fn statistics(
-        &self,
-        root: PathBuf,
-    ) -> Result<crate::domain::statistics::StatisticsSnapshot> {
-        core::run("project_statistics", PathBuf::new(), move || {
-            core::statistics(root)
-        })
-        .await
+    pub(crate) async fn file_run_configuration(&self, root: PathBuf, file: PathBuf) -> Result<crate::domain::run::RunConfiguration> {
+        core::run("file_run_configuration", file.clone(), move || core::file_run_configuration(root, file)).await
     }
     /// All offsets refer to the original file. Expected bytes protect the target blocks.
     pub async fn modify_blocks(

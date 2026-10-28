@@ -7,6 +7,7 @@ pub struct ProjectEntry {
     pub is_directory: bool,
     // Links are displayed without following them, avoiding loops and root escapes.
     pub is_link: bool,
+    pub runnable: bool,
 }
 
 #[derive(Clone, PartialEq, Eq)]

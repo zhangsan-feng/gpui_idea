@@ -3,27 +3,11 @@ use crate::domain::language_server::{ManagedServer, ManagedVersion};
 use anyhow::{Context, Result};
 use std::fs;
 
-// HTML, CSS and JSON share one immutable npm installation.
-pub(super) const SERVERS: &[(&str, &str, &str)] = &[
-    ("rust-analyzer", "rust-analyzer", "Rust"),
-    ("gopls", "gopls", "Go"),
-    ("jdtls", "Eclipse JDT LS", "Java"),
-    ("taplo", "Taplo", "TOML"),
-    ("marksman", "Marksman", "Markdown"),
-    ("lsp-python", "Pyright", "Python"),
-    ("lsp-php", "Intelephense", "PHP"),
-    (
-        "lsp-typescript",
-        "TypeScript Language Server",
-        "JavaScript / TypeScript",
-    ),
-    ("lsp-web", "VS Code Language Servers", "HTML / CSS / JSON"),
-    ("lsp-yaml", "YAML Language Server", "YAML"),
-];
+use super::super::languages;
 
 fn validate_key(key: &str) -> Result<()> {
     anyhow::ensure!(
-        SERVERS.iter().any(|server| server.0 == key),
+        languages::managed().any(|server| server.key == key),
         "未知语言服务器：{key}"
     );
     Ok(())
@@ -57,14 +41,14 @@ pub(in crate::infrastructure::language_server) fn snapshot() -> Result<Vec<Manag
         Err(error) if error.kind() == std::io::ErrorKind::NotFound => Vec::new(),
         Err(error) => return Err(error.into()),
     };
-    SERVERS
-        .iter()
-        .map(|(key, name, languages)| {
+    languages::managed()
+        .map(|language| {
+            let key = language.key;
             let mut versions = directories
                 .iter()
                 .filter_map(|entry| {
                     let directory = entry.file_name().to_string_lossy().into_owned();
-                    if directory != *key && !directory.starts_with(&format!("{key}--")) {
+                    if directory != key && !directory.starts_with(&format!("{key}--")) {
                         return None;
                     }
                     let binary = core::cached(&entry.path())?;
@@ -88,9 +72,9 @@ pub(in crate::infrastructure::language_server) fn snapshot() -> Result<Vec<Manag
                 }
             };
             Ok(ManagedServer {
-                key: (*key).into(),
-                name: (*name).into(),
-                languages: (*languages).into(),
+                key: key.into(),
+                name: language.managed_name.into(),
+                languages: language.managed_languages.into(),
                 pinned,
                 configuration_error,
                 versions,
@@ -130,27 +114,10 @@ pub(in crate::infrastructure::language_server) fn install_latest(
     context: &InstallContext,
 ) -> Result<()> {
     validate_key(key)?;
-    match key {
-        "gopls" => super::go_server(context).map(|_| ()),
-        "lsp-python" => super::node_server("pyright", "pyright-langserver", context).map(|_| ()),
-        "lsp-php" => super::node_server("intelephense", "intelephense", context).map(|_| ()),
-        "lsp-typescript" => super::node_server(
-            "typescript-language-server",
-            "typescript-language-server",
-            context,
-        )
-        .map(|_| ()),
-        "lsp-web" => super::node_server(
-            "vscode-langservers-extracted",
-            "vscode-html-language-server",
-            context,
-        )
-        .map(|_| ()),
-        "lsp-yaml" => {
-            super::node_server("yaml-language-server", "yaml-language-server", context).map(|_| ())
-        }
-        _ => super::download_server(key, context).map(|_| ()),
-    }
+    let language = languages::managed()
+        .find(|language| language.key == key)
+        .context("未知语言服务器")?;
+    (language.install)(context)
 }
 
 pub(in crate::infrastructure::language_server) fn install_context(

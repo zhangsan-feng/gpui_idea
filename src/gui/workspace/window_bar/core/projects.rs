@@ -1,7 +1,7 @@
 use crate::gui::workspace::window_bar::WindowBar;
 use crate::{
     application::{APPLICATION, lifecycle::run_application},
-    gui::project_manager::{self, ProjectWindowKind},
+    gui::project_manager_window::{self, ProjectWindowKind},
 };
 use gpui_kit::Context;
 use std::path::PathBuf;
@@ -21,7 +21,7 @@ impl WindowBar {
                 return;
             }
         }
-        match project_manager::open(mode, parent, cx) {
+        match project_manager_window::open(mode, parent, cx) {
             Ok(window) => {
                 self.state.project_windows.insert(mode, window);
             }

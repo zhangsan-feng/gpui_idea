@@ -25,7 +25,7 @@ impl FileTree {
         };
         content = content.child(
             div()
-                .text_color(color(MUTED))
+                .text_color(crate::component::appearance::foreground(MUTED))
                 .text_size(px(12.))
                 .child(status),
         );
@@ -44,7 +44,7 @@ impl FileTree {
                     .gap_2()
                     .cursor_pointer()
                     .rounded_sm()
-                    .hover(|s| s.bg(color(0xe8eefb)))
+                    .hover(|s| s.bg(crate::component::appearance::background(0xe8eefb)))
                     .child(crate::component::project_icon::project_icon(
                         &result.path,
                         false,
@@ -63,9 +63,9 @@ impl FileTree {
                             .child(
                                 div()
                                     .truncate()
-                                    .font_family("Cascadia Mono")
+                                    .font_family(crate::component::appearance::editor_font())
                                     .text_size(px(12.))
-                                    .text_color(color(MUTED))
+                                    .text_color(crate::component::appearance::foreground(MUTED))
                                     .child(result.preview.clone()),
                             ),
                     )

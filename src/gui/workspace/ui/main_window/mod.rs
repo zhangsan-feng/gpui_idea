@@ -20,7 +20,9 @@ impl Workspace {
                 );
             }))
             .drag_over::<ExternalPaths>(|style, _, _, _| {
-                style.border_1().border_color(color(ACCENT))
+                style
+                    .border_1()
+                    .border_color(crate::component::appearance::border(ACCENT))
             })
             .on_action(cx.listener(|_this, _: &SaveDocument, _window, cx| {
                 crate::event_bus::EVENT_BUS.gui_event.send(
@@ -42,10 +44,10 @@ impl Workspace {
             .min_w_0()
             .min_h_0()
             .overflow_hidden()
-            .font_family("Microsoft YaHei UI")
+            .font_family(crate::component::appearance::ui_font())
             .text_size(px(12.))
-            .bg(color(EDITOR_BG))
-            .text_color(color(TEXT))
+            .bg(crate::component::appearance::background(EDITOR_BG))
+            .text_color(crate::component::appearance::foreground(TEXT))
             // GPUI's cached paint replay omits window_control_hitboxes. Keep the
             // title bar uncached so native drag/minimize/maximize regions are
             // registered on every frame, including editor-only redraws.
@@ -124,7 +126,10 @@ impl Workspace {
                         .as_ref()
                         .and_then(|saved| saved.project_width)
                         .unwrap_or(300.)))
-                    .size_range(px(180.)..px(480.))
+                    .size_range(px(120.)..px(1024.))
+                    // Keep the restored pixel width when startup/maximize changes
+                    // the container size; the editor receives the extra space.
+                    .fixed()
                     .flex_none()
                     .child(
                         AnyView::from(self.file_tree.clone())
@@ -174,6 +179,7 @@ impl Workspace {
                         .and_then(|saved| saved.run_height)
                         .unwrap_or(250.)))
                     .size_range(px(120.)..px(500.))
+                    .fixed()
                     .flex_none()
                     .child(
                         AnyView::from(self.bottom_panel.clone())

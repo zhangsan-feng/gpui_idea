@@ -1,15 +1,32 @@
-use std::{iter::Peekable, str::Chars};
+use std::{iter::Peekable, ops::Range, str::Chars};
 
-// Keep the editor's plain-text insertion contract. Expand initial placeholder
-// values, discard tab stops, and reject variables/transforms we cannot resolve.
-pub(super) fn plain_text(value: &str) -> Option<String> {
+// Expand placeholder defaults and retain the first editable selection.
+// Reject variables/transforms that cannot be resolved by this editor.
+pub(super) fn parse(value: &str) -> Option<(String, Option<Range<usize>>)> {
     if value.len() > 64 * 1024 {
         return None;
     }
-    expand(&mut value.chars().peekable(), false, 0)
+    let mut stops = Vec::new();
+    let text = expand(&mut value.chars().peekable(), false, 0, 0, &mut stops)?;
+    stops.sort_by_key(|(index, range)| (*index == 0, *index, range.start));
+    Some((text, stops.into_iter().next().map(|(_, range)| range)))
 }
 
-fn expand(chars: &mut Peekable<Chars<'_>>, nested: bool, depth: usize) -> Option<String> {
+fn number(chars: &mut Peekable<Chars<'_>>) -> Option<u32> {
+    let mut digits = String::new();
+    while chars.peek().is_some_and(char::is_ascii_digit) {
+        digits.push(chars.next()?);
+    }
+    digits.parse().ok()
+}
+
+fn expand(
+    chars: &mut Peekable<Chars<'_>>,
+    nested: bool,
+    depth: usize,
+    base: usize,
+    stops: &mut Vec<(u32, Range<usize>)>,
+) -> Option<String> {
     if depth > 16 {
         return None;
     }
@@ -29,24 +46,24 @@ fn expand(chars: &mut Peekable<Chars<'_>>, nested: bool, depth: usize) -> Option
             }
             '$' => match chars.peek().copied() {
                 Some('0'..='9') => {
-                    while chars.peek().is_some_and(char::is_ascii_digit) {
-                        chars.next();
-                    }
+                    let index = number(chars)?;
+                    let start = base + result.len();
+                    stops.push((index, start..start));
                 }
                 Some('{') => {
                     chars.next();
                     if !chars.peek().is_some_and(char::is_ascii_digit) {
                         return None;
                     }
-                    while chars.peek().is_some_and(char::is_ascii_digit) {
-                        chars.next();
-                    }
+                    let index = number(chars)?;
+                    let start = base + result.len();
                     match chars.next()? {
                         '}' => {}
-                        ':' => result.push_str(&expand(chars, true, depth + 1)?),
+                        ':' => result.push_str(&expand(chars, true, depth + 1, start, stops)?),
                         '|' => result.push_str(&choice(chars)?),
                         _ => return None,
                     }
+                    stops.push((index, start..base + result.len()));
                 }
                 Some(ch) if ch.is_ascii_alphabetic() || ch == '_' => return None,
                 _ => result.push('$'),

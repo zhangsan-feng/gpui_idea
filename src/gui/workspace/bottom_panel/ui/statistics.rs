@@ -38,8 +38,8 @@ impl BottomPanel {
             .h(px(50.))
             .flex_shrink_0()
             .border_b_1()
-            .border_color(color(BORDER))
-            .bg(color(PANEL_BG))
+            .border_color(crate::component::appearance::border(BORDER))
+            .bg(crate::component::appearance::background(PANEL_BG))
             .children(COLUMNS.into_iter().enumerate().map(|(index, label)| {
                 let summary = if index == 1 {
                     snapshot.total.count.to_string()
@@ -60,7 +60,7 @@ impl BottomPanel {
                 .justify_center()
                 .gap(px(2.))
                 .cursor_pointer()
-                .hover(|style| style.bg(color(0xe9ecf2)))
+                .hover(|style| style.bg(crate::component::appearance::background(0xe9ecf2)))
                 .child(
                     h_flex()
                         .gap_1()
@@ -81,7 +81,7 @@ impl BottomPanel {
                 .child(
                     div()
                         .text_size(px(10.))
-                        .text_color(color(MUTED))
+                        .text_color(crate::component::appearance::foreground(MUTED))
                         .child(summary),
                 )
                 .on_click(cx.listener(move |this, _, _, _cx| {
@@ -122,8 +122,8 @@ impl BottomPanel {
             .size_full()
             .min_h_0()
             .border_t_1()
-            .border_color(color(BORDER))
-            .bg(color(PANEL_BG))
+            .border_color(crate::component::appearance::border(BORDER))
+            .bg(crate::component::appearance::background(PANEL_BG))
             .child(self.tool_header(
                 ToolWindow::Statistics,
                 "Statistic",
@@ -151,7 +151,7 @@ impl BottomPanel {
                     .child(div().flex_1())
                     .child(
                         div()
-                            .text_color(color(MUTED))
+                            .text_color(crate::component::appearance::foreground(MUTED))
                             .child(if self.state.statistics_loading {
                                 "正在扫描项目…".into()
                             } else {
@@ -164,7 +164,7 @@ impl BottomPanel {
                     .h(px(30.))
                     .flex_shrink_0()
                     .border_b_1()
-                    .border_color(color(BORDER))
+                    .border_color(crate::component::appearance::border(BORDER))
                     .child(
                         h_flex()
                             .h_full()
@@ -172,7 +172,7 @@ impl BottomPanel {
                             .gap_1()
                             .items_center()
                             .border_b_2()
-                            .border_color(color(ACCENT))
+                            .border_color(crate::component::appearance::border(ACCENT))
                             .child(icon(IconName::ListTree, 14., MUTED))
                             .child("Overview"),
                     ),
@@ -185,7 +185,7 @@ impl BottomPanel {
                     .overflow_x_scroll()
                     .m_2()
                     .border_1()
-                    .border_color(color(BORDER))
+                    .border_color(crate::component::appearance::border(BORDER))
                     .child(
                         v_flex()
                             .min_w(px(1180.))
@@ -194,7 +194,7 @@ impl BottomPanel {
                             .min_h_0()
                             .child(header)
                             .when_some(snapshot.error.clone(), |table, error| {
-                                table.child(div().p_3().text_color(color(0xc42b35)).child(error))
+                                table.child(div().p_3().text_color(crate::component::appearance::foreground(0xc42b35)).child(error))
                             })
                             .child(
                                 v_flex()
@@ -215,7 +215,7 @@ impl BottomPanel {
                     .px_3()
                     .items_center()
                     .text_size(px(11.))
-                    .text_color(color(MUTED))
+                    .text_color(crate::component::appearance::foreground(MUTED))
                     .child("项目实际文件类型 · 排除版本控制与构建目录 · 二进制文件仅统计数量和大小 · Lines NONEMPTY 统计非空行")
                     .child(div().flex_1())
                     .child(format!(
@@ -240,9 +240,9 @@ impl BottomPanel {
             .w_full()
             .items_center()
             .border_b_1()
-            .border_color(color(0xe8eaee))
-            .bg(color(if selected { 0xdce8ff } else { PANEL_BG }))
-            .hover(|style| style.bg(color(if selected { 0xdce8ff } else { 0xedf0f5 })))
+            .border_color(crate::component::appearance::border(0xe8eaee))
+            .bg(crate::component::appearance::background(if selected { 0xdce8ff } else { PANEL_BG }))
+            .hover(|style| style.bg(crate::component::appearance::background(if selected { 0xdce8ff } else { 0xedf0f5 })))
             .children(items.into_iter().enumerate().map(|(index, text)| {
                 column(div(), index)
                     .h_full()
@@ -279,16 +279,10 @@ impl BottomPanel {
         label: &'static str,
         cx: &mut Context<BottomPanel>,
     ) -> AnyElement {
-        div()
-            .id(id)
-            .w(px(26.))
-            .h(px(26.))
-            .flex()
-            .items_center()
-            .justify_center()
+        crate::gui::component::controls::icon_button(id, 26., 26.)
             .rounded_sm()
             .cursor_pointer()
-            .hover(|style| style.bg(color(0xe7e9ed)))
+            .hover(|style| style.bg(crate::component::appearance::background(0xe7e9ed)))
             .tooltip(move |window, cx| Tooltip::new(label).build(window, cx))
             .child(icon(name, 14., MUTED))
             .on_click(cx.listener(move |this, _, _, cx| {
@@ -316,7 +310,7 @@ fn column<E: Styled>(view: E, index: usize) -> E {
     let view = view
         .flex_shrink_0()
         .border_r_1()
-        .border_color(color(0xe8eaee));
+        .border_color(crate::component::appearance::border(0xe8eaee));
     if index == 0 {
         view.w(px(220.))
     } else if index == 1 {

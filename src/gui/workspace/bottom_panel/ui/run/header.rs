@@ -6,15 +6,7 @@ use gpui_kit::component::tooltip::Tooltip;
 impl BottomPanel {
     pub(super) fn run_panel_header(&self, cx: &mut Context<BottomPanel>) -> Div {
         let sessions = DATA_CONTEXT.project.run_sessions();
-        h_flex()
-            .h(px(40.))
-            .flex_shrink_0()
-            .px(px(12.))
-            .items_center()
-            .gap_0()
-            .border_b_1()
-            .border_color(color(RUN_BORDER))
-            .bg(color(RUN_SURFACE))
+        crate::gui::component::panel::header(40., RUN_SURFACE, RUN_BORDER).px(px(12.)).gap_0()
             .child(
                 div()
                     .w(px(42.))
@@ -79,7 +71,7 @@ impl BottomPanel {
                                     .items_center()
                                     .text_size(px(12.))
                                     .cursor_pointer()
-                                    .hover(|style| style.bg(color(0xeef0f4)))
+                                    .hover(|style| style.bg(crate::component::appearance::background(0xeef0f4)))
                                     .tooltip(move |window, cx| {
                                         Tooltip::new(hint.clone()).build(window, cx)
                                     })
@@ -90,15 +82,9 @@ impl BottomPanel {
                                     ))
                                     .child(instance.label.clone())
                                     .child(
-                                        div()
-                                            .id(("close-run-instance", index))
-                                            .w(px(16.))
-                                            .h(px(18.))
-                                            .flex()
-                                            .items_center()
-                                            .justify_center()
+                                        crate::gui::component::controls::icon_button(("close-run-instance", index), 16., 18.)
                                             .rounded_sm()
-                                            .hover(|style| style.bg(color(0xe7e9ed)))
+                                            .hover(|style| style.bg(crate::component::appearance::background(0xe7e9ed)))
                                             .child(icon(IconName::X, 11., 0xa8aeb9))
                                             .on_click(cx.listener(move |this, _, _window, cx| {
                                                 {
@@ -116,7 +102,7 @@ impl BottomPanel {
                                                 .right_0()
                                                 .h(px(3.))
                                                 .rounded(px(1.5))
-                                                .bg(color(0x4b83ff)),
+                                                .bg(crate::component::appearance::background(0x4b83ff)),
                                         )
                                     })
                                     .on_click(cx.listener(move |this, _, _window, _cx| {
@@ -138,7 +124,7 @@ impl BottomPanel {
                     .items_center()
                     .justify_center()
                     .rounded_sm()
-                    .hover(|style| style.bg(color(0xe7e9ed)))
+                    .hover(|style| style.bg(crate::component::appearance::background(0xe7e9ed)))
                     .child(icon(IconName::Minus, 15., MUTED))
                     .on_click(cx.listener(|this, _, _, cx| {
                         this.toggle_tool(ToolWindow::Run,cx)

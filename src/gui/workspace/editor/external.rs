@@ -31,7 +31,6 @@ impl Editor {
 }
 
 impl Editor {
-    pub(in crate::gui::workspace) const WHEEL_MAX_LINES: f32 = 3.;
     pub(in crate::gui::workspace) fn restore(
         &mut self,
         window: &mut Window,

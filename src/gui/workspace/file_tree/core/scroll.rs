@@ -1,5 +1,5 @@
 use crate::gui::workspace::file_tree::FileTree;
-use gpui_kit::{Context, ScrollDelta, ScrollWheelEvent, px};
+use gpui_kit::{Context, ScrollWheelEvent, px};
 
 impl FileTree {
     pub(in crate::gui::workspace) fn scroll_project_lines(
@@ -7,7 +7,7 @@ impl FileTree {
         event: &ScrollWheelEvent,
         cx: &mut Context<FileTree>,
     ) {
-        let Some(lines) = Self::vertical_wheel_lines(event) else {
+        let Some(lines) = crate::gui::component::scroll::vertical_wheel_lines(event) else {
             return;
         };
         let (handle, row_height) = {
@@ -42,16 +42,5 @@ impl FileTree {
                 "project tree vertical mouse wheel scrolled"
             );
         }
-    }
-
-    pub(in crate::gui::workspace) fn vertical_wheel_lines(event: &ScrollWheelEvent) -> Option<f32> {
-        let ScrollDelta::Lines(delta) = event.delta else {
-            return None;
-        };
-        // Keep precise touchpad gestures and horizontal wheels native.
-        if delta.x != 0. || delta.y == 0. || !delta.y.is_finite() {
-            return None;
-        }
-        Some(delta.y.clamp(-Self::WHEEL_MAX_LINES, Self::WHEEL_MAX_LINES))
     }
 }

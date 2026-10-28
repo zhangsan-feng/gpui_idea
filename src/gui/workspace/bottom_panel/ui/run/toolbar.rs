@@ -38,9 +38,9 @@ impl BottomPanel {
             .px(px(8.))
             .gap_0()
             .items_center()
-            .bg(color(RUN_SURFACE))
+            .bg(crate::component::appearance::background(RUN_SURFACE))
             .border_b_1()
-            .border_color(color(RUN_BORDER))
+            .border_color(crate::component::appearance::border(RUN_BORDER))
             .child(
                 self.run_button(
                     if snapshot.generation > 0 {
@@ -67,7 +67,7 @@ impl BottomPanel {
                 ToolbarAction::Stop,
                 cx,
             ))
-            .child(Self::run_separator(6.))
+            .child(crate::gui::component::panel::separator(18., 6., RUN_BORDER))
             .child(self.run_button(
                 IconName::ArrowDownToLine,
                 "scroll-run-to-end",
@@ -88,14 +88,6 @@ impl BottomPanel {
             ))
     }
 
-    fn run_separator(margin: f32) -> Div {
-        div()
-            .w(px(1.))
-            .h(px(18.))
-            .mx(px(margin))
-            .bg(color(RUN_BORDER))
-    }
-
     fn run_button(
         &self,
         symbol: IconName,
@@ -107,16 +99,12 @@ impl BottomPanel {
         cx: &mut Context<BottomPanel>,
     ) -> AnyElement {
         let rerun = id == "start-run" && symbol == IconName::RefreshCw;
-        div()
-            .id(id)
-            .w(px(24.))
-            .h(px(24.))
-            .flex()
-            .items_center()
-            .justify_center()
+        crate::gui::component::controls::icon_button(id, 24., 24.)
             .rounded(px(3.))
             .when(enabled, |button| {
-                button.cursor_pointer().hover(|s| s.bg(color(0xe8eaed)))
+                button
+                    .cursor_pointer()
+                    .hover(|s| s.bg(crate::component::appearance::background(0xe8eaed)))
             })
             .tooltip(move |window, cx| Tooltip::new(label).build(window, cx))
             .child(
@@ -141,7 +129,7 @@ impl BottomPanel {
                                 .right_0()
                                 .bottom_0()
                                 .size(px(8.))
-                                .bg(color(RUN_SURFACE))
+                                .bg(crate::component::appearance::background(RUN_SURFACE))
                                 .child(icon(
                                     IconName::Play,
                                     8.,

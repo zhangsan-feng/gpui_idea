@@ -15,17 +15,17 @@ impl WindowBar {
         }
         match action {
             ToolbarAction::OpenProject => self.open_project_window(
-                crate::gui::project_manager::ProjectWindowKind::Open,
+                crate::gui::project_manager_window::ProjectWindowKind::Open,
                 window,
                 cx,
             ),
             ToolbarAction::CreateProject => self.open_project_window(
-                crate::gui::project_manager::ProjectWindowKind::Create,
+                crate::gui::project_manager_window::ProjectWindowKind::Create,
                 window,
                 cx,
             ),
             ToolbarAction::ManageProjects => self.open_project_window(
-                crate::gui::project_manager::ProjectWindowKind::Manage,
+                crate::gui::project_manager_window::ProjectWindowKind::Manage,
                 window,
                 cx,
             ),

@@ -17,7 +17,7 @@ impl WindowBar {
         let selected = config.selected_configuration;
         let busy = config.loading || DATA_CONTEXT.project.run_sessions().starting;
         let entries = config.configurations.clone();
-        self.toolbar_button("run-configuration", cx)
+        crate::gui::component::controls::toolbar_button("run-configuration", cx)
             .max_w(px(210.))
             .tooltip("选择或编辑运行配置")
             .child(icon(IconName::CirclePlay, 14., 0xb9bdc5))
@@ -55,7 +55,7 @@ impl WindowBar {
                                 .gap(px(5.))
                                 .items_center()
                                 .rounded(px(3.))
-                                .bg(color(if selected == id { 0xd5e2ff } else { 0xffffff }))
+                                .bg(crate::component::appearance::background(if selected == id { 0xd5e2ff } else { 0xffffff }))
                                 .child(icon(
                                     IconName::CirclePlay,
                                     14.,
@@ -163,7 +163,7 @@ impl WindowBar {
             Vec::new()
         };
         let selected = config.selected_profile.clone();
-        self.toolbar_button("run-profile", cx)
+        crate::gui::component::controls::toolbar_button("run-profile", cx)
             .disabled(profiles.is_empty())
             .tooltip("工具链提供的运行 / 构建配置")
             .child(div().child(label))

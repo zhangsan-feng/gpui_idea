@@ -19,8 +19,8 @@ impl Editor {
             .flex_shrink_0()
             .items_start()
             .border_b_1()
-            .border_color(color(0xeeeef2))
-            .bg(color(EDITOR_BG))
+            .border_color(crate::component::appearance::border(0xeeeef2))
+            .bg(crate::component::appearance::background(EDITOR_BG))
             .child(
                 v_flex()
                     .h_full()
@@ -45,7 +45,9 @@ impl Editor {
                                                     .width(px(TAB_SCROLLBAR_HEIGHT))
                                                     .inset(px(0.))
                                                     .radius(px(0.))
-                                                    .bg(color(0x898989))
+                                                    .bg(crate::component::appearance::background(
+                                                        0x898989,
+                                                    ))
                                             })
                                     }),
                             ),
@@ -80,7 +82,7 @@ impl Editor {
                         .items_center()
                         .justify_center()
                         .rounded_sm()
-                        .hover(|style| style.bg(color(0xe8eaf0)))
+                        .hover(|style| style.bg(crate::component::appearance::background(0xe8eaf0)))
                         .tooltip(|window, cx| {
                             Tooltip::new("保存当前文件 (Ctrl+S)").build(window, cx)
                         })
@@ -140,32 +142,25 @@ impl Editor {
             .pr(px(6.))
             .gap(px(6.))
             .items_center()
-            .bg(color(if external_source { SOURCE_TAB_BG } else { EDITOR_BG }))
+            .bg(crate::component::appearance::background(if external_source { SOURCE_TAB_BG } else { EDITOR_BG }))
             .text_size(px(12.))
-            .text_color(color(text_color))
+            .text_color(crate::component::appearance::foreground(text_color))
             .cursor_pointer()
-            .hover(|style| style.bg(color(if external_source { SOURCE_TAB_HOVER } else { TAB_HOVER })))
+            .hover(|style| style.bg(crate::component::appearance::background(if external_source { SOURCE_TAB_HOVER } else { TAB_HOVER })))
             .tooltip(move |window, cx| Tooltip::new(tooltip_path.clone()).build(window, cx))
             .child(crate::component::project_icon::project_icon(file.relative_path(), false))
             .child(div().min_w_0().truncate().child(label.clone()))
-            .when(dirty, |tab| tab.child(div().text_color(color(ACCENT)).child("●")))
-            .when(saving, |tab| tab.child(div().text_color(color(MUTED)).child("保存中")))
-            .when(self.state.loading_files.contains(file), |tab| tab.child(div().text_color(color(MUTED)).child("打开中")))
+            .when(dirty, |tab| tab.child(div().text_color(crate::component::appearance::foreground(ACCENT)).child("●")))
+            .when(saving, |tab| tab.child(div().text_color(crate::component::appearance::foreground(MUTED)).child("保存中")))
+            .when(self.state.loading_files.contains(file), |tab| tab.child(div().text_color(crate::component::appearance::foreground(MUTED)).child("打开中")))
             .when(failed, |tab| tab.child(icon(IconName::CircleAlert, 13., 0xb42318)))
             .child(
-                div()
-                    .id(SharedString::from(format!("close-editor-tab-{path}")))
-                    .w(px(20.))
-                    .h(px(20.))
-                    .flex_shrink_0()
-                    .flex()
-                    .items_center()
-                    .justify_center()
+                crate::gui::component::controls::icon_button(SharedString::from(format!("close-editor-tab-{path}")), 20., 20.).flex_shrink_0()
                     .rounded_sm()
                     .when(!active, |button| {
                         button.invisible().group_hover(group_id, |style| style.visible())
                     })
-                    .hover(|style| style.bg(color(0xeaeaf0)))
+                    .hover(|style| style.bg(crate::component::appearance::background(0xeaeaf0)))
                     .tooltip(|window, cx| Tooltip::new("关闭文件").build(window, cx))
                     .child(icon(IconName::X, 12., TAB_INDICATOR))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
@@ -183,7 +178,7 @@ impl Editor {
                         .right(px(10.))
                         .h(px(3.))
                         .rounded_full()
-                        .bg(color(indicator_color)),
+                        .bg(crate::component::appearance::background(indicator_color)),
                 )
             })
             .on_click(cx.listener(move |this, _, window, cx| { {
@@ -193,7 +188,7 @@ impl Editor {
                 tracing::debug!(file = %drag.file.relative_path().display(), "editor tab drag started");
                 cx.new(|_| drag.clone())
             })
-            .drag_over::<DraggedEditorTab>(|style, _, _, _| style.bg(color(0xeeeef5)))
+            .drag_over::<DraggedEditorTab>(|style, _, _, _| style.bg(crate::component::appearance::background(0xeeeef5)))
             .on_drop(cx.listener(move |this, drag: &DraggedEditorTab, window, cx| { {
                 cx.stop_propagation();
                 this.move_editor_tab(&drag.file, &target_file, window, cx);
@@ -207,32 +202,25 @@ impl Editor {
 
 impl Render for DraggedEditorTab {
     fn render(&mut self, _: &mut Window, _: &mut Context<DraggedEditorTab>) -> impl IntoElement {
-        h_flex()
-            .h(px(36.))
-            .max_w(px(280.))
-            .px_3()
-            .gap_2()
-            .items_center()
-            .rounded_sm()
-            .border_1()
-            .border_color(color(ACCENT))
-            .bg(color(if self.external_source {
+        crate::gui::component::drag_preview::render(
+            36.,
+            12.,
+            crate::component::appearance::border(ACCENT),
+            crate::component::appearance::background(if self.external_source {
                 SOURCE_TAB_BG
             } else {
                 EDITOR_BG
-            }))
-            .shadow_md()
-            .font_family("Microsoft YaHei UI")
-            .text_size(px(12.))
-            .text_color(color(if self.external_source {
+            }),
+            crate::component::appearance::foreground(if self.external_source {
                 SOURCE_TAB_TEXT
             } else {
                 TAB_TEXT
-            }))
-            .child(crate::component::project_icon::project_icon(
-                self.file.relative_path(),
-                false,
-            ))
-            .child(div().min_w_0().truncate().child(self.label.clone()))
+            }),
+        )
+        .child(crate::component::project_icon::project_icon(
+            self.file.relative_path(),
+            false,
+        ))
+        .child(div().min_w_0().truncate().child(self.label.clone()))
     }
 }

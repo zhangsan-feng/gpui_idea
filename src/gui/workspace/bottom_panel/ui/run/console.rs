@@ -10,7 +10,7 @@ impl BottomPanel {
             .overflow_hidden()
             .pl(px(4.))
             .pt(px(3.))
-            .bg(color(EDITOR_BG))
+            .bg(crate::component::appearance::background(EDITOR_BG))
             .child(self.state.run_terminal.clone())
     }
 }

@@ -9,6 +9,14 @@ pub(super) fn cargo(
     manifest: &Path,
     selected: Option<&Path>,
 ) -> Result<RunConfiguration> {
+    resolve_cargo(root, manifest, selected, false)
+}
+
+pub(super) fn cargo_entry(root: &Path, manifest: &Path, file: &Path) -> Result<RunConfiguration> {
+    resolve_cargo(root, manifest, Some(file), true)
+}
+
+fn resolve_cargo(root: &Path, manifest: &Path, selected: Option<&Path>, strict: bool) -> Result<RunConfiguration> {
     let mut process = Command::new("cargo");
     crate::infrastructure::process_environment::sanitize(&mut process);
     #[cfg(windows)]
@@ -92,6 +100,11 @@ pub(super) fn cargo(
         .iter()
         .filter(|target| kind(target, "bin"))
         .collect();
+    if strict && !selected_target.is_some_and(|target| {
+        target["src_path"].as_str().and_then(|path| Path::new(path).canonicalize().ok()).as_deref() == selected
+    }) {
+        bail!("此 main.rs 不是 Cargo 可执行入口");
+    }
     let target = selected_target.or_else(|| {
         let default = package["default_run"].as_str().unwrap_or_default();
         bins.iter()

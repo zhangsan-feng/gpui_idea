@@ -54,3 +54,6 @@ windows-registry = "=0.6.1"
 
 [profile.dev]
 opt-level = 3
+
+[patch.crates-io]
+gpui-base = { path = "vendor/gpui-base" }

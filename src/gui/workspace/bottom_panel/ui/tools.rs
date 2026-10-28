@@ -9,15 +9,9 @@ impl BottomPanel {
         symbol: IconName,
         cx: &mut Context<BottomPanel>,
     ) -> Div {
-        h_flex()
-            .h(px(40.))
-            .flex_shrink_0()
+        crate::gui::component::panel::header(40., PANEL_BG, BORDER)
             .px_3()
             .gap_3()
-            .items_center()
-            .bg(color(PANEL_BG))
-            .border_b_1()
-            .border_color(color(BORDER))
             .child(div().font_weight(FontWeight(600.)).child(match tool {
                 ToolWindow::Statistics => "Statistic",
                 _ => tool.label(),
@@ -29,18 +23,14 @@ impl BottomPanel {
                     .gap_1()
                     .items_center()
                     .border_b_2()
-                    .border_color(color(ACCENT))
+                    .border_color(crate::component::appearance::border(ACCENT))
                     .child(icon(symbol, 14., MUTED))
                     .child(tab)
                     .child(
-                        div()
-                            .id("close-tool-tab")
-                            .w(px(18.))
-                            .h(px(18.))
-                            .flex()
-                            .items_center()
-                            .justify_center()
-                            .hover(|style| style.bg(color(0xe7e9ed)))
+                        crate::gui::component::controls::icon_button("close-tool-tab", 18., 18.)
+                            .hover(|style| {
+                                style.bg(crate::component::appearance::background(0xe7e9ed))
+                            })
                             .child(icon(IconName::X, 12., MUTED))
                             .on_click(
                                 cx.listener(move |this, _, _, cx| this.toggle_tool(tool, cx)),
@@ -49,15 +39,9 @@ impl BottomPanel {
             )
             .child(div().flex_1())
             .child(
-                div()
-                    .id("hide-tool-window")
-                    .w(px(26.))
-                    .h(px(26.))
-                    .flex()
-                    .items_center()
-                    .justify_center()
+                crate::gui::component::controls::icon_button("hide-tool-window", 26., 26.)
                     .cursor_pointer()
-                    .hover(|style| style.bg(color(0xe7e9ed)))
+                    .hover(|style| style.bg(crate::component::appearance::background(0xe7e9ed)))
                     .child(icon(IconName::Minus, 14., MUTED))
                     .on_click(cx.listener(move |this, _, _, cx| this.toggle_tool(tool, cx))),
             )

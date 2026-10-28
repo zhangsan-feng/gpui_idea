@@ -6,8 +6,6 @@ pub(crate) mod left_sidebar;
 pub(crate) mod right_sidebar;
 pub(crate) mod window_bar;
 
-mod run_editor;
-mod settings;
 mod ui;
 
 use gpui_kit::{AppContext as _, Context, IntoElement, Render, Window};
@@ -54,6 +52,14 @@ impl Render for Workspace {
         let started = std::time::Instant::now();
         let diagnostics = self.window_bar.read(cx).state.window_diagnostics.clone();
         let child = self.render_view(window, cx).into_any_element();
-        ui::diagnostics::MeasuredWorkspace::new("workspace", child, diagnostics, started)
+        crate::gui::component::measured_element::MeasuredElement::new(
+            child,
+            started,
+            move |times, window, cx| {
+                diagnostics
+                    .borrow_mut()
+                    .record("workspace", times, window, cx)
+            },
+        )
     }
 }

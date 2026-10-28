@@ -1,6 +1,5 @@
 use super::*;
 use crate::gui::workspace::left_sidebar::LeftSidebar;
-use gpui_kit::component::tooltip::Tooltip;
 impl LeftSidebar {
     pub(in crate::gui::workspace) fn render_activity_bar(
         &self,
@@ -13,9 +12,9 @@ impl LeftSidebar {
             .items_center()
             .gap_1()
             .py_2()
-            .bg(color(ACTIVITY_BG))
+            .bg(crate::component::appearance::background(ACTIVITY_BG))
             .border_r_1()
-            .border_color(color(BORDER))
+            .border_color(crate::component::appearance::border(BORDER))
             .child(self.activity_button(
                 IconName::Folder,
                 "project-tool",
@@ -87,47 +86,7 @@ impl LeftSidebar {
                     let snapshot = DATA_CONTEXT.terminal.snapshot(instance.id);
                     snapshot.generation > 0 && !snapshot.exited
                 });
-        div()
-            .id(id)
-            .relative()
-            .w(px(32.))
-            .h(px(32.))
-            .flex()
-            .items_center()
-            .justify_center()
-            .rounded_md()
-            .cursor_pointer()
-            .bg(color(if accented {
-                ACCENT
-            } else if selected {
-                0xdfe3e8
-            } else {
-                ACTIVITY_BG
-            }))
-            .hover(move |style| style.bg(color(if accented { 0x2866db } else { 0xe4e7eb })))
-            .tooltip(move |window, cx| Tooltip::new(label).build(window, cx))
-            .child(icon(
-                name,
-                18.,
-                if accented {
-                    0xffffff
-                } else if selected {
-                    TEXT
-                } else {
-                    MUTED
-                },
-            ))
-            .when(running, |button| {
-                button.child(
-                    div()
-                        .absolute()
-                        .right(px(3.))
-                        .top(px(3.))
-                        .size(px(6.))
-                        .rounded_full()
-                        .bg(color(0x59a869)),
-                )
-            })
+        crate::gui::component::activity_button::render(name, id, label, selected, accented, running)
             .on_click(cx.listener(move |this, _, _, _cx| {
                 if let Some(tool) = tool {
                     crate::event_bus::EVENT_BUS.gui_event.send(

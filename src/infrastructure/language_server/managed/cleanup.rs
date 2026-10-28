@@ -22,9 +22,8 @@ pub(in crate::infrastructure::language_server) fn clean_history() -> Result<()> 
     let resolved_root = root.canonicalize().context("无法定位 LSP 安装目录")?;
     // npm installations share a cache across server families. Hold every
     // installation slot so no background installer can use a cache we remove.
-    let slots = management::SERVERS
-        .iter()
-        .map(|(key, _, _)| update::slot(key))
+    let slots = super::super::languages::managed()
+        .map(|language| update::slot(language.key))
         .collect::<Vec<_>>();
     let mut guards = slots
         .iter()
@@ -32,12 +31,13 @@ pub(in crate::infrastructure::language_server) fn clean_history() -> Result<()> 
         .collect::<Vec<_>>();
     let removed_caches = clean_caches(&root, &resolved_root)?;
     let mut removed = 0;
-    for ((key, _, _), checked) in management::SERVERS.iter().zip(guards.iter_mut()) {
+    for (language, checked) in super::super::languages::managed().zip(guards.iter_mut()) {
+        let key = language.key;
         let mut versions = Vec::new();
         for entry in fs::read_dir(&root)? {
             let entry = entry?;
             let directory = entry.file_name().to_string_lossy().into_owned();
-            if directory != *key && !directory.starts_with(&format!("{key}--")) {
+            if directory != key && !directory.starts_with(&format!("{key}--")) {
                 continue;
             }
             let path = entry.path();

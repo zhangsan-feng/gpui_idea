@@ -87,15 +87,9 @@ pub(super) async fn complete(
                     Some(CompletionTextEdit::InsertAndReplace(edit)) => &edit.new_text,
                     None => item.insert_text.as_ref().unwrap_or(&item.label),
                 };
-                let Some(plain) = super::snippet::plain_text(source) else {
+                let Some(_) = super::snippet::parse(source) else {
                     return false;
                 };
-                match &mut item.text_edit {
-                    Some(CompletionTextEdit::Edit(edit)) => edit.new_text = plain,
-                    Some(CompletionTextEdit::InsertAndReplace(edit)) => edit.new_text = plain,
-                    None => item.insert_text = Some(plain),
-                }
-                item.insert_text_format = Some(lsp_types::InsertTextFormat::PLAIN_TEXT);
             }
             let candidate = item
                 .filter_text

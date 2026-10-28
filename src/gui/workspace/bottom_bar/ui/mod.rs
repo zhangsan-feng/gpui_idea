@@ -95,10 +95,10 @@ impl BottomBar {
             .gap_3()
             .px_2()
             .border_t_1()
-            .border_color(color(BORDER))
-            .bg(color(PANEL_BG))
+            .border_color(crate::component::appearance::border(BORDER))
+            .bg(crate::component::appearance::background(PANEL_BG))
             .text_size(px(11.))
-            .text_color(color(0x626a76))
+            .text_color(crate::component::appearance::foreground(0x626a76))
             .child(icon(IconName::Folder, 13., ACCENT))
             .child(div().child(if DATA_CONTEXT.has_project() {
                 DATA_CONTEXT
@@ -133,10 +133,10 @@ impl BottomBar {
                             .py_1()
                             .rounded_sm()
                             .cursor_pointer()
-                            .hover(|style| style.bg(color(0xe8eaf0)))
-                            .when(open, |indicator| indicator.bg(color(0xe8eaf0)))
-                            .text_color(color(lsp_color))
-                            .child(div().size(px(6.)).rounded_full().bg(color(lsp_color)))
+                            .hover(|style| style.bg(crate::component::appearance::background(0xe8eaf0)))
+                            .when(open, |indicator| indicator.bg(crate::component::appearance::background(0xe8eaf0)))
+                            .text_color(crate::component::appearance::foreground(lsp_color))
+                            .child(div().size(px(6.)).rounded_full().bg(crate::component::appearance::background(lsp_color)))
                             .child(lsp_label)
                             .when_some(install_detail, |indicator, detail| {
                                 indicator.child(div().max_w(px(240.)).truncate().child(detail))
@@ -181,7 +181,7 @@ impl BottomBar {
                 },
             )
             .when(!image, |bar| bar.child(div().child("4 spaces")))
-            .child(div().w(px(1.)).h(px(14.)).bg(color(BORDER)))
+            .child(div().w(px(1.)).h(px(14.)).bg(crate::component::appearance::background(BORDER)))
             .child(div().child("GPUI Kit"))
     }
 }

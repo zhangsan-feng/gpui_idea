@@ -1,4 +1,4 @@
-use super::{InstallContext, Installed, compatible, http, update};
+use super::{InstallContext, Installed, update};
 use anyhow::{Context, Result};
 use std::{
     fs::{self, File},
@@ -17,84 +17,8 @@ pub(in crate::infrastructure::language_server) fn download_server(
         context,
         || version(server, context),
         |stage, version| {
-            let (source, entry) = match server {
-                "rust-analyzer" => {
-                    let arch = architecture()?;
-                    let source = format!(
-                        "https://github.com/rust-lang/rust-analyzer/releases/download/{version}/rust-analyzer-{arch}-pc-windows-msvc.zip"
-                    );
-                    let archive = stage.join("release.zip");
-                    http::download(&source, &archive, context)?;
-                    extract_zip(&archive, stage, context)?;
-                    fs::remove_file(archive)?;
-                    (source, stage.join("rust-analyzer.exe"))
-                }
-                "taplo" => {
-                    let arch = architecture()?;
-                    let source = format!(
-                        "https://github.com/tamasfe/taplo/releases/download/{version}/taplo-windows-{arch}.gz"
-                    );
-                    let archive = stage.join("release.gz");
-                    http::download(&source, &archive, context)?;
-                    let entry = stage.join("taplo.exe");
-                    copy_limited(
-                        flate2::read::GzDecoder::new(File::open(&archive)?),
-                        &entry,
-                        context,
-                    )?;
-                    fs::remove_file(archive)?;
-                    (source, entry)
-                }
-                "marksman" => {
-                    anyhow::ensure!(
-                        std::env::consts::ARCH == "x86_64",
-                        "Marksman Windows 自动安装当前仅支持 x64"
-                    );
-                    let source = format!(
-                        "https://github.com/artempyanykh/marksman/releases/download/{version}/marksman.exe"
-                    );
-                    let entry = stage.join("marksman.exe");
-                    http::download(&source, &entry, context)?;
-                    (source, entry)
-                }
-                "jdtls" => {
-                    let base = format!("https://download.eclipse.org/jdtls/milestones/{version}/");
-                    let listing = http::text(&base)?;
-                    let pattern = regex::Regex::new(r"jdt-language-server-[\w.\-]+\.tar\.gz")?;
-                    let name = pattern
-                        .find(&listing)
-                        .context("Eclipse 发行目录缺少 JDT LS 压缩包")?
-                        .as_str();
-                    let source = format!("{base}{name}");
-                    let archive = stage.join("release.tar.gz");
-                    http::download(&source, &archive, context)?;
-                    extract_tar(&archive, stage, context)?;
-                    fs::remove_file(archive)?;
-                    anyhow::ensure!(
-                        stage.join("config_win/config.ini").is_file(),
-                        "JDT LS 缺少 Windows 配置"
-                    );
-                    let entry = fs::read_dir(stage.join("plugins"))?
-                        .filter_map(Result::ok)
-                        .map(|entry| entry.path())
-                        .find(|path| {
-                            path.file_name().is_some_and(|name| {
-                                let name = name.to_string_lossy();
-                                name.starts_with("org.eclipse.equinox.launcher_")
-                                    && name.ends_with(".jar")
-                            })
-                        })
-                        .context("JDT LS 缺少 launcher jar")?;
-                    let (_, current) = super::java_runtime()?;
-                    let required = super::java_requirement(stage)?;
-                    anyhow::ensure!(
-                        current >= required,
-                        "JDT LS {version} 要求 JDK {required}+，当前 Java {current}；请升级 JDK 后重试"
-                    );
-                    (source, entry)
-                }
-                _ => anyhow::bail!("未知服务器：{server}"),
-            };
+            let (source, entry) =
+                super::super::languages::download_release(server, stage, version, context)?;
             Ok(Installed {
                 entry: entry.strip_prefix(stage)?.to_owned(),
                 version: version.into(),
@@ -106,7 +30,7 @@ pub(in crate::infrastructure::language_server) fn download_server(
     Ok(binary.path)
 }
 
-fn architecture() -> Result<&'static str> {
+pub(in crate::infrastructure::language_server) fn architecture() -> Result<&'static str> {
     match std::env::consts::ARCH {
         "x86_64" => Ok("x86_64"),
         "aarch64" => Ok("aarch64"),
@@ -118,38 +42,7 @@ fn version(server: &str, context: &InstallContext) -> Result<String> {
     if let Some(version) = &context.requested_release {
         return Ok(version.clone());
     }
-    match server {
-        "rust-analyzer" => http::latest("rust-lang/rust-analyzer"),
-        "taplo" => http::latest("tamasfe/taplo"),
-        "marksman" => http::latest("artempyanykh/marksman"),
-        "jdtls" => {
-            let listing = http::text("https://download.eclipse.org/jdtls/milestones/")?;
-            let pattern = regex::Regex::new(r#"href=['"](?:[^'"?#]*/)?(\d+\.\d+\.\d+)/?['"]"#)?;
-            let mut versions = pattern
-                .captures_iter(&listing)
-                .filter_map(|capture| {
-                    let version = capture[1].to_owned();
-                    let parts = version
-                        .split('.')
-                        .map(str::parse::<u32>)
-                        .collect::<std::result::Result<Vec<_>, _>>()
-                        .ok()?;
-                    Some((parts, version))
-                })
-                .collect::<Vec<_>>();
-            versions.sort_by(|a, b| a.0.cmp(&b.0));
-            versions.dedup_by(|a, b| a.0 == b.0);
-            compatible::java(
-                &versions
-                    .into_iter()
-                    .map(|(_, version)| version)
-                    .collect::<Vec<_>>(),
-                super::java_runtime()?.1,
-                context,
-            )
-        }
-        _ => anyhow::bail!("未知服务器：{server}"),
-    }
+    super::super::languages::latest_release(server, context)
 }
 
 fn safe_path(path: &Path) -> Result<()> {
@@ -162,7 +55,11 @@ fn safe_path(path: &Path) -> Result<()> {
     Ok(())
 }
 
-fn copy_limited(input: impl Read, path: &Path, context: &InstallContext) -> Result<()> {
+pub(in crate::infrastructure::language_server) fn copy_limited(
+    input: impl Read,
+    path: &Path,
+    context: &InstallContext,
+) -> Result<()> {
     use std::io::Write;
     let mut input = input;
     let mut output = File::create_new(path)?;
@@ -181,7 +78,11 @@ fn copy_limited(input: impl Read, path: &Path, context: &InstallContext) -> Resu
     Ok(())
 }
 
-fn extract_zip(archive: &Path, stage: &Path, context: &InstallContext) -> Result<()> {
+pub(in crate::infrastructure::language_server) fn extract_zip(
+    archive: &Path,
+    stage: &Path,
+    context: &InstallContext,
+) -> Result<()> {
     context.progress("正在解压语言服务器…")?;
     let mut archive = zip::ZipArchive::new(File::open(archive)?)?;
     let mut size = 0u64;
@@ -204,7 +105,11 @@ fn extract_zip(archive: &Path, stage: &Path, context: &InstallContext) -> Result
     Ok(())
 }
 
-fn extract_tar(archive: &Path, stage: &Path, context: &InstallContext) -> Result<()> {
+pub(in crate::infrastructure::language_server) fn extract_tar(
+    archive: &Path,
+    stage: &Path,
+    context: &InstallContext,
+) -> Result<()> {
     context.progress("正在解压语言服务器…")?;
     let mut archive = tar::Archive::new(flate2::read::GzDecoder::new(File::open(archive)?));
     let mut size = 0u64;

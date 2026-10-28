@@ -27,19 +27,19 @@ pub(super) fn details(detail: &str) -> Div {
         .w(px(440.))
         .rounded_lg()
         .border_1()
-        .border_color(color(BORDER))
-        .bg(color(EDITOR_BG))
+        .border_color(crate::component::appearance::border(BORDER))
+        .bg(crate::component::appearance::background(EDITOR_BG))
         .shadow_lg()
         .text_size(px(12.))
         .line_height(px(18.))
-        .text_color(color(TEXT))
+        .text_color(crate::component::appearance::foreground(TEXT))
         .child(
             v_flex()
                 .flex_shrink_0()
                 .p_3()
                 .gap_2()
                 .border_b_1()
-                .border_color(color(BORDER))
+                .border_color(crate::component::appearance::border(BORDER))
                 .child(
                     h_flex()
                         .items_center()
@@ -50,7 +50,7 @@ pub(super) fn details(detail: &str) -> Div {
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .child("语言服务"),
                         )
-                        .child(div().text_size(px(11.)).text_color(color(MUTED)).child(
+                        .child(div().text_size(px(11.)).text_color(crate::component::appearance::foreground(MUTED)).child(
                             if installing > 0 {
                                 format!("安装中 {installing} · 已启动 {running}")
                             } else {
@@ -61,7 +61,7 @@ pub(super) fn details(detail: &str) -> Div {
                 .child(
                     div()
                         .text_size(px(11.))
-                        .text_color(color(MUTED))
+                        .text_color(crate::component::appearance::foreground(MUTED))
                         .child(detail.to_owned()),
                 ),
         )
@@ -69,7 +69,7 @@ pub(super) fn details(detail: &str) -> Div {
             panel.child(
                 div()
                     .p_4()
-                    .text_color(color(MUTED))
+                    .text_color(crate::component::appearance::foreground(MUTED))
                     .child("当前没有已启动的语言服务"),
             )
         })
@@ -115,7 +115,7 @@ fn server_card(server: LanguageServerInfo) -> Div {
         .gap_2()
         .rounded_md()
         .border_1()
-        .border_color(color(BORDER))
+        .border_color(crate::component::appearance::border(BORDER))
         .child(
             h_flex()
                 .items_start()
@@ -133,7 +133,7 @@ fn server_card(server: LanguageServerInfo) -> Div {
                         .child(
                             div()
                                 .text_size(px(11.))
-                                .text_color(color(MUTED))
+                                .text_color(crate::component::appearance::foreground(MUTED))
                                 .child(server.name),
                         ),
                 )
@@ -142,9 +142,9 @@ fn server_card(server: LanguageServerInfo) -> Div {
                         .flex_shrink_0()
                         .px_2()
                         .rounded_sm()
-                        .bg(color(phase_bg))
+                        .bg(crate::component::appearance::background(phase_bg))
                         .text_size(px(10.))
-                        .text_color(color(phase_color))
+                        .text_color(crate::component::appearance::foreground(phase_color))
                         .child(phase),
                 ),
         )
@@ -152,7 +152,7 @@ fn server_card(server: LanguageServerInfo) -> Div {
             card.child(
                 div()
                     .text_size(px(11.))
-                    .text_color(color(phase_color))
+                    .text_color(crate::component::appearance::foreground(phase_color))
                     .child(detail),
             )
         })
@@ -180,7 +180,7 @@ fn info_row(label: &'static str, value: String) -> Div {
             div()
                 .w(px(52.))
                 .flex_shrink_0()
-                .text_color(color(MUTED))
+                .text_color(crate::component::appearance::foreground(MUTED))
                 .child(label),
         )
         .child(div().min_w_0().flex_1().whitespace_normal().child(value))

@@ -4,6 +4,7 @@ mod external;
 mod formatting;
 mod inventory;
 mod launch;
+mod languages;
 mod managed;
 mod management;
 mod status;

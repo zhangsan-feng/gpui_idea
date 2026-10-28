@@ -9,7 +9,7 @@ impl Editor {
         pending_offset: &Cell<Point<Pixels>>,
         cx: &mut App,
     ) {
-        let Some(lines) = Self::vertical_wheel_lines(event) else {
+        let Some(lines) = crate::gui::component::scroll::vertical_wheel_lines(event) else {
             return;
         };
         let (line_height, min_y) = {
@@ -46,15 +46,5 @@ impl Editor {
                 "editor vertical mouse wheel scrolled"
             );
         }
-    }
-    pub(in crate::gui::workspace) fn vertical_wheel_lines(event: &ScrollWheelEvent) -> Option<f32> {
-        let ScrollDelta::Lines(delta) = event.delta else {
-            return None;
-        };
-        // Keep precise touchpad gestures and horizontal wheels native.
-        if delta.x != 0. || delta.y == 0. || !delta.y.is_finite() {
-            return None;
-        }
-        Some(delta.y.clamp(-Self::WHEEL_MAX_LINES, Self::WHEEL_MAX_LINES))
     }
 }

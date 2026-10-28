@@ -1,11 +1,11 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result};
 use std::{
     path::{Path, PathBuf},
     process::Stdio,
 };
 use tokio::process::{Child, Command};
 
-mod native;
+use super::languages;
 
 pub(super) fn family(language: &str) -> Result<&'static str> {
     crate::domain::language_server::family(language)
@@ -32,63 +32,11 @@ pub(super) fn spawn(
     preparation: &super::managed::InstallContext,
 ) -> Result<(Child, Option<String>, Option<PathBuf>)> {
     let family = family(language)?;
-    let mut installed_version = None;
-    let mut command = match family {
-        "rust" => Command::new(super::managed::rust_server(preparation)?),
-        "go" => Command::new(super::managed::go_server(preparation)?),
-        "toml" | "markdown" => {
-            let name = match family {
-                "toml" => "taplo",
-                "markdown" => "marksman",
-                _ => unreachable!(),
-            };
-            let program = super::managed::download_server(name, preparation)?;
-            let mut command = Command::new(program);
-            match family {
-                "toml" => {
-                    command.args(["lsp", "stdio"]);
-                }
-                "markdown" => {
-                    command.arg("server");
-                }
-                _ => {}
-            }
-            command
-        }
-        "java" => native::java(root, preparation)?,
-        "python" | "php" | "javascript" | "html" | "css" | "json" | "yaml" => {
-            let (package, binary) = match family {
-                "python" => ("pyright", "pyright-langserver"),
-                "php" => ("intelephense", "intelephense"),
-                "javascript" => ("typescript-language-server", "typescript-language-server"),
-                "html" => (
-                    "vscode-langservers-extracted",
-                    "vscode-html-language-server",
-                ),
-                "css" => ("vscode-langservers-extracted", "vscode-css-language-server"),
-                "json" => (
-                    "vscode-langservers-extracted",
-                    "vscode-json-language-server",
-                ),
-                "yaml" => ("yaml-language-server", "yaml-language-server"),
-                _ => unreachable!(),
-            };
-            let (command, version) = super::managed::node_server(package, binary, preparation)?;
-            if family == "php" {
-                let storage = crate::infrastructure::paths::get()
-                    .data
-                    .join("lsp/intelephense");
-                for directory in ["storage", "global"] {
-                    std::fs::create_dir_all(storage.join(directory))?;
-                }
-            }
-            installed_version = version;
-            command
-        }
-        _ => bail!("不支持的语言服务：{family}"),
-    };
-    let version_program = matches!(family, "rust" | "go" | "toml" | "markdown")
-        .then(|| PathBuf::from(command.as_std().get_program()));
+    let adapter = languages::get(family)?;
+    let (mut command, installed_version) = (adapter.prepare)(root, preparation)?;
+    let version_program = adapter
+        .native_version
+        .map(|_| PathBuf::from(command.as_std().get_program()));
     crate::infrastructure::process_environment::sanitize(command.as_std_mut());
     preparation.before_launch()?;
     preparation.launcher(
@@ -132,45 +80,21 @@ pub(super) async fn native_version(program: PathBuf, argument: &str) -> Option<S
 }
 
 fn markers(language: &str) -> &'static [&'static str] {
-    match language {
-        "rust" => &["Cargo.toml"],
-        "go" => &["go.work", "go.mod"],
-        "php" => &["composer.json", "composer.lock", ".phpactor.json"],
-        "python" => &[
-            "pyrightconfig.json",
-            "pyproject.toml",
-            "setup.py",
-            "requirements.txt",
-        ],
-        "javascript" => &["tsconfig.json", "jsconfig.json", "package.json"],
-        "java" => &[
-            "pom.xml",
-            "build.gradle",
-            "build.gradle.kts",
-            "settings.gradle",
-            "settings.gradle.kts",
-            ".project",
-        ],
-        "toml" => &["taplo.toml", ".taplo.toml", "Cargo.toml", "pyproject.toml"],
-        "yaml" => &[
-            ".yamllint",
-            ".yamllint.yaml",
-            "package.json",
-            "pyproject.toml",
-        ],
-        "markdown" => &[".marksman.toml", "mkdocs.yml", "package.json"],
-        "html" | "css" | "json" => &["package.json"],
-        _ => &[],
-    }
+    languages::get(language)
+        .map(|language| language.markers)
+        .unwrap_or_default()
 }
 
 pub(super) fn document_root(workspace: &Path, path: &Path, language: &str) -> PathBuf {
-    if language == "go" {
+    for marker in languages::get(language)
+        .map(|language| language.workspace_markers)
+        .unwrap_or_default()
+    {
         for directory in path.parent().into_iter().flat_map(Path::ancestors) {
             if !directory.starts_with(workspace) {
                 break;
             }
-            if directory.join("go.work").is_file() {
+            if directory.join(marker).is_file() {
                 return directory.to_owned();
             }
         }
@@ -193,20 +117,14 @@ pub(super) fn document_root(workspace: &Path, path: &Path, language: &str) -> Pa
 }
 
 pub(super) fn workspace_language(root: &Path) -> Option<&'static str> {
-    [
-        "rust",
-        "go",
-        "python",
-        "php",
-        "javascript",
-        "java",
-        "toml",
-        "markdown",
-    ]
-    .into_iter()
-    .find(|language| {
-        markers(language)
-            .iter()
-            .any(|marker| root.join(marker).is_file())
-    })
+    languages::ALL
+        .iter()
+        .filter(|language| language.detect_workspace)
+        .find(|language| {
+            language
+                .markers
+                .iter()
+                .any(|marker| root.join(marker).is_file())
+        })
+        .map(|language| language.family)
 }

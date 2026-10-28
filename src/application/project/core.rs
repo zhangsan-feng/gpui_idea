@@ -4,6 +4,7 @@ mod file_tree;
 mod run;
 mod run_configurations;
 mod run_sessions;
+mod run_file;
 
 use super::ProjectService;
 use crate::application::APPLICATION;

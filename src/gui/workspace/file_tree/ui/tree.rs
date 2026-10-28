@@ -146,12 +146,7 @@ impl FileTree {
                     ))
                 },
             ))
-            .child(project_entry_icon(
-                &path,
-                entry.is_directory,
-                expanded,
-                palette,
-            ))
+            .child(project_entry_icon(&path, entry.is_directory))
             .child(div().min_w_0().truncate().child(entry.name.clone()))
             .when(entry.is_link, |row| {
                 row.child(div().text_color(palette.muted).child("链接"))

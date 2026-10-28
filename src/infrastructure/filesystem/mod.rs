@@ -2,6 +2,7 @@ mod core;
 mod directory;
 mod document;
 mod external;
+mod statistics;
 mod watcher;
 pub(crate) use watcher::{FileSubscription, LocalChangeGuard};
 

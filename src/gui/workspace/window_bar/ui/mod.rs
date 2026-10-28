@@ -6,6 +6,7 @@ use gpui_kit::component::Disableable as _;
 
 mod controls;
 mod menus;
+mod project_menu;
 mod run_action;
 
 impl WindowBar {
@@ -22,8 +23,8 @@ impl WindowBar {
             .items_center()
             .gap(px(2.))
             .pl(px(8.))
-            .bg(color(TOOLBAR))
-            .text_color(color(0xdfe1e5))
+            .bg(crate::component::appearance::background(TOOLBAR))
+            .text_color(crate::component::appearance::foreground(0xdfe1e5))
             .child(
                 img(crate::component::assets::APP_ICON)
                     .size(px(20.))

@@ -37,7 +37,7 @@ pub(super) fn existing(key: &str) -> Option<Binary> {
 
 // Versioned directories keep a running server usable while a new release installs.
 // A failed check/download never replaces the previous complete installation.
-pub(super) fn ensure(
+pub(in crate::infrastructure::language_server) fn ensure(
     key: &str,
     label: &str,
     context: &InstallContext,
@@ -158,33 +158,9 @@ pub(in crate::infrastructure::language_server) fn refresh(
     // Background maintenance publishes inventory details without overwriting a
     // running session's Ready/Indexing/Warming status.
     let status = crate::infrastructure::language_server::status::StatusRegistry::new().session();
-    for (key, family, package, bin) in [
-        ("rust-analyzer", "rust", "", ""),
-        ("taplo", "toml", "", ""),
-        ("marksman", "markdown", "", ""),
-        ("jdtls", "java", "", ""),
-        ("gopls", "go", "", ""),
-        ("lsp-python", "python", "pyright", "pyright-langserver"),
-        ("lsp-php", "php", "intelephense", "intelephense"),
-        (
-            "lsp-typescript",
-            "javascript",
-            "typescript-language-server",
-            "typescript-language-server",
-        ),
-        (
-            "lsp-web",
-            "html",
-            "vscode-langservers-extracted",
-            "vscode-html-language-server",
-        ),
-        (
-            "lsp-yaml",
-            "yaml",
-            "yaml-language-server",
-            "yaml-language-server",
-        ),
-    ] {
+    for language in super::super::languages::managed() {
+        let key = language.key;
+        let family = language.family;
         if stopping.load(std::sync::atomic::Ordering::Acquire) {
             break;
         }
@@ -203,11 +179,7 @@ pub(in crate::infrastructure::language_server) fn refresh(
             inventory.clone(),
             registration.id,
         );
-        let result = match key {
-            "gopls" => super::go_server(&context).map(|_| ()),
-            _ if !package.is_empty() => super::node_server(package, bin, &context).map(|_| ()),
-            _ => super::download_server(key, &context).map(|_| ()),
-        };
+        let result = (language.install)(&context);
         if let Err(error) = result {
             tracing::warn!(key, error = %format!("{error:#}"), "Startup LSP update failed");
             registration.failed(&error);

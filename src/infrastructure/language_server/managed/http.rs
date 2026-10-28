@@ -7,7 +7,7 @@ use std::{
     time::{Duration, Instant},
 };
 
-pub(super) fn client() -> Result<reqwest::blocking::Client> {
+pub(in crate::infrastructure::language_server) fn client() -> Result<reqwest::blocking::Client> {
     super::network::require_online()?;
     Ok(crate::infrastructure::INFRASTRUCTURE
         .proxy
@@ -22,11 +22,14 @@ pub(super) fn client() -> Result<reqwest::blocking::Client> {
         .build()?)
 }
 
-pub(super) fn text(url: &str) -> Result<String> {
+pub(in crate::infrastructure::language_server) fn text(url: &str) -> Result<String> {
     read_text(url, 4 * 1024 * 1024, "*/*")
 }
 
-pub(super) fn text_limit(url: &str, limit: u64) -> Result<String> {
+pub(in crate::infrastructure::language_server) fn text_limit(
+    url: &str,
+    limit: u64,
+) -> Result<String> {
     read_text(url, limit, "application/vnd.npm.install-v1+json")
 }
 
@@ -43,7 +46,7 @@ fn read_text(url: &str, limit: u64, accept: &str) -> Result<String> {
     Ok(String::from_utf8(bytes)?)
 }
 
-pub(super) fn latest(repo: &str) -> Result<String> {
+pub(in crate::infrastructure::language_server) fn latest(repo: &str) -> Result<String> {
     let response = client()?
         .get(format!("https://github.com/{repo}/releases/latest"))
         .timeout(Duration::from_secs(20))
@@ -65,7 +68,11 @@ pub(super) fn latest(repo: &str) -> Result<String> {
     Ok(tag)
 }
 
-pub(super) fn download(url: &str, path: &Path, context: &InstallContext) -> Result<()> {
+pub(in crate::infrastructure::language_server) fn download(
+    url: &str,
+    path: &Path,
+    context: &InstallContext,
+) -> Result<()> {
     tracing::info!(url, "Downloading LSP release with reqwest");
     let mut response = client()?.get(url).send()?.error_for_status()?;
     let total = response.content_length();

@@ -11,7 +11,7 @@ use std::{
 
 static SEQUENCE: AtomicU64 = AtomicU64::new(0);
 
-pub(super) fn root() -> PathBuf {
+pub(in crate::infrastructure::language_server) fn root() -> PathBuf {
     crate::infrastructure::paths::get().tools.join("managed")
 }
 
@@ -123,11 +123,19 @@ impl Drop for Staging {
     }
 }
 
-pub(super) fn run(command: Command, context: &InstallContext, label: &str) -> Result<PathBuf> {
+pub(in crate::infrastructure::language_server) fn run(
+    command: Command,
+    context: &InstallContext,
+    label: &str,
+) -> Result<PathBuf> {
     run_output(command, context, label, false)
 }
 
-pub(super) fn capture(command: Command, context: &InstallContext, label: &str) -> Result<PathBuf> {
+pub(in crate::infrastructure::language_server) fn capture(
+    command: Command,
+    context: &InstallContext,
+    label: &str,
+) -> Result<PathBuf> {
     run_output(command, context, label, true)
 }
 

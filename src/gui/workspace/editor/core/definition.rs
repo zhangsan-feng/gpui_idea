@@ -225,7 +225,7 @@ impl Editor {
                         .gap_1()
                         .rounded_sm()
                         .cursor_pointer()
-                        .hover(|row| row.bg(rgb(0xe8eefb)))
+                        .hover(|row| row.bg(crate::component::appearance::background(0xe8eefb)))
                         .child(div().truncate().child(format!(
                             "{}:{}:{}",
                             target.path.display(),
@@ -235,9 +235,9 @@ impl Editor {
                         .child(
                             div()
                                 .truncate()
-                                .font_family("Cascadia Mono")
+                                .font_family(crate::component::appearance::editor_font())
                                 .text_size(px(12.))
-                                .text_color(rgb(0x737b87))
+                                .text_color(crate::component::appearance::foreground(0x737b87))
                                 .child(target.preview.clone()),
                         )
                         .on_click(move |_, window, cx| {

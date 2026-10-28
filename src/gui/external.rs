@@ -8,6 +8,7 @@ use gpui_kit::{
 
 pub fn open_workspace(cx: &mut App) -> Result<()> {
     crate::component::code_editor::init(cx)?;
+    crate::component::appearance::apply(cx);
     crate::infrastructure::logging::log_memory("highlighting_initialized");
     tracing::info!("main window opening: title=gpui_idea");
     let minimum_size = size(px(1200.), px(700.));

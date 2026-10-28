@@ -27,7 +27,7 @@ impl FileTree {
             .gap_1()
             .items_center()
             .child(div().w(px(13.)).flex_shrink_0())
-            .child(project_entry_icon(&path, edit.is_directory, false, palette))
+            .child(project_entry_icon(&path, edit.is_directory))
             .child(
                 div()
                     .id("inline-project-file-input")

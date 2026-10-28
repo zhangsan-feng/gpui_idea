@@ -61,6 +61,4 @@ impl FileTree {
     }
 }
 
-impl FileTree {
-    pub(in crate::gui::workspace) const WHEEL_MAX_LINES: f32 = 3.;
-}
+impl FileTree {}

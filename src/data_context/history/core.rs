@@ -10,6 +10,6 @@ impl HistoryContext {
             .lock()
             .unwrap_or_else(|error| error.into_inner()) = Arc::new(history);
         crate::data_context::DATA_CONTEXT
-            .notify_gui_refresh(&[GuiComponent::ProjectManager, GuiComponent::WindowBar]);
+            .notify_gui_refresh(&[GuiComponent::ProjectManagerWindow, GuiComponent::WindowBar]);
     }
 }

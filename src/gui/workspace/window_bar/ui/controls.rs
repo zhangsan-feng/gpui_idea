@@ -1,25 +1,8 @@
 use super::*;
 use crate::gui::workspace::ToolbarAction;
 use crate::gui::workspace::window_bar::WindowBar;
-use gpui_kit::component::button::{Button, ButtonCustomVariant, ButtonVariants as _};
 
 impl WindowBar {
-    pub(super) fn toolbar_button(&self, id: &'static str, cx: &Context<WindowBar>) -> Button {
-        Button::new(id)
-            // Button owns its hover/active handlers; configure their colors via the variant.
-            .custom(
-                ButtonCustomVariant::new(cx)
-                    .foreground(color(0xdfe1e5))
-                    .hover(color(TOOLBAR_HOVER))
-                    .active(color(0x454a54)),
-            )
-            .h(px(30.))
-            .px(px(6.))
-            .rounded(px(4.))
-            .text_size(px(13.))
-            .text_color(color(0xdfe1e5))
-    }
-
     pub(super) fn top_icon(
         &self,
         name: IconName,
@@ -42,7 +25,7 @@ impl WindowBar {
                 }),
             }
         };
-        self.toolbar_button(id, cx)
+        crate::gui::component::controls::toolbar_button(id, cx)
             .w(px(if matches!(id, "back" | "forward") {
                 40.
             } else {
@@ -70,29 +53,17 @@ impl WindowBar {
         } else {
             WindowControlArea::Max
         };
-        div()
-            .id(id)
-            .w(px(38.))
-            .h(px(40.))
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_color(color(0xd4d7dd))
-            .hover(|style| style.bg(color(TOOLBAR_HOVER)))
+        crate::gui::component::controls::icon_button(id, 38., 40.)
+            .text_color(crate::component::appearance::foreground(0xd4d7dd))
+            .hover(|style| style.bg(crate::component::appearance::background(TOOLBAR_HOVER)))
             .window_control_area(area)
             .child(icon(name, 12., 0xd4d7dd))
     }
 
     pub(super) fn close_window_control(&self, cx: &Context<WindowBar>) -> impl IntoElement {
-        div()
-            .id("close-window")
-            .w(px(42.))
-            .h(px(40.))
-            .flex()
-            .items_center()
-            .justify_center()
-            .text_color(color(0xd4d7dd))
-            .hover(|style| style.bg(color(0xc42b1c)))
+        crate::gui::component::controls::icon_button("close-window", 42., 40.)
+            .text_color(crate::component::appearance::foreground(0xd4d7dd))
+            .hover(|style| style.bg(crate::component::appearance::background(0xc42b1c)))
             .on_click(cx.listener(|this, _, window, cx| {
                 tracing::info!("main window custom close requested");
                 this.request_close_core(window, cx);

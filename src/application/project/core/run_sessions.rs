@@ -32,9 +32,15 @@ impl ProjectService {
         &self,
         action: RunAction,
         target: Option<TerminalId>,
+        configuration_id: Option<u64>,
     ) -> Result<()> {
         let _execution = self.run_executions.lock().await;
         let mut configuration = (*DATA_CONTEXT.project.run_configuration()).clone();
+        if let Some(id) = configuration_id {
+            let saved = configuration.configurations.iter().find(|saved| saved.id == id)
+                .cloned().ok_or_else(|| anyhow::anyhow!("运行配置已删除"))?;
+            Self::load_saved_run_configuration(&mut configuration, &saved);
+        }
         if let Some(target) = target {
             let sessions = DATA_CONTEXT.project.run_sessions();
             let instance = sessions
@@ -218,7 +224,7 @@ impl ProjectService {
         &self,
         id: TerminalId,
     ) -> Result<()> {
-        self.execute_run_instances(RunAction::Run, Some(id)).await
+        self.execute_run_instances(RunAction::Run, Some(id), None).await
     }
 
     pub(in crate::application::project) async fn close_run_instance_core(
