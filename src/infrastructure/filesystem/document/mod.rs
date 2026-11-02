@@ -1,6 +1,6 @@
 mod core;
 mod external;
-use crate::domain::document::DocumentSnapshot;
+use crate::domain::document::DocumentDataContextSnapshot;
 pub use external::{read, save};
 
 const BUFFER_SIZE: usize = 64 * 1024;
@@ -18,6 +18,6 @@ struct TextDecoder {
 }
 
 pub struct LoadedFile {
-    pub document: DocumentSnapshot,
+    pub document: DocumentDataContextSnapshot,
     pub initial_text: String,
 }

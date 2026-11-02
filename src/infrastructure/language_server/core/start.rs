@@ -127,7 +127,9 @@ impl Session {
             sync_kind: 1,
             completion_supported: false,
             definition_supported: false,
+            highlight_supported: false,
             formatting_supported: false,
+            file_run_supported: false,
             documents: HashMap::new(),
             readiness,
             rust: family == "rust",
@@ -135,7 +137,7 @@ impl Session {
             runtime,
             warmed: HashSet::new(),
         };
-        let initialization_options = configuration::initialization_options(family);
+        let initialization_options = configuration::initialization_options(family, root);
         let initialized = session.request("initialize", json!({
             "processId": std::process::id(), "clientInfo": {"name":"gpui-idea"},
             "rootUri": root_uri, "workspaceFolders": workspace_folders,
@@ -146,6 +148,7 @@ impl Session {
                     "completion":{"completionItem":{"snippetSupport":true,"insertReplaceSupport":true}},
                     "definition":{"linkSupport":true},"synchronization":{"didSave":true},
                     "formatting":{"dynamicRegistration":false},
+                    "documentHighlight":{"dynamicRegistration":false},
                     "semanticTokens":{
                         "requests":{"full":true},"formats":["relative"],
                         "tokenTypes":["namespace","type","struct","variable","function","method","macro","keyword","comment","string","number","operator"],
@@ -185,11 +188,24 @@ impl Session {
         };
         session.completion_supported = supports("completionProvider");
         session.definition_supported = supports("definitionProvider");
+        session.highlight_supported = supports("documentHighlightProvider");
         session.formatting_supported = supports("documentFormattingProvider");
+        session.file_run_supported = super::super::languages::get(family)?
+            .file_run
+            .as_ref()
+            .and_then(|support| support.server.as_ref())
+            .is_some_and(|server| {
+                capabilities
+                    .pointer(server.capability)
+                    .is_some_and(|value| !value.is_null() && value != &Value::Bool(false))
+            });
+        tracing::info!(target: "gpui_idea::infrastructure::language_server::manager", family,
+            server_file_run = session.file_run_supported, "LSP file run capability negotiated");
         tracing::debug!(
             family,
             completion = session.completion_supported,
             definition = session.definition_supported,
+            document_highlight = session.highlight_supported,
             formatting = session.formatting_supported,
             sync_kind = session.sync_kind,
             "LSP capabilities negotiated"

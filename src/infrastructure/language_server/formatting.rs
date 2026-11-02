@@ -1,4 +1,4 @@
-use super::{LanguageServers, core, launch};
+use super::{LanguageServers, core};
 use anyhow::{Context as _, Result};
 use std::{path::PathBuf, sync::atomic::Ordering, time::Duration};
 use tokio::time::{Instant, timeout_at};
@@ -12,25 +12,11 @@ impl LanguageServers {
         language: &'static str,
     ) -> Result<Vec<lsp_types::TextEdit>> {
         let deadline = Instant::now() + Duration::from_secs(15);
-        let family = launch::family(language)?;
-        let source = path.clone();
-        let root = timeout_at(
-            deadline,
-            tokio::task::spawn_blocking(move || launch::document_root(&root, &source, family)),
-        )
-        .await
-        .context("格式化等待超时")??;
-        anyhow::ensure!(!self.stopping.load(Ordering::Acquire), "语言服务正在关闭");
-        let sessions = timeout_at(deadline, self.sessions.lock())
+        let family = Self::document_family(&path, language)?;
+        // Saving only looks up an existing session; it never installs or starts one.
+        let cell = timeout_at(deadline, self.session_slot(root, family, false))
             .await
-            .context("格式化等待超时")?;
-        // File opening owns server startup/installation. Saving must never
-        // initiate an installation or wait indefinitely for a warming session.
-        let cell = sessions
-            .get(&(root, family))
-            .cloned()
-            .context("语言服务尚未准备好")?;
-        drop(sessions);
+            .context("格式化等待超时")??;
         let mut changes = cell.generation.subscribe();
         let mut session = tokio::select! {
             session = timeout_at(deadline, cell.session.lock()) => session.context("格式化等待超时")?,

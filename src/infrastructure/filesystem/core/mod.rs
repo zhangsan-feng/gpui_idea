@@ -22,7 +22,9 @@ mod search;
 pub(super) use content_search::search_content;
 pub(super) use search::search_files;
 mod run_arguments;
-mod run_configuration;
+pub(in crate::infrastructure) mod run_configuration;
 pub(super) use run_arguments::prepare_run_command;
 pub(super) use run_configuration::resolve as run_configuration;
-pub(super) use run_configuration::{runnable as file_runnable, resolve_file as file_run_configuration};
+pub(super) use run_configuration::{
+    resolve_file as file_run_configuration, runnable as file_runnable,
+};

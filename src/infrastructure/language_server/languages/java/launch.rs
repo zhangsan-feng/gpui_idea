@@ -1,8 +1,5 @@
 use anyhow::{Context, Result};
-use std::{
-    hash::{Hash, Hasher},
-    path::Path,
-};
+use std::path::Path;
 use tokio::process::Command;
 
 // Run JDT LS through Java directly, avoiding platform-specific wrapper scripts.
@@ -35,13 +32,12 @@ pub(in crate::infrastructure::language_server) fn command(
         "JDT LS 配置目录不存在：{}",
         config.display()
     );
-    let mut hash = std::collections::hash_map::DefaultHasher::new();
-    root.hash(&mut hash);
-    let state = crate::infrastructure::paths::get()
-        .data
-        .join("lsp/jdtls")
-        .join(std::process::id().to_string())
-        .join(format!("{:016x}", hash.finish()));
+    let state = crate::infrastructure::paths::project_data_directory(
+        &crate::infrastructure::paths::get().data,
+        root,
+    )
+    .join("lsp/jdtls")
+    .join(std::process::id().to_string());
     std::fs::create_dir_all(&state)?;
     let writable_config = state.join("config");
     std::fs::create_dir_all(&writable_config)?;

@@ -14,7 +14,7 @@ pub struct TextFormat {
 }
 
 #[derive(Clone)]
-pub struct DocumentSnapshot {
+pub struct DocumentDataContextSnapshot {
     pub path: PathBuf,
     pub scope_root: PathBuf,
     pub text: Rope,
@@ -26,7 +26,7 @@ pub struct DocumentSnapshot {
     pub disk_bytes: Arc<[u8]>,
     pub format: TextFormat,
 }
-impl DocumentSnapshot {
+impl DocumentDataContextSnapshot {
     pub fn dirty(&self) -> bool {
         self.revision != self.saved_revision
     }

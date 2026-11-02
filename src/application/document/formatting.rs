@@ -10,7 +10,7 @@ impl DocumentService {
         path: &Path,
         automatic: bool,
     ) -> Option<(u64, ropey::Rope)> {
-        if !DATA_CONTEXT.settings.get().auto_format {
+        if !DATA_CONTEXT.settings.snapshot().general.auto_format {
             return None;
         }
         let snapshot = DATA_CONTEXT.documents.snapshot(path)?;

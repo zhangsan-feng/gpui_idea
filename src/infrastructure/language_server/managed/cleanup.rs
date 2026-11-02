@@ -14,6 +14,70 @@ struct Version {
     modified: Option<SystemTime>,
 }
 
+pub(in crate::infrastructure::language_server) fn version_in_use(
+    path: &Path,
+    servers: &[crate::domain::language_server::LanguageServerInfo],
+) -> bool {
+    let Ok(path) = path.canonicalize() else {
+        return false;
+    };
+    servers.iter().any(|server| {
+        server.phase != crate::domain::language_server::LanguageServerPhase::Failed
+            && (server.install_directory.as_ref().is_some_and(|directory| {
+                directory
+                    .canonicalize()
+                    .is_ok_and(|directory| directory == path)
+            }) || server.executable.as_ref().is_some_and(|executable| {
+                executable
+                    .canonicalize()
+                    .is_ok_and(|executable| executable.starts_with(&path))
+            }))
+    })
+}
+
+pub(in crate::infrastructure::language_server) fn remove_version(
+    key: &str,
+    directory: &str,
+    inventory: &tokio::sync::watch::Sender<Vec<crate::domain::language_server::LanguageServerInfo>>,
+) -> Result<()> {
+    management::validate_key(key)?;
+    let slot = update::slot(key);
+    let mut checked = slot.lock().unwrap_or_else(|error| error.into_inner());
+    management::selected(key, directory)?;
+    let root = core::root()
+        .canonicalize()
+        .context("无法定位 LSP 安装目录")?;
+    let path = root.join(directory);
+    ensure!(
+        is_directory(&fs::symlink_metadata(&path)?),
+        "服务器版本不是普通目录，未删除"
+    );
+    let resolved = path.canonicalize()?;
+    ensure!(
+        resolved.parent() == Some(root.as_path()),
+        "服务器版本目录超出安装目录，未删除"
+    );
+    ensure!(
+        !version_in_use(&resolved, &inventory.borrow()),
+        "此版本正在使用，请关闭使用它的项目后删除"
+    );
+    let pinned = management::pin(key)?.as_deref() == Some(directory);
+    tracing::info!(key, directory, "Removing selected LSP version");
+    // A partial filesystem failure must not leave a stale cached binary selected.
+    *checked = None;
+    make_removable(&resolved)
+        .and_then(|()| fs::remove_dir_all(&resolved))
+        .with_context(|| {
+            format!("无法删除版本 {directory}；文件可能被其他项目占用，请关闭后刷新列表重试")
+        })?;
+    if pinned {
+        management::save_pin(key, &None)
+            .context("版本已删除，但清除固定选择失败，请恢复自动更新")?;
+    }
+    tracing::info!(key, directory, pinned, "Selected LSP version removed");
+    Ok(())
+}
+
 pub(in crate::infrastructure::language_server) fn clean_history() -> Result<()> {
     let root = core::root();
     if !root.try_exists()? {

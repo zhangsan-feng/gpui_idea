@@ -1,13 +1,13 @@
 use super::common::*;
-use crate::domain::run::RunConfiguration;
+use crate::domain::run::RunConfigurationDataContextSnapshot;
 use std::path::Path;
 
-pub(super) fn resolve(
+pub(in crate::infrastructure) fn resolve(
     directory: &Path,
     root: &Path,
     file: &Path,
     extension: &str,
-) -> RunConfiguration {
+) -> RunConfigurationDataContextSnapshot {
     let file_arg = quote(file);
     let (label, command, build, debug) = match extension {
         "java" => ("Java", format!("java {file_arg}"), None, None),

@@ -1,6 +1,6 @@
 use super::super::ProjectService;
 use crate::{
-    data_context::DATA_CONTEXT, domain::project::ContentSearchSnapshot,
+    data_context::DATA_CONTEXT, domain::project::ContentSearchDataContextSnapshot,
     infrastructure::INFRASTRUCTURE,
 };
 use anyhow::{Result, bail};
@@ -10,7 +10,9 @@ impl ProjectService {
         &self,
         query: String,
         request: u64,
-    ) -> Result<()> {
+    ) -> Result<ContentSearchDataContextSnapshot> {
+        let started = std::time::Instant::now();
+        tracing::info!(request, query_len = query.len(), "content search started");
         if query.len() > 1024 {
             bail!("搜索文字过长");
         }
@@ -22,13 +24,20 @@ impl ProjectService {
         {
             Ok(mut snapshot) => {
                 snapshot.request = request;
-                DATA_CONTEXT.project.set_content_search(snapshot);
-                Ok(())
+                tracing::info!(
+                    request,
+                    matches = snapshot.matches.len(),
+                    truncated = snapshot.truncated,
+                    elapsed_ms = started.elapsed().as_millis(),
+                    "content search completed"
+                );
+                DATA_CONTEXT.project.set_content_search(snapshot.clone());
+                Ok(snapshot)
             }
             Err(error) => {
                 DATA_CONTEXT
                     .project
-                    .set_content_search(ContentSearchSnapshot {
+                    .set_content_search(ContentSearchDataContextSnapshot {
                         request,
                         error: Some(format!("{error:#}")),
                         ..Default::default()

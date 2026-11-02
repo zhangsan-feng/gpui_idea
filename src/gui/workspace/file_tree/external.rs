@@ -30,28 +30,9 @@ impl FileTree {
 impl FileTree {
     pub(in crate::gui::workspace) fn initialize(
         &mut self,
-        window: &mut Window,
+        _window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        self.state.search_subscription = Some(cx.subscribe_in(
-            &self.state.search_input,
-            window,
-            |this, _, event, window, cx| match event {
-                gpui_kit::component::input::InputEvent::Change => this.search_project(cx),
-                gpui_kit::component::input::InputEvent::PressEnter { .. } => {
-                    if !this.state.search_loading {
-                        if let Some(result) = this.state.search_results.first().cloned() {
-                            gpui_kit::component::WindowExt::close_dialog(window, cx);
-                            this.state.search_request += 1;
-                            this.send(crate::event_bus::gui_event::GuiEvent::Editor(
-                                crate::gui::workspace::editor::Event::OpenContentMatch(result),
-                            ));
-                        }
-                    }
-                }
-                _ => {}
-            },
-        ));
         self.load_directory(std::path::PathBuf::new(), cx);
         for path in self.state.expanded_directories.clone() {
             if !path.as_os_str().is_empty() {

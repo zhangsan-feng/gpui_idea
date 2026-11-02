@@ -4,7 +4,7 @@ use crate::domain::language_server::ServerManagementAction;
 use gpui_kit::{
     component::{
         Disableable as _, Sizable as _,
-        button::{Button, ButtonVariants as _},
+        button::{Button, ButtonCustomVariant, ButtonVariants as _},
         h_flex, v_flex,
     },
     prelude::*,
@@ -12,12 +12,10 @@ use gpui_kit::{
 };
 
 impl SettingsWindow {
-    pub(in crate::gui) fn render_servers(
-        &self,
-        cx: &mut Context<Self>,
-    ) -> Div {
+    pub(in crate::gui) fn render_servers(&self, cx: &mut Context<Self>) -> Div {
         let query = self.search.read(cx).value().trim().to_lowercase();
-        let all = query.is_empty() || "lsp 管理 语言服务器 server 版本 安装 更新".contains(&query);
+        let all =
+            query.is_empty() || "lsp 管理 语言服务器 server 版本 安装 更新 删除".contains(&query);
         let no_matches = !self.server_busy
             && !self.servers.iter().any(|server| {
                 all || format!("{} {}", server.name, server.languages)
@@ -254,6 +252,8 @@ impl SettingsWindow {
                 let selected = server.pinned.as_ref() == Some(&version.directory);
                 let key = server.key.clone();
                 let directory = version.directory.clone();
+                let delete_key = key.clone();
+                let delete_directory = directory.clone();
                 h_flex()
                     .gap_2()
                     .items_center()
@@ -284,7 +284,13 @@ impl SettingsWindow {
                             } else {
                                 0x64748b
                             }))
-                            .child(if selected { "已固定" } else { "已安装" }),
+                            .child(if version.in_use {
+                                "使用中"
+                            } else if selected {
+                                "已固定"
+                            } else {
+                                "已安装"
+                            }),
                     )
                     .child(
                         Button::new(SharedString::from(format!("select-{directory}")))
@@ -300,6 +306,34 @@ impl SettingsWindow {
                                     ServerManagementAction::Select {
                                         key: key.clone(),
                                         directory: Some(directory.clone()),
+                                    },
+                                    cx,
+                                )
+                            })),
+                    )
+                    .child(
+                        Button::new(SharedString::from(format!("delete-{delete_directory}")))
+                            .small()
+                            .ghost()
+                            .custom(
+                                ButtonCustomVariant::new(cx)
+                                    .foreground(crate::component::appearance::foreground(0xdc2626))
+                                    .hover(crate::component::appearance::background(0xfef2f2))
+                                    .active(crate::component::appearance::background(0xfee2e2)),
+                            )
+                            .icon(gpui_kit::assets::IconName::Trash)
+                            .label("删除")
+                            .tooltip(if version.in_use {
+                                "此版本正在使用，请关闭使用它的项目后删除"
+                            } else {
+                                "仅删除此已安装版本"
+                            })
+                            .disabled(disabled || version.in_use)
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.manage_servers(
+                                    ServerManagementAction::Delete {
+                                        key: delete_key.clone(),
+                                        directory: delete_directory.clone(),
                                     },
                                     cx,
                                 )

@@ -25,9 +25,12 @@ pub(in crate::infrastructure::language_server) fn configuration(section: &str) -
         .unwrap_or(Value::Null)
 }
 
-pub(in crate::infrastructure::language_server) fn initialization_options(family: &str) -> Value {
+pub(in crate::infrastructure::language_server) fn initialization_options(
+    family: &str,
+    root: &Path,
+) -> Value {
     get(family)
-        .map(|language| (language.initialization_options)())
+        .map(|language| (language.initialization_options)(root))
         .unwrap_or_else(|_| json!({}))
 }
 
@@ -66,4 +69,16 @@ pub(in crate::infrastructure::language_server) fn download_release(
     context: &InstallContext,
 ) -> Result<(String, PathBuf)> {
     (download(server)?.release)(stage, version, context)
+}
+
+impl Language {
+    pub(in crate::infrastructure::language_server) fn supports_file(&self, path: &Path) -> bool {
+        path.extension()
+            .and_then(|extension| extension.to_str())
+            .is_some_and(|extension| {
+                self.file_extensions
+                    .iter()
+                    .any(|supported| extension.eq_ignore_ascii_case(supported))
+            })
+    }
 }

@@ -75,7 +75,7 @@ pub(super) fn load_index(path: &Path) -> Result<HistoryIndex> {
     Ok(index)
 }
 
-pub(super) fn hydrate(path: &Path, index: HistoryIndex) -> Result<OpenHistory> {
+pub(super) fn hydrate(path: &Path, index: HistoryIndex) -> Result<HistoryDataContextSnapshot> {
     let mut sessions = Vec::new();
     for reference in index.workspaces.iter().take(LIMIT_SESSIONS) {
         match read_session(path, reference) {
@@ -88,7 +88,7 @@ pub(super) fn hydrate(path: &Path, index: HistoryIndex) -> Result<OpenHistory> {
             }
         }
     }
-    Ok(OpenHistory {
+    Ok(HistoryDataContextSnapshot {
         version: 2,
         entries: index.entries,
         last_project: index.last_project,
@@ -106,6 +106,16 @@ fn session_path(index: &Path, reference: &WorkspaceReference) -> Result<PathBuf>
     {
         bail!("工作区状态文件名无效");
     }
+    Ok(crate::infrastructure::paths::project_data_directory(
+        index.parent().context("历史记录缺少目录")?,
+        &reference.project_root,
+    )
+    .join("workspace.json"))
+}
+
+fn legacy_session_path(index: &Path, reference: &WorkspaceReference) -> Result<PathBuf> {
+    // Validate the filename before using the old flat layout as a migration source.
+    session_path(index, reference)?;
     Ok(index
         .parent()
         .context("历史记录缺少目录")?
@@ -114,25 +124,43 @@ fn session_path(index: &Path, reference: &WorkspaceReference) -> Result<PathBuf>
 }
 
 pub(super) fn session_name(project: &Path) -> String {
-    // Stable FNV-1a key: independent of Rust's unspecified DefaultHasher.
-    let mut hash = 0xcbf29ce484222325u64;
-    for byte in normalized_path(project).bytes() {
-        hash = (hash ^ byte as u64).wrapping_mul(0x100000001b3);
-    }
-    format!("{hash:016x}.json")
+    format!(
+        "{}.json",
+        crate::infrastructure::paths::project_key(project)
+    )
 }
 
 pub(super) fn read_session(
     path: &Path,
     reference: &WorkspaceReference,
 ) -> Result<Option<WorkspaceSession>> {
-    let Some(value) = read_json(&session_path(path, reference)?)? else {
+    let target = session_path(path, reference)?;
+    let mut legacy = None;
+    let value = match read_json(&target)? {
+        Some(value) => Some(value),
+        None => {
+            let source = legacy_session_path(path, reference)?;
+            let value = read_json(&source)?;
+            if value.is_some() {
+                legacy = Some(source);
+            }
+            value
+        }
+    };
+    let Some(value) = value else {
         return Ok(None);
     };
     let session: WorkspaceSession =
         serde_json::from_value(value).context("工作区恢复状态格式无效")?;
     if !same_path(&session.project_root, &reference.project_root) {
         bail!("工作区状态与项目路径不一致，原文件已保留");
+    }
+    if let Some(source) = legacy {
+        write_json(&target, &session)?;
+        if let Err(error) = fs::remove_file(&source) {
+            tracing::warn!(path = %source.display(), %error, "legacy workspace cleanup failed");
+        }
+        tracing::info!(project = %reference.project_root.display(), path = %target.display(), "workspace state migrated to project directory");
     }
     Ok(Some(session))
 }

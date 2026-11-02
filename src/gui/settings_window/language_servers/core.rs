@@ -9,9 +9,9 @@ impl SettingsWindow {
         cx: &mut Context<Self>,
     ) {
         let key = match &action {
-            ServerManagementAction::Update(key) | ServerManagementAction::Select { key, .. } => {
-                Some(key.clone())
-            }
+            ServerManagementAction::Update(key)
+            | ServerManagementAction::Select { key, .. }
+            | ServerManagementAction::Delete { key, .. } => Some(key.clone()),
             _ => None,
         };
         let cleaning = matches!(&action, ServerManagementAction::CleanHistory);
@@ -24,6 +24,9 @@ impl SettingsWindow {
         }
         let message = match &action {
             ServerManagementAction::Refresh => "服务器列表已刷新",
+            ServerManagementAction::Delete { .. } => {
+                "所选版本已删除；若为固定版本，已恢复自动选择。"
+            }
             ServerManagementAction::CleanHistory => {
                 "历史版本和 Go / npm 安装缓存已清理，每个服务器仅保留最新的已安装版本。"
             }
@@ -36,6 +39,7 @@ impl SettingsWindow {
         if let Some(key) = &key {
             let status = match &action {
                 ServerManagementAction::Update(_) => "正在检查并安装最新兼容版本…",
+                ServerManagementAction::Delete { .. } => "正在删除所选版本…",
                 _ => "正在保存版本选择…",
             };
             self.server_actions

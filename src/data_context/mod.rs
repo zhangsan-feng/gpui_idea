@@ -2,6 +2,7 @@ mod document;
 mod external;
 mod history;
 mod image_preview;
+mod language_server;
 mod project;
 pub(crate) mod refresh;
 mod settings;
@@ -30,8 +31,7 @@ pub struct DataContext {
     pub history: history::HistoryContext,
     pub(crate) images: image_preview::ImagePreviewContext,
     startup: OnceLock<WorkspaceStartup>,
-    language_server: std::sync::Mutex<crate::domain::language_server::LanguageServerStatus>,
-    language_servers: std::sync::Mutex<Vec<crate::domain::language_server::LanguageServerInfo>>,
+    pub(crate) language_servers: language_server::LanguageServerContext,
 }
 impl DataContext {
     fn new() -> Self {
@@ -43,7 +43,6 @@ impl DataContext {
             history: history::HistoryContext::new(),
             images: image_preview::ImagePreviewContext::default(),
             startup: OnceLock::new(),
-            language_server: Default::default(),
             language_servers: Default::default(),
         }
     }

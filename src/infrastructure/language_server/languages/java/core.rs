@@ -7,7 +7,9 @@ use tokio::process::Command;
 pub(in crate::infrastructure::language_server) fn configuration(_section: &str) -> Value {
     json!({"autobuild": {"enabled": false}, "completion": {"guessMethodArguments": false}})
 }
-pub(in crate::infrastructure::language_server) fn initialization_options() -> Value {
+pub(in crate::infrastructure::language_server) fn initialization_options(
+    _root: &std::path::Path,
+) -> Value {
     json!({"settings": {"java": configuration("")}})
 }
 
@@ -19,4 +21,11 @@ pub(in crate::infrastructure::language_server) fn prepare(
 }
 pub(in crate::infrastructure::language_server) fn install(context: &InstallContext) -> Result<()> {
     managed::download_server("jdtls", context).map(|_| ())
+}
+
+pub(super) fn detect_workspace(root: &std::path::Path) -> bool {
+    super::LANGUAGE
+        .markers
+        .iter()
+        .any(|marker| root.join(marker).is_file())
 }

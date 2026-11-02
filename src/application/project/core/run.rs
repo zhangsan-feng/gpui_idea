@@ -1,7 +1,7 @@
 use super::super::ProjectService;
 use crate::{
     data_context::DATA_CONTEXT,
-    domain::run::{RunAction, RunConfiguration},
+    domain::run::{RunAction, RunConfigurationDataContextSnapshot},
     infrastructure::INFRASTRUCTURE,
 };
 use anyhow::{Result, ensure};
@@ -19,7 +19,7 @@ impl ProjectService {
         }
         let session = DATA_CONTEXT.startup().session.as_ref();
         let automatic = session.is_none_or(|saved| saved.run_automatic);
-        let mut initial = RunConfiguration {
+        let mut initial = RunConfigurationDataContextSnapshot {
             automatic,
             request: if automatic { 0 } else { 1 },
             command: session
@@ -131,7 +131,7 @@ impl ProjectService {
             Err(error) => {
                 tracing::warn!(?file, error = %format!("{error:#}"), request, "run configuration detection failed");
                 let previous = DATA_CONTEXT.project.run_configuration();
-                self.publish_run_configuration(RunConfiguration {
+                self.publish_run_configuration(RunConfigurationDataContextSnapshot {
                     request,
                     automatic: true,
                     file,

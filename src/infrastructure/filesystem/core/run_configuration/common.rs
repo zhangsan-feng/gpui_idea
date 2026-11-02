@@ -1,10 +1,10 @@
-use crate::domain::run::{RunConfiguration, RunProfile};
+use crate::domain::run::{RunConfigurationDataContextSnapshot, RunProfile};
 use std::{
     fs,
     path::{Path, PathBuf},
 };
 
-pub(super) fn nearest(start: &Path, root: &Path, name: &str) -> Option<PathBuf> {
+pub(in crate::infrastructure) fn nearest(start: &Path, root: &Path, name: &str) -> Option<PathBuf> {
     start
         .ancestors()
         .take_while(|directory| directory.starts_with(root))
@@ -15,7 +15,7 @@ pub(super) fn nearest(start: &Path, root: &Path, name: &str) -> Option<PathBuf> 
         })
 }
 
-pub(super) fn quote(path: impl AsRef<Path>) -> String {
+pub(in crate::infrastructure) fn quote(path: impl AsRef<Path>) -> String {
     let path = path.as_ref().to_string_lossy();
     let path = if let Some(unc) = path.strip_prefix("\\\\?\\UNC\\") {
         format!("\\\\{unc}")
@@ -30,7 +30,7 @@ pub(super) fn quote(path: impl AsRef<Path>) -> String {
     }
 }
 
-pub(super) fn in_directory(directory: &Path, command: &str) -> String {
+pub(in crate::infrastructure) fn in_directory(directory: &Path, command: &str) -> String {
     let cd = if cfg!(windows) { "cd /d" } else { "cd" };
     format!("{cd} {} && {command}", quote(directory))
 }
@@ -49,8 +49,8 @@ pub(super) fn configuration(
     command: String,
     build_command: Option<String>,
     debug_command: Option<String>,
-) -> RunConfiguration {
-    RunConfiguration {
+) -> RunConfigurationDataContextSnapshot {
+    RunConfigurationDataContextSnapshot {
         label: label.into(),
         command: command.clone(),
         profiles: vec![RunProfile {

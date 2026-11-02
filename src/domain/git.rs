@@ -9,7 +9,7 @@ pub struct GitCommit {
     pub references: String,
 }
 #[derive(Clone, Default)]
-pub struct GitSnapshot {
+pub struct GitDataContextSnapshot {
     pub is_repository: bool,
     pub is_detached: bool,
     pub branch: String,
@@ -23,7 +23,7 @@ pub struct GitFileChange {
     pub path: PathBuf,
 }
 #[derive(Clone, Default)]
-pub struct GitDetails {
+pub struct GitDetailsDataContextSnapshot {
     pub hash: String,
     pub files: Vec<GitFileChange>,
     pub error: Option<String>,

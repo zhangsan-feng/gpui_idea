@@ -2,7 +2,7 @@ use super::super::ProjectService;
 use crate::{
     data_context::DATA_CONTEXT,
     domain::file_tree::{FileTreeOperation, FileTreeOutcome, ProjectClipboard},
-    domain::project::DirectorySnapshot,
+    domain::project::DirectoryDataContextSnapshot,
     infrastructure::INFRASTRUCTURE,
 };
 use anyhow::{Result, bail};
@@ -17,8 +17,15 @@ impl ProjectService {
     ) {
         let mut directories: std::collections::HashSet<_> =
             parents.iter().map(|path| path.to_path_buf()).collect();
+        // A file created/deleted inside a directory can change that directory's
+        // package icon, which is stored in its parent's snapshot.
+        directories.extend(
+            parents
+                .iter()
+                .filter_map(|path| path.parent().map(Path::to_path_buf)),
+        );
         if let Some((source, destination)) = moved {
-            for path in DATA_CONTEXT.project.snapshots().1.keys() {
+            for path in DATA_CONTEXT.project.file_tree.snapshots().1.keys() {
                 if let Ok(suffix) = path.strip_prefix(source) {
                     directories.insert(path.clone());
                     directories.insert(destination.join(suffix));
@@ -32,13 +39,13 @@ impl ProjectService {
                 .list_directory(DATA_CONTEXT.project_root().to_owned(), directory.clone())
                 .await
             {
-                Ok(entries) => DirectorySnapshot {
+                Ok(entries) => DirectoryDataContextSnapshot {
                     entries: entries.into(),
                     error: None,
                 },
                 Err(error) => {
                     tracing::warn!(path = %directory.display(), %error, "local file operation directory refresh failed");
-                    DirectorySnapshot {
+                    DirectoryDataContextSnapshot {
                         entries: Vec::new().into(),
                         error: Some(format!("{error:#}")),
                     }
@@ -69,11 +76,13 @@ impl ProjectService {
         for (directory, snapshot) in updates {
             DATA_CONTEXT
                 .project
+                .file_tree
                 .set_directory_silent(directory, snapshot);
         }
         if let Some(statistics) = statistics {
             DATA_CONTEXT.project.set_statistics_silent(statistics);
         }
+        self.schedule_file_run_refresh();
         DATA_CONTEXT.notify_gui_refresh(&[
             crate::event_bus::refresh_gui::GuiComponent::FileTree,
             crate::event_bus::refresh_gui::GuiComponent::BottomPanel,
@@ -167,6 +176,7 @@ impl ProjectService {
                 directories.extend(
                     DATA_CONTEXT
                         .project
+                        .file_tree
                         .snapshots()
                         .1
                         .keys()

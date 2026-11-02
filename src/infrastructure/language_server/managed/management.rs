@@ -5,7 +5,7 @@ use std::fs;
 
 use super::super::languages;
 
-fn validate_key(key: &str) -> Result<()> {
+pub(super) fn validate_key(key: &str) -> Result<()> {
     anyhow::ensure!(
         languages::managed().any(|server| server.key == key),
         "未知语言服务器：{key}"
@@ -13,7 +13,9 @@ fn validate_key(key: &str) -> Result<()> {
     Ok(())
 }
 
-pub(in crate::infrastructure::language_server) use super::cleanup::clean_history;
+pub(in crate::infrastructure::language_server) use super::cleanup::{
+    clean_history, remove_version, version_in_use,
+};
 
 pub(super) fn pin(key: &str) -> Result<Option<String>> {
     validate_key(key)?;
@@ -53,6 +55,7 @@ pub(in crate::infrastructure::language_server) fn snapshot() -> Result<Vec<Manag
                     }
                     let binary = core::cached(&entry.path())?;
                     Some(ManagedVersion {
+                        in_use: false,
                         directory,
                         version: binary.version,
                     })

@@ -6,12 +6,7 @@ use crate::gui::workspace::ui::*;
 use gpui_kit::component::input::InputState;
 use std::{collections::HashSet, path::PathBuf};
 pub(in crate::gui::workspace) struct State {
-    pub(in crate::gui::workspace) search_input: Entity<InputState>,
-    pub(in crate::gui::workspace) search_subscription: Option<Subscription>,
-    pub(in crate::gui::workspace) search_results: Vec<crate::domain::project::ContentMatch>,
-    pub(in crate::gui::workspace) search_loading: bool,
-    pub(in crate::gui::workspace) search_request: u64,
-    pub(in crate::gui::workspace) search_error: Option<String>,
+    pub(in crate::gui::workspace) search_window: Option<gpui_kit::AnyWindowHandle>,
     pub(in crate::gui::workspace) project_tree_scroll: UniformListScrollHandle,
     pub(in crate::gui::workspace) project_selection: HashSet<PathBuf>,
     pub(in crate::gui::workspace) project_tree_focus: gpui_kit::FocusHandle,
@@ -33,18 +28,13 @@ pub(crate) struct FileTree {
 }
 
 pub(in crate::gui::workspace) fn init_component_data(
-    window: &mut Window,
+    _window: &mut Window,
     cx: &mut App,
     _session: &Option<crate::domain::history::WorkspaceSession>,
     expanded: std::collections::HashSet<std::path::PathBuf>,
 ) -> State {
     State {
-        search_input: cx.new(|cx| InputState::new(window, cx).placeholder("输入要搜索的代码内容…")),
-        search_subscription: None,
-        search_results: Vec::new(),
-        search_loading: false,
-        search_request: 0,
-        search_error: None,
+        search_window: None,
         project_tree_scroll: UniformListScrollHandle::new(),
         project_selection: HashSet::new(),
         project_tree_focus: cx.focus_handle(),
@@ -145,7 +135,7 @@ impl FileTree {
                 };
                 if view.update_in(cx,|this,window,cx| {
                     if let Some(event) = event { this.handle_event(event,window,cx); }
-                    else { if this.state.project_revision != DATA_CONTEXT.project.revision() { this.rebuild_tree(); } }
+                    else { if this.state.project_revision != DATA_CONTEXT.project.file_tree.revision() { this.rebuild_tree(); } }
                     cx.notify();
                 }).is_err() { break; }
             }

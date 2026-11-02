@@ -1,4 +1,4 @@
-use crate::domain::image_preview::{ImagePreviewSnapshot, PreviewImageFormat};
+use crate::domain::image_preview::{ImagePreviewDataContextSnapshot, PreviewImageFormat};
 use std::{
     collections::HashMap,
     path::{Path, PathBuf},
@@ -10,12 +10,12 @@ use std::{
 
 #[derive(Default)]
 pub(crate) struct ImagePreviewContext {
-    snapshots: Mutex<HashMap<PathBuf, Arc<ImagePreviewSnapshot>>>,
+    snapshots: Mutex<HashMap<PathBuf, Arc<ImagePreviewDataContextSnapshot>>>,
     revision: AtomicU64,
 }
 
 impl ImagePreviewContext {
-    pub(crate) fn snapshot(&self, path: &Path) -> Option<Arc<ImagePreviewSnapshot>> {
+    pub(crate) fn snapshot(&self, path: &Path) -> Option<Arc<ImagePreviewDataContextSnapshot>> {
         self.snapshots
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -23,7 +23,7 @@ impl ImagePreviewContext {
             .cloned()
     }
 
-    pub(crate) fn snapshots(&self) -> Vec<Arc<ImagePreviewSnapshot>> {
+    pub(crate) fn snapshots(&self) -> Vec<Arc<ImagePreviewDataContextSnapshot>> {
         self.snapshots
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -38,7 +38,7 @@ impl ImagePreviewContext {
         format: PreviewImageFormat,
         bytes: Arc<[u8]>,
         error: Option<String>,
-    ) -> Arc<ImagePreviewSnapshot> {
+    ) -> Arc<ImagePreviewDataContextSnapshot> {
         let mut snapshots = self
             .snapshots
             .lock()
@@ -48,7 +48,7 @@ impl ImagePreviewContext {
                 return current.clone();
             }
         }
-        let snapshot = Arc::new(ImagePreviewSnapshot {
+        let snapshot = Arc::new(ImagePreviewDataContextSnapshot {
             path: path.clone(),
             format,
             bytes,
@@ -68,7 +68,7 @@ impl ImagePreviewContext {
 
     pub(crate) fn replace_if_current(
         &self,
-        expected: &ImagePreviewSnapshot,
+        expected: &ImagePreviewDataContextSnapshot,
         bytes: Arc<[u8]>,
         error: Option<String>,
     ) {
@@ -86,7 +86,7 @@ impl ImagePreviewContext {
         }
         snapshots.insert(
             expected.path.clone(),
-            Arc::new(ImagePreviewSnapshot {
+            Arc::new(ImagePreviewDataContextSnapshot {
                 path: expected.path.clone(),
                 format: expected.format,
                 bytes,

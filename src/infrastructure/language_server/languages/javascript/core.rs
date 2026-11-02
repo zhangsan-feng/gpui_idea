@@ -10,7 +10,9 @@ use tokio::process::Command;
 pub(in crate::infrastructure::language_server) fn configuration(_section: &str) -> Value {
     json!({"suggest": {"autoImports": false, "completeFunctionCalls": false}})
 }
-pub(in crate::infrastructure::language_server) fn initialization_options() -> Value {
+pub(in crate::infrastructure::language_server) fn initialization_options(
+    _root: &std::path::Path,
+) -> Value {
     json!({"preferences": {"includeCompletionsForModuleExports": false, "includeCompletionsWithInsertText": true, "includeCompletionsWithSnippetText": true}})
 }
 
@@ -77,4 +79,11 @@ pub(in crate::infrastructure::language_server) fn typescript_version(
         .max_by(|a, b| a.0.cmp(&b.0))
         .map(|(_, text)| text.to_owned())
         .context("没有兼容的 TypeScript 版本")
+}
+
+pub(super) fn detect_workspace(root: &std::path::Path) -> bool {
+    super::LANGUAGE
+        .markers
+        .iter()
+        .any(|marker| root.join(marker).is_file())
 }

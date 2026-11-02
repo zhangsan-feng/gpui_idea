@@ -41,7 +41,8 @@ enum SettingsPage {
 
 impl SettingsWindow {
     pub(in crate::gui) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
-        let settings = crate::data_context::DATA_CONTEXT.settings.get();
+        let snapshot = crate::data_context::DATA_CONTEXT.settings.snapshot();
+        let settings = snapshot.general.as_ref().clone();
         let search = cx.new(|cx| InputState::new(window, cx).placeholder("搜索设置"));
         let subscription = cx.observe(&search, |this, search, cx| {
             let query = search.read(cx).value().trim().to_lowercase();
@@ -88,14 +89,14 @@ impl SettingsWindow {
             });
         })
         .detach();
-        Self {
+        let mut this = Self {
             fonts: cx.text_system().all_font_names(),
             page: SettingsPage::General,
-            system_status: crate::data_context::DATA_CONTEXT.settings.context_menu(),
+            system_status: snapshot.context_menu.clone(),
             system_busy: false,
             system_message: None,
             system_error: None,
-            servers: crate::application::APPLICATION.settings.managed_servers(),
+            servers: snapshot.servers.to_vec(),
             server_busy: false,
             server_cleaning: false,
             server_actions: std::collections::HashMap::new(),
@@ -109,7 +110,36 @@ impl SettingsWindow {
             proxy_url,
             _proxy_subscription: proxy_subscription,
             _search_subscription: subscription,
-        }
+        };
+        this.start_subscribe(window, cx);
+        this
+    }
+
+    fn start_subscribe(&mut self, window: &mut Window, cx: &mut Context<Self>) {
+        let mut changes = crate::event_bus::EVENT_BUS
+            .refresh_gui
+            .subscribe(crate::event_bus::refresh_gui::GuiComponent::SettingsWindow);
+        // Subscribe before rereading so initialization cannot miss a background publication.
+        let snapshot = crate::data_context::DATA_CONTEXT.settings.snapshot();
+        self.servers = snapshot.servers.to_vec();
+        self.system_status = snapshot.context_menu.clone();
+        cx.spawn_in(window, async move |this, cx| {
+            while changes.changed().await.is_ok() {
+                if this
+                    .update(cx, |this, cx| {
+                        let snapshot = crate::data_context::DATA_CONTEXT.settings.snapshot();
+                        this.servers = snapshot.servers.to_vec();
+                        this.system_status = snapshot.context_menu.clone();
+                        // Published background state must not overwrite the user's draft.
+                        cx.notify();
+                    })
+                    .is_err()
+                {
+                    break;
+                }
+            }
+        })
+        .detach();
     }
 }
 

@@ -7,11 +7,12 @@ pub struct ProjectEntry {
     pub is_directory: bool,
     // Links are displayed without following them, avoiding loops and root escapes.
     pub is_link: bool,
+    pub is_code_package: bool,
     pub runnable: bool,
 }
 
 #[derive(Clone, PartialEq, Eq)]
-pub struct DirectorySnapshot {
+pub struct DirectoryDataContextSnapshot {
     pub entries: Arc<[ProjectEntry]>,
     pub error: Option<String>,
 }
@@ -25,7 +26,7 @@ pub struct ContentMatch {
 }
 
 #[derive(Clone, Default)]
-pub struct ContentSearchSnapshot {
+pub struct ContentSearchDataContextSnapshot {
     pub request: u64,
     pub matches: Vec<ContentMatch>,
     pub truncated: bool,

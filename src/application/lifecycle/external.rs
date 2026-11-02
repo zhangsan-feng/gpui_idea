@@ -17,7 +17,7 @@ pub(crate) async fn start_language_server() -> Result<()> {
 }
 
 pub(crate) fn warm_language_server_document(
-    snapshot: std::sync::Arc<crate::domain::document::DocumentSnapshot>,
+    snapshot: std::sync::Arc<crate::domain::document::DocumentDataContextSnapshot>,
 ) {
     super::language_server::warm_document(snapshot);
 }

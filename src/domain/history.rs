@@ -94,7 +94,7 @@ pub struct FileViewState {
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
-pub struct OpenHistory {
+pub struct HistoryDataContextSnapshot {
     pub version: u32,
     pub entries: Vec<OpenHistoryEntry>,
     pub last_project: Option<PathBuf>,
@@ -102,7 +102,7 @@ pub struct OpenHistory {
     pub sessions: Vec<WorkspaceSession>,
 }
 
-impl Default for OpenHistory {
+impl Default for HistoryDataContextSnapshot {
     fn default() -> Self {
         Self {
             version: 2,

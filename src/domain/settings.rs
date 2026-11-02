@@ -7,7 +7,7 @@ pub(crate) enum ContextMenuAction {
     Remove,
 }
 
-#[derive(Clone, Default, Deserialize)]
+#[derive(Clone, Default, PartialEq, Eq, Deserialize)]
 pub(crate) struct ContextMenuStatus {
     pub(crate) supported: bool,
     pub(crate) installed: bool,
@@ -20,6 +20,14 @@ pub(crate) struct GeneralSettings {
     pub(crate) appearance: AppearanceSettings,
     pub(crate) auto_format: bool,
     pub(crate) lsp_proxy: ProxySettings,
+}
+
+/// Published settings state. GUI drafts remain separate from this snapshot.
+#[derive(Clone, Default, PartialEq, Eq)]
+pub(crate) struct SettingsDataContextSnapshot {
+    pub(crate) general: std::sync::Arc<GeneralSettings>,
+    pub(crate) context_menu: Option<ContextMenuStatus>,
+    pub(crate) servers: std::sync::Arc<[crate::domain::language_server::ManagedServer]>,
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]

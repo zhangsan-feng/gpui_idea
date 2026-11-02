@@ -15,7 +15,11 @@ impl ProjectService {
         crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.operate_entries_core(sources, target).await
     }
-    pub(crate) async fn search_content(&self, query: String, request: u64) -> Result<()> {
+    pub(crate) async fn search_content(
+        &self,
+        query: String,
+        request: u64,
+    ) -> Result<crate::domain::project::ContentSearchDataContextSnapshot> {
         crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.search_content_core(query, request).await
     }

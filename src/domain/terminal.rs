@@ -24,7 +24,7 @@ pub struct TerminalCell {
 }
 
 #[derive(Clone)]
-pub struct TerminalSnapshot {
+pub struct TerminalDataContextSnapshot {
     pub command: Option<String>,
     pub exit_code: Option<i32>,
     pub generation: u64,
@@ -40,7 +40,7 @@ pub struct TerminalSnapshot {
     pub bracketed_paste: bool,
 }
 
-impl Default for TerminalSnapshot {
+impl Default for TerminalDataContextSnapshot {
     fn default() -> Self {
         Self {
             command: None,

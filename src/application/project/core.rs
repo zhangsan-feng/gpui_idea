@@ -2,13 +2,14 @@ mod batch;
 mod content_search;
 mod file_tree;
 mod run;
+mod run_capabilities;
 mod run_configurations;
-mod run_sessions;
 mod run_file;
+mod run_sessions;
 
 use super::ProjectService;
 use crate::application::APPLICATION;
-use crate::domain::project::DirectorySnapshot;
+use crate::domain::project::DirectoryDataContextSnapshot;
 use crate::{data_context::DATA_CONTEXT, infrastructure::INFRASTRUCTURE};
 use anyhow::{Result, bail};
 use std::{path::PathBuf, time::Instant};
@@ -27,7 +28,7 @@ impl ProjectService {
             }
             Err(error) => {
                 DATA_CONTEXT.project.set_statistics(
-                    crate::domain::statistics::StatisticsSnapshot {
+                    crate::domain::statistics::StatisticsDataContextSnapshot {
                         error: Some(format!("{error:#}")),
                         ..Default::default()
                     },
@@ -49,7 +50,7 @@ impl ProjectService {
             Err(error) => {
                 DATA_CONTEXT
                     .project
-                    .set_git(crate::domain::git::GitSnapshot {
+                    .set_git(crate::domain::git::GitDataContextSnapshot {
                         error: Some(format!("{error:#}")),
                         ..Default::default()
                     });
@@ -68,13 +69,13 @@ impl ProjectService {
                 Ok(())
             }
             Err(error) => {
-                DATA_CONTEXT
-                    .project
-                    .set_git_details(crate::domain::git::GitDetails {
+                DATA_CONTEXT.project.set_git_details(
+                    crate::domain::git::GitDetailsDataContextSnapshot {
                         hash,
                         error: Some(format!("{error:#}")),
                         ..Default::default()
-                    });
+                    },
+                );
                 Err(error)
             }
         }
@@ -136,11 +137,11 @@ impl ProjectService {
             .list_directory(DATA_CONTEXT.project_root().to_owned(), relative.clone())
             .await;
         let snapshot = match &result {
-            Ok(entries) => DirectorySnapshot {
+            Ok(entries) => DirectoryDataContextSnapshot {
                 entries: entries.clone().into(),
                 error: None,
             },
-            Err(error) => DirectorySnapshot {
+            Err(error) => DirectoryDataContextSnapshot {
                 entries: Vec::new().into(),
                 error: Some(format!("{error:#}")),
             },
@@ -149,7 +150,11 @@ impl ProjectService {
         if let Err(error) = &result {
             tracing::error!(root = %DATA_CONTEXT.project_root().display(), directory = %relative.display(), error = %format!("{error:#}"), "project directory load failed");
         }
-        DATA_CONTEXT.project.set_directory(relative, snapshot);
+        DATA_CONTEXT
+            .project
+            .file_tree
+            .set_directory(relative, snapshot);
+        self.schedule_file_run_refresh();
         result.map(|_| ())
     }
 }

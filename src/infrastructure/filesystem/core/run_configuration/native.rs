@@ -1,17 +1,17 @@
 use super::common::*;
-use crate::domain::run::RunConfiguration;
+use crate::domain::run::RunConfigurationDataContextSnapshot;
 use anyhow::Result;
 use std::path::Path;
 
-pub(super) fn rust_file(file: &Path) -> RunConfiguration {
+pub(super) fn rust_file(file: &Path) -> RunConfigurationDataContextSnapshot {
     compiled_file(file, "Rust · 文件", "rustc", "-g")
 }
 
-pub(super) fn go(
+pub(in crate::infrastructure) fn go(
     directory: &Path,
     manifest: Option<&Path>,
     file: Option<&Path>,
-) -> RunConfiguration {
+) -> RunConfigurationDataContextSnapshot {
     let target = if manifest.is_some() {
         ".".into()
     } else {
@@ -44,7 +44,7 @@ pub(super) fn cpp(
     root: &Path,
     file: &Path,
     extension: &str,
-) -> Result<RunConfiguration> {
+) -> Result<RunConfigurationDataContextSnapshot> {
     if let Some(manifest) = nearest(directory, root, "CMakeLists.txt") {
         return cmake(manifest.parent().unwrap());
     }
@@ -66,7 +66,12 @@ pub(super) fn cpp(
     ))
 }
 
-fn compiled_file(file: &Path, label: &str, compiler: &str, flags: &str) -> RunConfiguration {
+fn compiled_file(
+    file: &Path,
+    label: &str,
+    compiler: &str,
+    flags: &str,
+) -> RunConfigurationDataContextSnapshot {
     let directory = file.parent().unwrap();
     let mut output = directory.join(".gpui-run").join(file.file_stem().unwrap());
     if cfg!(windows) {
@@ -102,7 +107,7 @@ fn compiled_file(file: &Path, label: &str, compiler: &str, flags: &str) -> RunCo
     result
 }
 
-pub(super) fn cmake(directory: &Path) -> Result<RunConfiguration> {
+pub(super) fn cmake(directory: &Path) -> Result<RunConfigurationDataContextSnapshot> {
     // CMake does not declare a unique runtime entry. Expose only its build capability.
     Ok(configuration(
         "C/C++ · CMake",

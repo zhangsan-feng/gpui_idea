@@ -14,7 +14,7 @@ impl DataContext {
         }
         let mut tree_updated = false;
         for (path, snapshot) in batch.directories {
-            tree_updated |= self.project.set_directory_silent(path, snapshot);
+            tree_updated |= self.project.file_tree.set_directory_silent(path, snapshot);
         }
         let statistics_updated = batch.statistics.is_some();
         if let Some(snapshot) = batch.statistics {

@@ -2,17 +2,24 @@ mod completion;
 mod core;
 mod external;
 mod formatting;
+mod highlights;
 mod inventory;
-mod launch;
 mod languages;
+mod launch;
 mod managed;
 mod management;
+mod manager;
+mod packages;
+mod runnables;
 mod status;
+pub(in crate::infrastructure) use packages::is_code_package_directory;
+pub(in crate::infrastructure) use runnables::local_file_run_configuration;
 
 use std::{collections::HashMap, path::PathBuf, sync::Arc};
 use tokio::sync::{Mutex, watch};
 
 struct SessionSlot {
+    root: PathBuf,
     status: status::SessionStatus,
     session: Mutex<Option<core::Session>>,
     generation: watch::Sender<u64>,
@@ -20,8 +27,9 @@ struct SessionSlot {
 }
 
 impl SessionSlot {
-    fn new(status: status::SessionStatus) -> Self {
+    fn new(root: PathBuf, status: status::SessionStatus) -> Self {
         Self {
+            root,
             status,
             session: Mutex::new(None),
             generation: watch::channel(0).0,

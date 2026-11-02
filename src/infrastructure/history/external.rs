@@ -1,5 +1,5 @@
 use super::{HistoryStore, core};
-use crate::domain::history::{OpenHistory, OpenKind, WorkspaceSession};
+use crate::domain::history::{HistoryDataContextSnapshot, OpenKind, WorkspaceSession};
 use anyhow::{Context, Result};
 use std::path::PathBuf;
 
@@ -13,7 +13,10 @@ impl HistoryStore {
             .context("工作区展开目录检查任务中止")
     }
 
-    pub(crate) async fn forget_project(&self, project: PathBuf) -> Result<OpenHistory> {
+    pub(crate) async fn forget_project(
+        &self,
+        project: PathBuf,
+    ) -> Result<HistoryDataContextSnapshot> {
         let path = self.path.clone();
         let lock = self.io_lock.clone();
         tokio::task::spawn_blocking(move || {
@@ -23,7 +26,7 @@ impl HistoryStore {
         })
         .await?
     }
-    pub async fn load(&self) -> Result<OpenHistory> {
+    pub async fn load(&self) -> Result<HistoryDataContextSnapshot> {
         let path = self.path.clone();
         let lock = self.io_lock.clone();
         tokio::task::spawn_blocking(move || {
@@ -35,7 +38,11 @@ impl HistoryStore {
         .context("打开历史读取任务中止")?
     }
 
-    pub async fn record(&self, kind: OpenKind, target: PathBuf) -> Result<OpenHistory> {
+    pub async fn record(
+        &self,
+        kind: OpenKind,
+        target: PathBuf,
+    ) -> Result<HistoryDataContextSnapshot> {
         let path = self.path.clone();
         let lock = self.io_lock.clone();
         tokio::task::spawn_blocking(move || {
@@ -47,7 +54,10 @@ impl HistoryStore {
         .context("打开历史写入任务中止")?
     }
 
-    pub async fn save_session(&self, session: WorkspaceSession) -> Result<OpenHistory> {
+    pub async fn save_session(
+        &self,
+        session: WorkspaceSession,
+    ) -> Result<HistoryDataContextSnapshot> {
         let path = self.path.clone();
         let lock = self.io_lock.clone();
         tokio::task::spawn_blocking(move || {

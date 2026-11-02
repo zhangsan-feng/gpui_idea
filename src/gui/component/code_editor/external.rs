@@ -23,6 +23,7 @@ pub(crate) fn attach_completions(
     window: &mut gpui_kit::Window,
     cx: &mut App,
 ) {
+    super::highlights::attach(editor, path.to_owned(), window, cx);
     super::completion::attach(
         editor,
         core::language_for_path(path),

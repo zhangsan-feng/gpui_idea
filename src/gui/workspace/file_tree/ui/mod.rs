@@ -1,10 +1,8 @@
-use crate::gui::component::icon::tinted as project_icon;
-use crate::gui::component::path::display_path as display_project_path;
-use crate::gui::component::project_icon::project_icon as project_entry_icon;
-use crate::gui::workspace::file_tree::FileTree;
-mod search;
 use super::*;
 use crate::data_context::DATA_CONTEXT;
+use crate::gui::component::icon::tinted as project_icon;
+use crate::gui::component::path::display_path as display_project_path;
+use crate::gui::workspace::file_tree::FileTree;
 use crate::gui::workspace::ui::*;
 use gpui_kit::component::menu::ContextMenuExt;
 use gpui_kit::component::scroll::Scrollbar;
@@ -18,6 +16,14 @@ mod inline_edit;
 mod menu;
 mod tree;
 use menu::project_menu;
+
+fn project_entry_icon(path: &Path, directory: bool) -> gpui_kit::Img {
+    crate::gui::component::project_icon::project_icon_with_package(
+        path,
+        directory,
+        directory && DATA_CONTEXT.project.file_tree.is_code_package_directory(path),
+    )
+}
 
 const PROJECT_HEADER_HEIGHT: f32 = 34.;
 const PROJECT_ROOT_ROW_HEIGHT: f32 = 25.;

@@ -1,9 +1,11 @@
 use super::*;
-use crate::domain::language_server::{LanguageServerInfo, LanguageServerPhase};
+use crate::domain::language_server::{
+    LanguageServerDataContextSnapshot, LanguageServerInfo, LanguageServerPhase,
+};
 
-pub(super) fn installation_detail() -> Option<String> {
-    let details = DATA_CONTEXT
-        .language_servers()
+pub(super) fn installation_detail(snapshot: &LanguageServerDataContextSnapshot) -> Option<String> {
+    let details = snapshot
+        .servers
         .iter()
         .filter(|server| server.phase == LanguageServerPhase::Installing)
         .map(|server| format!("{} · {}", server.name, server.detail))
@@ -11,8 +13,8 @@ pub(super) fn installation_detail() -> Option<String> {
     (!details.is_empty()).then(|| details.join("；"))
 }
 
-pub(super) fn details(detail: &str) -> Div {
-    let mut servers = DATA_CONTEXT.language_servers();
+pub(super) fn details(detail: &str, snapshot: &LanguageServerDataContextSnapshot) -> Div {
+    let mut servers = snapshot.servers.to_vec();
     servers.sort_by(|left, right| {
         left.language
             .cmp(&right.language)
@@ -50,13 +52,16 @@ pub(super) fn details(detail: &str) -> Div {
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .child("语言服务"),
                         )
-                        .child(div().text_size(px(11.)).text_color(crate::component::appearance::foreground(MUTED)).child(
-                            if installing > 0 {
-                                format!("安装中 {installing} · 已启动 {running}")
-                            } else {
-                                format!("已启动 {running} 个")
-                            },
-                        )),
+                        .child(
+                            div()
+                                .text_size(px(11.))
+                                .text_color(crate::component::appearance::foreground(MUTED))
+                                .child(if installing > 0 {
+                                    format!("安装中 {installing} · 已启动 {running}")
+                                } else {
+                                    format!("已启动 {running} 个")
+                                }),
+                        ),
                 )
                 .child(
                     div()

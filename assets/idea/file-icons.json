@@ -111,8 +111,7 @@
     "build": "idea/excludeRoot.svg",
     ".venv": "idea/excludeRoot.svg"
   },
-  "source_roots": ["src"],
-  "source_directory_icon": "idea/package.svg",
+  "code_package_icon": "idea/package.svg",
   "fallback_file": "idea/unknown.svg",
   "fallback_directory": "idea/folder.svg"
 }

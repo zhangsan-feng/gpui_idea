@@ -10,7 +10,25 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
     let file = fern::log_file(&log_file).expect("open log file failed");
     let (file_writer, file_guard) = tracing_appender::non_blocking(file);
 
-    let mut dispatch = fern::Dispatch::new().level(log::LevelFilter::Warn);
+    let mut dispatch = fern::Dispatch::new()
+        .level(log::LevelFilter::Warn)
+        .level_for("gpui_idea::gui::code_search_window", log::LevelFilter::Info)
+        .level_for(
+            "gpui_idea::application::project::core::content_search",
+            log::LevelFilter::Info,
+        )
+        .level_for(
+            "gpui_idea::application::project::core::run_file",
+            log::LevelFilter::Info,
+        )
+        .level_for(
+            "gpui_idea::infrastructure::language_server::manager",
+            log::LevelFilter::Info,
+        )
+        .level_for(
+            "gpui_idea::infrastructure::language_server::inventory",
+            log::LevelFilter::Info,
+        );
     // Examples: RUST_LOG=debug or RUST_LOG=warn,gpui_idea=debug.
     // Invalid directives cannot prevent the application from starting.
     if let Ok(filter) = std::env::var("RUST_LOG") {

@@ -27,6 +27,9 @@ pub(super) fn read(root: &Path, relative: &Path) -> Result<Vec<ProjectEntry>> {
             name: name.to_string_lossy().into_owned(),
             is_directory: metadata.is_dir(),
             is_link: super::super::core::path::is_link(&metadata),
+            is_code_package: metadata.is_dir()
+                && !super::super::core::path::is_link(&metadata)
+                && crate::infrastructure::language_server::is_code_package_directory(&entry.path()),
             runnable: metadata.is_file()
                 && !super::super::core::path::is_link(&metadata)
                 && super::super::core::file_runnable(root, &entry.path()),

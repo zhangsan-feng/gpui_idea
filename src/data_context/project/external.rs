@@ -1,19 +1,11 @@
 use super::ProjectContext;
-use crate::domain::project::DirectorySnapshot;
 use crate::event_bus::refresh_gui::GuiComponent;
-use std::{collections::HashMap, path::PathBuf, sync::Arc};
+use std::sync::Arc;
 
 impl ProjectContext {
-    pub fn content_search(&self) -> Arc<crate::domain::project::ContentSearchSnapshot> {
-        self.state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .content_search
-            .clone()
-    }
     pub(crate) fn set_content_search(
         &self,
-        snapshot: crate::domain::project::ContentSearchSnapshot,
+        snapshot: crate::domain::project::ContentSearchDataContextSnapshot,
     ) {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         if snapshot.request < state.content_search.request {
@@ -23,14 +15,17 @@ impl ProjectContext {
         drop(state);
         crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::FileTree]);
     }
-    pub fn run_sessions(&self) -> Arc<crate::domain::run::RunSessions> {
+    pub fn run_sessions(&self) -> Arc<crate::domain::run::RunSessionsDataContextSnapshot> {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .run_sessions
             .clone()
     }
-    pub(crate) fn set_run_sessions(&self, snapshot: crate::domain::run::RunSessions) {
+    pub(crate) fn set_run_sessions(
+        &self,
+        snapshot: crate::domain::run::RunSessionsDataContextSnapshot,
+    ) {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -41,14 +36,19 @@ impl ProjectContext {
             GuiComponent::BottomPanel,
         ]);
     }
-    pub fn run_configuration(&self) -> Arc<crate::domain::run::RunConfiguration> {
+    pub fn run_configuration(
+        &self,
+    ) -> Arc<crate::domain::run::RunConfigurationDataContextSnapshot> {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .run_configuration
             .clone()
     }
-    pub(crate) fn set_run_configuration(&self, snapshot: crate::domain::run::RunConfiguration) {
+    pub(crate) fn set_run_configuration(
+        &self,
+        snapshot: crate::domain::run::RunConfigurationDataContextSnapshot,
+    ) {
         let mut state = self.state.lock().unwrap_or_else(|error| error.into_inner());
         if snapshot.request < state.run_configuration.request {
             return;
@@ -61,14 +61,14 @@ impl ProjectContext {
             GuiComponent::RunConfiguration,
         ]);
     }
-    pub fn git(&self) -> Arc<crate::domain::git::GitSnapshot> {
+    pub fn git(&self) -> Arc<crate::domain::git::GitDataContextSnapshot> {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .git
             .clone()
     }
-    pub(crate) fn set_git(&self, snapshot: crate::domain::git::GitSnapshot) {
+    pub(crate) fn set_git(&self, snapshot: crate::domain::git::GitDataContextSnapshot) {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -76,7 +76,10 @@ impl ProjectContext {
         crate::data_context::DATA_CONTEXT
             .notify_gui_refresh(&[GuiComponent::WindowBar, GuiComponent::BottomPanel]);
     }
-    pub fn git_details(&self, hash: &str) -> Arc<crate::domain::git::GitDetails> {
+    pub fn git_details(
+        &self,
+        hash: &str,
+    ) -> Arc<crate::domain::git::GitDetailsDataContextSnapshot> {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -85,7 +88,10 @@ impl ProjectContext {
             .cloned()
             .unwrap_or_default()
     }
-    pub(crate) fn set_git_details(&self, snapshot: crate::domain::git::GitDetails) {
+    pub(crate) fn set_git_details(
+        &self,
+        snapshot: crate::domain::git::GitDetailsDataContextSnapshot,
+    ) {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -93,40 +99,27 @@ impl ProjectContext {
             .insert(snapshot.hash.clone(), Arc::new(snapshot));
         crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::BottomPanel]);
     }
-    pub fn statistics(&self) -> Arc<crate::domain::statistics::StatisticsSnapshot> {
+    pub fn statistics(&self) -> Arc<crate::domain::statistics::StatisticsDataContextSnapshot> {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .statistics
             .clone()
     }
-    pub(crate) fn set_statistics(&self, snapshot: crate::domain::statistics::StatisticsSnapshot) {
+    pub(crate) fn set_statistics(
+        &self,
+        snapshot: crate::domain::statistics::StatisticsDataContextSnapshot,
+    ) {
         self.set_statistics_silent(snapshot);
         crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::BottomPanel]);
     }
     pub(crate) fn set_statistics_silent(
         &self,
-        snapshot: crate::domain::statistics::StatisticsSnapshot,
+        snapshot: crate::domain::statistics::StatisticsDataContextSnapshot,
     ) {
         self.state
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .statistics = Arc::new(snapshot);
-    }
-    pub fn revision(&self) -> u64 {
-        self.state
-            .lock()
-            .unwrap_or_else(|error| error.into_inner())
-            .revision
-    }
-    pub fn snapshots(&self) -> (u64, HashMap<PathBuf, Arc<DirectorySnapshot>>) {
-        let state = self.state.lock().unwrap_or_else(|error| error.into_inner());
-        (state.revision, state.directories.clone())
-    }
-    pub(crate) fn set_directory(&self, path: PathBuf, snapshot: DirectorySnapshot) {
-        self.replace(path, snapshot);
-    }
-    pub(crate) fn set_directory_silent(&self, path: PathBuf, snapshot: DirectorySnapshot) -> bool {
-        self.replace_silent(path, snapshot)
     }
 }

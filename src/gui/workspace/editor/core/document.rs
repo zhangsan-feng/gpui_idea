@@ -2,13 +2,17 @@ use crate::application::APPLICATION;
 use crate::data_context::DATA_CONTEXT;
 use crate::gui::workspace::ProjectFile;
 use crate::gui::workspace::editor::Editor;
-use crate::{application::lifecycle::run_application, domain::document::DocumentSnapshot};
+use crate::{
+    application::lifecycle::run_application, domain::document::DocumentDataContextSnapshot,
+};
 use gpui_kit::component::input::{EditorState, InputEvent, Position, RopeExt as _, TabSize};
 use gpui_kit::{AppContext as _, Context, Window, point, px};
 use std::{sync::Arc, time::Instant};
 
 impl Editor {
-    pub(in crate::gui::workspace) fn active_document(&self) -> Option<Arc<DocumentSnapshot>> {
+    pub(in crate::gui::workspace) fn active_document(
+        &self,
+    ) -> Option<Arc<DocumentDataContextSnapshot>> {
         if self.state.open_files.is_empty() {
             return None;
         }
@@ -162,6 +166,7 @@ impl Editor {
                                 position.line = position.line.min(state.text().lines_len().saturating_sub(1) as u32);
                                 state.set_cursor_position(position, window, cx);
                             });
+                            Self::position_jump_viewport(&editor, window, cx);
                         }
                         if let Err(error) = APPLICATION.documents.attach_editor_buffer(&path, editor.read(cx).text().clone(), opened.snapshot.revision) {
                             this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!("{error:#}")))));

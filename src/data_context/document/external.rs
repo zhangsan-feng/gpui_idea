@@ -1,11 +1,11 @@
 use super::DocumentContext;
-use crate::domain::document::DocumentSnapshot;
+use crate::domain::document::DocumentDataContextSnapshot;
 use anyhow::{Result, bail};
 use ropey::Rope;
 use std::{path::Path, sync::Arc};
 
 impl DocumentContext {
-    pub(crate) fn snapshots(&self) -> Vec<Arc<DocumentSnapshot>> {
+    pub(crate) fn snapshots(&self) -> Vec<Arc<DocumentDataContextSnapshot>> {
         self.documents
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -17,8 +17,8 @@ impl DocumentContext {
     // Recheck under the lock: the user may have edited while disk IO was running.
     pub(crate) fn refresh_from_disk_silent(
         &self,
-        expected: &DocumentSnapshot,
-        loaded: DocumentSnapshot,
+        expected: &DocumentDataContextSnapshot,
+        loaded: DocumentDataContextSnapshot,
     ) -> bool {
         {
             let mut documents = self
@@ -68,7 +68,7 @@ impl DocumentContext {
 
     pub(crate) fn disk_refresh_failed_silent(
         &self,
-        expected: &DocumentSnapshot,
+        expected: &DocumentDataContextSnapshot,
         message: String,
     ) -> bool {
         let path = &expected.path;
@@ -116,14 +116,14 @@ impl DocumentContext {
         };
         removed
     }
-    pub fn snapshot(&self, path: &Path) -> Option<Arc<DocumentSnapshot>> {
+    pub fn snapshot(&self, path: &Path) -> Option<Arc<DocumentDataContextSnapshot>> {
         self.documents
             .lock()
             .unwrap_or_else(|error| error.into_inner())
             .get(path)
             .cloned()
     }
-    pub fn dirty_documents(&self) -> Vec<Arc<DocumentSnapshot>> {
+    pub fn dirty_documents(&self) -> Vec<Arc<DocumentDataContextSnapshot>> {
         self.documents
             .lock()
             .unwrap_or_else(|error| error.into_inner())
@@ -139,7 +139,10 @@ impl DocumentContext {
             .values()
             .any(|doc| doc.saving)
     }
-    pub(crate) fn insert(&self, document: DocumentSnapshot) -> Arc<DocumentSnapshot> {
+    pub(crate) fn insert(
+        &self,
+        document: DocumentDataContextSnapshot,
+    ) -> Arc<DocumentDataContextSnapshot> {
         let snapshot = {
             let mut documents = self
                 .documents
@@ -192,7 +195,7 @@ impl DocumentContext {
         path: &Path,
         automatic: bool,
         formatted: Option<(u64, Rope)>,
-    ) -> Result<Option<Arc<DocumentSnapshot>>> {
+    ) -> Result<Option<Arc<DocumentDataContextSnapshot>>> {
         let snapshot = {
             let mut documents = self
                 .documents

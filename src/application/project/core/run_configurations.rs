@@ -1,12 +1,17 @@
 use super::super::ProjectService;
 use crate::{
     data_context::DATA_CONTEXT,
-    domain::run::{RunConfiguration, RunConfigurationEdit, SavedRunConfiguration},
+    domain::run::{
+        RunConfigurationDataContextSnapshot, RunConfigurationEdit, SavedRunConfiguration,
+    },
 };
 use anyhow::{Result, ensure};
 
 impl ProjectService {
-    pub(super) fn publish_run_configuration(&self, mut snapshot: RunConfiguration) {
+    pub(super) fn publish_run_configuration(
+        &self,
+        mut snapshot: RunConfigurationDataContextSnapshot,
+    ) {
         if snapshot.configurations.is_empty() {
             snapshot.selected_configuration = 1;
             snapshot.configurations.push(SavedRunConfiguration {
@@ -39,7 +44,7 @@ impl ProjectService {
     }
 
     pub(super) fn load_saved_run_configuration(
-        snapshot: &mut RunConfiguration,
+        snapshot: &mut RunConfigurationDataContextSnapshot,
         saved: &SavedRunConfiguration,
     ) {
         snapshot.selected_configuration = saved.id;

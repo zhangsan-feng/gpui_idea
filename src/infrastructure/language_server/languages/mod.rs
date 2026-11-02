@@ -29,10 +29,17 @@ pub(super) struct Language {
     pub install: fn(&InstallContext) -> Result<()>,
     pub download: Option<Download>,
     pub configuration: fn(&str) -> Value,
-    pub initialization_options: fn() -> Value,
+    pub initialization_options: fn(&Path) -> Value,
     pub native_version: Option<&'static str>,
-    pub detect_workspace: bool,
-    pub workspace_markers: &'static [&'static str],
+    pub detect_workspace: fn(&Path) -> bool,
+    pub file_run: Option<FileRunSupport>,
+    pub file_extensions: &'static [&'static str],
+    pub code_package: Option<CodePackageSupport>,
+}
+
+pub(super) struct CodePackageSupport {
+    pub detect: fn(&[PathBuf]) -> bool,
+    pub markers: &'static [&'static str],
 }
 
 pub(super) const ALL: &[Language] = &[
@@ -70,6 +77,24 @@ const MANAGED: &[Language] = &[
 ];
 
 mod core;
+mod package;
 pub(super) use core::{
     configuration, download_release, get, initialization_options, latest_release, managed, settings,
 };
+
+pub(super) struct FileRunSupport {
+    pub accepts_file: fn(&Path) -> bool,
+    pub resolve:
+        fn(&Path, &Path) -> Result<crate::domain::run::RunConfigurationDataContextSnapshot>,
+    pub server: Option<ServerRunSupport>,
+}
+
+pub(super) struct ServerRunSupport {
+    pub method: &'static str,
+    pub capability: &'static str,
+    pub parameters: fn(&str) -> Value,
+    pub parse: fn(
+        &Path,
+        &Value,
+    ) -> Result<Option<crate::domain::run::RunConfigurationDataContextSnapshot>>,
+}

@@ -1,4 +1,6 @@
 mod core;
+mod package;
+mod run;
 
 use super::{Download, Language};
 pub(super) const LANGUAGE: Language = Language {
@@ -19,6 +21,8 @@ pub(super) const LANGUAGE: Language = Language {
     configuration: core::configuration,
     initialization_options: core::initialization_options,
     native_version: Some("--version"),
-    detect_workspace: true,
-    workspace_markers: &[],
+    detect_workspace: core::detect_workspace,
+    file_run: Some(run::SUPPORT),
+    file_extensions: &["rs"],
+    code_package: Some(package::SUPPORT),
 };

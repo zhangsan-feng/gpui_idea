@@ -1,18 +1,6 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
-pub fn supports_file(path: &std::path::Path) -> bool {
-    let extension = path
-        .extension()
-        .and_then(|ext| ext.to_str())
-        .unwrap_or_default()
-        .to_ascii_lowercase();
-    matches!(
-        extension.as_str(),
-        "go" | "rs" | "py" | "pyw" | "js" | "mjs" | "cjs"
-    )
-}
-
 #[derive(Clone, Copy, Debug, Default, Eq, PartialEq)]
 pub enum RunAction {
     #[default]
@@ -49,7 +37,7 @@ impl RunProfile {
 }
 
 #[derive(Clone, Debug, Default)]
-pub struct RunConfiguration {
+pub struct RunConfigurationDataContextSnapshot {
     pub request: u64,
     pub automatic: bool,
     pub loading: bool,
@@ -96,13 +84,13 @@ pub struct RunInstance {
 }
 
 #[derive(Clone, Default)]
-pub struct RunSessions {
+pub struct RunSessionsDataContextSnapshot {
     pub instances: Vec<RunInstance>,
     pub selected: Option<crate::domain::terminal::TerminalId>,
     pub starting: bool,
 }
 
-impl RunConfiguration {
+impl RunConfigurationDataContextSnapshot {
     pub fn selected(&self) -> Option<&SavedRunConfiguration> {
         self.configurations
             .iter()

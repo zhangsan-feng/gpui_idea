@@ -2,6 +2,7 @@ mod completion;
 mod core;
 mod definition_cursor;
 mod external;
+mod highlights;
 
 pub(crate) use external::{
     attach_completions, completion_dropdown, definition_pointer, dismiss_completions, init,

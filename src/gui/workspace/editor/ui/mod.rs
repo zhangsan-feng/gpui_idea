@@ -6,6 +6,7 @@ use std::cell::Cell;
 
 mod empty;
 mod image_preview;
+mod menu;
 mod tabs;
 
 const TAB_HEIGHT: f32 = 36.;
@@ -24,6 +25,18 @@ impl Editor {
             .min_w_0()
             .min_h_0()
             .overflow_hidden()
+            .on_action(cx.listener(|this, _: &super::RunEditorFile, _, cx| {
+                this.run_current_file(cx);
+            }))
+            .on_action(cx.listener(|this, _: &super::RevealEditorFile, _, cx| {
+                this.reveal_current_file(cx);
+            }))
+            .on_action(cx.listener(|this, _: &super::CopyEditorProjectPath, _, cx| {
+                this.copy_current_path(false, cx);
+            }))
+            .on_action(cx.listener(|this, _: &super::CopyEditorAbsolutePath, _, cx| {
+                this.copy_current_path(true, cx);
+            }))
             .bg(crate::component::appearance::background(EDITOR_BG));
         if self.state.open_files.is_empty() {
             if !DATA_CONTEXT.has_project() {
@@ -54,7 +67,7 @@ impl Editor {
         )
         .is_some()
         {
-            return editor.child(self.render_image_preview());
+            return editor.child(self.render_image_preview(cx));
         }
         if let Some(document) = self.active_document() {
             if let Some(error) = &document.save_error {
@@ -72,6 +85,7 @@ impl Editor {
         if let Some(state) = self.state.editors.get(&self.state.selected_file) {
             let started = std::time::Instant::now();
             let input = CodeEditor::new(state)
+                .context_menu(self.editor_context_menu(state, cx))
                 .aria_label(
                     self.state
                         .selected_file
@@ -105,7 +119,7 @@ impl Editor {
                 .h(relative(1.))
                 .w_full()
                 .font_family(crate::component::appearance::editor_font())
-                .text_size(px(DATA_CONTEXT.settings.get().appearance.editor_size as f32));
+                .text_size(px(DATA_CONTEXT.settings.snapshot().general.appearance.editor_size as f32));
             editor.child(
                 div()
                     .relative()

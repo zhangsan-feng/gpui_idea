@@ -1,4 +1,6 @@
-use crate::domain::git::{GitCommit, GitDetails, GitFileChange, GitSnapshot};
+use crate::domain::git::{
+    GitCommit, GitDataContextSnapshot, GitDetailsDataContextSnapshot, GitFileChange,
+};
 use anyhow::{Context as _, Result, ensure};
 use std::{
     path::{Path, PathBuf},
@@ -38,18 +40,18 @@ async fn run(root: &Path, args: &[&str]) -> Result<Vec<u8>> {
     Ok(result.stdout)
 }
 
-pub(super) async fn snapshot(root: PathBuf) -> Result<GitSnapshot> {
+pub(super) async fn snapshot(root: PathBuf) -> Result<GitDataContextSnapshot> {
     let discovery = output(&root, &["rev-parse", "--is-inside-work-tree"]).await?;
     if !discovery.status.success() {
         let error = String::from_utf8_lossy(&discovery.stderr);
         if error.contains("not a git repository") {
             tracing::debug!(root = %root.display(), "Project has no Git repository");
-            return Ok(GitSnapshot::default());
+            return Ok(GitDataContextSnapshot::default());
         }
         anyhow::bail!("{}", error.trim());
     }
     if String::from_utf8_lossy(&discovery.stdout).trim() != "true" {
-        return Ok(GitSnapshot::default());
+        return Ok(GitDataContextSnapshot::default());
     }
     let branch = run(&root, &["branch", "--show-current"]).await?;
     let branch = String::from_utf8_lossy(&branch).trim().to_owned();
@@ -60,7 +62,7 @@ pub(super) async fn snapshot(root: PathBuf) -> Result<GitSnapshot> {
     } else {
         branch
     };
-    let mut snapshot = GitSnapshot {
+    let mut snapshot = GitDataContextSnapshot {
         is_repository: true,
         is_detached,
         branch,
@@ -115,7 +117,7 @@ pub(super) async fn snapshot(root: PathBuf) -> Result<GitSnapshot> {
     Ok(snapshot)
 }
 
-pub(super) async fn details(root: PathBuf, hash: String) -> Result<GitDetails> {
+pub(super) async fn details(root: PathBuf, hash: String) -> Result<GitDetailsDataContextSnapshot> {
     ensure!(
         matches!(hash.len(), 40 | 64) && hash.bytes().all(|byte| byte.is_ascii_hexdigit()),
         "提交标识无效"
@@ -143,7 +145,7 @@ pub(super) async fn details(root: PathBuf, hash: String) -> Result<GitDetails> {
             path: PathBuf::from(String::from_utf8_lossy(pair[1]).as_ref()),
         })
         .collect();
-    Ok(GitDetails {
+    Ok(GitDetailsDataContextSnapshot {
         hash,
         files,
         error: None,

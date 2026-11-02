@@ -1,4 +1,4 @@
-gpui_kit::actions!(workspace, [SaveDocument, CloseAllDocuments]);
+gpui_kit::actions!(workspace, [SaveDocument, CloseAllDocuments, RunEditorFile, RevealEditorFile, CopyEditorProjectPath, CopyEditorAbsolutePath]);
 use std::path::Path;
 mod core;
 mod external;
@@ -108,6 +108,8 @@ pub(in crate::gui) struct DraggedEditorTab {
 }
 
 pub(in crate::gui) struct ImagePreviewView {
+    pub(in crate::gui::workspace) zoom: f32,
+    pub(in crate::gui::workspace) scroll: ScrollHandle,
     pub(in crate::gui::workspace) image: Option<std::sync::Arc<gpui_kit::Image>>,
     pub(in crate::gui::workspace) revision: u64,
     pub(in crate::gui::workspace) bytes: usize,

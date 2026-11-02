@@ -83,7 +83,7 @@ pub(crate) fn language_for_path(path: &std::path::Path) -> Option<&'static str> 
         _ => None,
     }
 }
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ManagedServer {
     pub(crate) key: String,
     pub(crate) name: String,
@@ -93,16 +93,28 @@ pub(crate) struct ManagedServer {
     pub(crate) versions: Vec<ManagedVersion>,
 }
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub(crate) struct ManagedVersion {
+    pub(crate) in_use: bool,
     pub(crate) directory: String,
     pub(crate) version: String,
+}
+
+/// Status and inventory read together by a single render pass.
+#[derive(Clone, Debug, Default, PartialEq, Eq)]
+pub(crate) struct LanguageServerDataContextSnapshot {
+    pub(crate) status: LanguageServerStatus,
+    pub(crate) servers: std::sync::Arc<[LanguageServerInfo]>,
 }
 
 #[derive(Clone)]
 pub(crate) enum ServerManagementAction {
     Refresh,
     CleanHistory,
+    Delete {
+        key: String,
+        directory: String,
+    },
     Update(String),
     Select {
         key: String,

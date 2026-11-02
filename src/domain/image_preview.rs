@@ -35,7 +35,7 @@ impl PreviewImageFormat {
     }
 }
 
-pub(crate) struct ImagePreviewSnapshot {
+pub(crate) struct ImagePreviewDataContextSnapshot {
     pub(crate) path: PathBuf,
     pub(crate) format: PreviewImageFormat,
     pub(crate) bytes: Arc<[u8]>,

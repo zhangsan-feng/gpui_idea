@@ -5,15 +5,18 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 impl DocumentService {
+    pub(crate) async fn reveal_location(&self, path: PathBuf) -> Result<()> {
+        self.reveal_location_core(path).await
+    }
     pub(crate) async fn open_image_preview(
         &self,
         path: PathBuf,
-    ) -> Result<Arc<crate::domain::image_preview::ImagePreviewSnapshot>> {
+    ) -> Result<Arc<crate::domain::image_preview::ImagePreviewDataContextSnapshot>> {
         self.open_image_core(path).await
     }
     pub(crate) async fn refresh_image_preview(
         &self,
-        snapshot: Arc<crate::domain::image_preview::ImagePreviewSnapshot>,
+        snapshot: Arc<crate::domain::image_preview::ImagePreviewDataContextSnapshot>,
     ) {
         self.refresh_image_core(snapshot).await;
     }

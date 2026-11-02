@@ -7,7 +7,9 @@ use tokio::process::Command;
 pub(in crate::infrastructure::language_server) fn configuration(_section: &str) -> Value {
     json!({"completion": true, "validate": true, "hover": true, "schemaStore": {"enable": false}})
 }
-pub(in crate::infrastructure::language_server) fn initialization_options() -> Value {
+pub(in crate::infrastructure::language_server) fn initialization_options(
+    _root: &std::path::Path,
+) -> Value {
     json!({})
 }
 
@@ -26,4 +28,8 @@ pub(in crate::infrastructure::language_server) fn prepare(
 }
 pub(in crate::infrastructure::language_server) fn install(context: &InstallContext) -> Result<()> {
     managed::node_server(&NODE, context).map(|_| ())
+}
+
+pub(super) fn detect_workspace(_root: &std::path::Path) -> bool {
+    false
 }

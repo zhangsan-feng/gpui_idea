@@ -2,7 +2,8 @@ mod core;
 mod external;
 mod formatting;
 mod image_preview;
-use crate::domain::document::DocumentSnapshot;
+mod location;
+use crate::domain::document::DocumentDataContextSnapshot;
 use std::sync::Arc;
 
 pub struct DocumentService;
@@ -13,6 +14,6 @@ impl DocumentService {
 }
 
 pub struct OpenedDocument {
-    pub snapshot: Arc<DocumentSnapshot>,
+    pub snapshot: Arc<DocumentDataContextSnapshot>,
     pub initial_text: String,
 }

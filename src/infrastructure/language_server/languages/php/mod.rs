@@ -1,4 +1,6 @@
 mod core;
+mod package;
+mod run;
 
 use super::Language;
 pub(super) const LANGUAGE: Language = Language {
@@ -16,6 +18,10 @@ pub(super) const LANGUAGE: Language = Language {
     configuration: core::configuration,
     initialization_options: core::initialization_options,
     native_version: None,
-    detect_workspace: true,
-    workspace_markers: &[],
+    detect_workspace: core::detect_workspace,
+    file_run: Some(run::SUPPORT),
+    file_extensions: &[
+        "php", "phtml", "php3", "php4", "php5", "php7", "php8", "phps",
+    ],
+    code_package: Some(package::SUPPORT),
 };

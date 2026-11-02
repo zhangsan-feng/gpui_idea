@@ -15,7 +15,9 @@ use tokio::process::Command;
 pub(in crate::infrastructure::language_server) fn configuration(_section: &str) -> Value {
     Value::Null
 }
-pub(in crate::infrastructure::language_server) fn initialization_options() -> Value {
+pub(in crate::infrastructure::language_server) fn initialization_options(
+    _root: &std::path::Path,
+) -> Value {
     json!({})
 }
 
@@ -55,4 +57,11 @@ pub(in crate::infrastructure::language_server) fn download_release(
     )?;
     fs::remove_file(archive)?;
     Ok((source, entry))
+}
+
+pub(super) fn detect_workspace(root: &std::path::Path) -> bool {
+    super::LANGUAGE
+        .markers
+        .iter()
+        .any(|marker| root.join(marker).is_file())
 }

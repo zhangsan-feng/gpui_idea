@@ -1,10 +1,10 @@
 use super::super::FileSystem;
-use crate::domain::statistics::StatisticsSnapshot;
+use crate::domain::statistics::StatisticsDataContextSnapshot;
 use anyhow::Result;
 use std::{path::PathBuf, time::Instant};
 
 impl FileSystem {
-    pub async fn statistics(&self, root: PathBuf) -> Result<StatisticsSnapshot> {
+    pub async fn statistics(&self, root: PathBuf) -> Result<StatisticsDataContextSnapshot> {
         let started = Instant::now();
         let result = super::core::scan(root.clone()).await;
         tracing::debug!(

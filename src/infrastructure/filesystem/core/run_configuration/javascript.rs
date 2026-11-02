@@ -1,10 +1,10 @@
 use super::common::*;
-use crate::domain::run::RunConfiguration;
+use crate::domain::run::RunConfigurationDataContextSnapshot;
 use anyhow::{Context, Result, bail};
 use serde_json::Value;
 use std::{fs, path::Path};
 
-pub(super) fn javascript(manifest: &Path) -> Result<Option<RunConfiguration>> {
+pub(super) fn javascript(manifest: &Path) -> Result<Option<RunConfigurationDataContextSnapshot>> {
     let package: Value =
         serde_json::from_slice(&fs::read(manifest)?).context("package.json 格式错误")?;
     let script = ["start", "dev"].into_iter().find(|name| {
@@ -72,11 +72,11 @@ pub(super) fn javascript(manifest: &Path) -> Result<Option<RunConfiguration>> {
     }
     Ok(Some(result))
 }
-pub(super) fn javascript_file(
+pub(in crate::infrastructure) fn javascript_file(
     file: &Path,
     extension: &str,
     manifest: Option<&Path>,
-) -> Result<RunConfiguration> {
+) -> Result<RunConfigurationDataContextSnapshot> {
     if matches!(extension, "js" | "mjs" | "cjs") {
         let directory = file.parent().unwrap();
         return Ok(configuration(

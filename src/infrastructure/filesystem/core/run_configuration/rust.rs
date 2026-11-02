@@ -1,5 +1,5 @@
 use super::common::*;
-use crate::domain::run::{RunConfiguration, RunProfile};
+use crate::domain::run::{RunConfigurationDataContextSnapshot, RunProfile};
 use anyhow::{Context, Result, bail};
 use serde_json::Value;
 use std::{path::Path, process::Command};
@@ -8,15 +8,24 @@ pub(super) fn cargo(
     root: &Path,
     manifest: &Path,
     selected: Option<&Path>,
-) -> Result<RunConfiguration> {
+) -> Result<RunConfigurationDataContextSnapshot> {
     resolve_cargo(root, manifest, selected, false)
 }
 
-pub(super) fn cargo_entry(root: &Path, manifest: &Path, file: &Path) -> Result<RunConfiguration> {
+pub(in crate::infrastructure) fn cargo_entry(
+    root: &Path,
+    manifest: &Path,
+    file: &Path,
+) -> Result<RunConfigurationDataContextSnapshot> {
     resolve_cargo(root, manifest, Some(file), true)
 }
 
-fn resolve_cargo(root: &Path, manifest: &Path, selected: Option<&Path>, strict: bool) -> Result<RunConfiguration> {
+fn resolve_cargo(
+    root: &Path,
+    manifest: &Path,
+    selected: Option<&Path>,
+    strict: bool,
+) -> Result<RunConfigurationDataContextSnapshot> {
     let mut process = Command::new("cargo");
     crate::infrastructure::process_environment::sanitize(&mut process);
     #[cfg(windows)]
@@ -100,9 +109,15 @@ fn resolve_cargo(root: &Path, manifest: &Path, selected: Option<&Path>, strict: 
         .iter()
         .filter(|target| kind(target, "bin"))
         .collect();
-    if strict && !selected_target.is_some_and(|target| {
-        target["src_path"].as_str().and_then(|path| Path::new(path).canonicalize().ok()).as_deref() == selected
-    }) {
+    if strict
+        && !selected_target.is_some_and(|target| {
+            target["src_path"]
+                .as_str()
+                .and_then(|path| Path::new(path).canonicalize().ok())
+                .as_deref()
+                == selected
+        })
+    {
         bail!("此 main.rs 不是 Cargo 可执行入口");
     }
     let target = selected_target.or_else(|| {
@@ -174,7 +189,7 @@ fn resolve_cargo(root: &Path, manifest: &Path, selected: Option<&Path>, strict: 
             )
         })
     };
-    Ok(RunConfiguration {
+    Ok(RunConfigurationDataContextSnapshot {
         command: wrap(&command),
         label: format!("Rust · {name}"),
         profiles: vec![
@@ -208,7 +223,7 @@ fn build_only(
     manifest: &Path,
     label: &str,
     package: Option<&str>,
-) -> RunConfiguration {
+) -> RunConfigurationDataContextSnapshot {
     let target = package
         .map(|name| format!("--package {}", quote(name)))
         .unwrap_or_else(|| "--workspace".into());
@@ -223,7 +238,7 @@ fn build_only(
             in_directory(manifest.parent().unwrap(), command)
         }
     };
-    RunConfiguration {
+    RunConfigurationDataContextSnapshot {
         label: label.into(),
         profiles: ["dev", "release"]
             .into_iter()

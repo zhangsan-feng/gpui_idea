@@ -11,14 +11,34 @@ use std::{path::PathBuf, sync::atomic::Ordering};
 impl ProjectService {
     pub(in crate::application::project) async fn run_file_core(&self, file: PathBuf) -> Result<()> {
         ensure!(
-            crate::domain::run::supports_file(&file),
+            INFRASTRUCTURE.language_servers.supports_file_run(&file),
             "此文件类型尚不支持运行"
         );
         APPLICATION.documents.save_dirty().await?;
-        let detected = INFRASTRUCTURE
-            .filesystem
-            .file_run_configuration(DATA_CONTEXT.project_root().to_owned(), file.clone())
-            .await?;
+        let root = DATA_CONTEXT.project_root().to_owned();
+        let server = INFRASTRUCTURE
+            .language_servers
+            .server_file_run_configuration(root.clone(), file.clone(), true)
+            .await;
+        let (detected, source) = match server {
+            Ok(Some(configuration)) => (
+                configuration
+                    .ok_or_else(|| anyhow::anyhow!("语言服务未识别到此文件的可运行入口"))?,
+                "language_server",
+            ),
+            unavailable => {
+                if let Err(error) = unavailable {
+                    tracing::warn!(file = %file.display(), %error, "LSP run target unavailable; using language runtime rules");
+                }
+                (
+                    INFRASTRUCTURE
+                        .filesystem
+                        .file_run_configuration(root, file.clone())
+                        .await?,
+                    "language_runtime",
+                )
+            }
+        };
         ensure!(
             detected
                 .profiles
@@ -82,7 +102,7 @@ impl ProjectService {
             self.publish_run_configuration(snapshot);
             id
         };
-        tracing::info!(file = %file.display(), configuration = id, "file tree run requested");
+        tracing::info!(file = %file.display(), configuration = id, source, "file tree run requested");
         self.execute_run_instances(RunAction::Run, None, Some(id))
             .await
     }

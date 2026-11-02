@@ -87,7 +87,13 @@ impl FileTree {
         if !rename {
             self.state.expanded_directories.insert(PathBuf::new());
             self.state.expanded_directories.insert(directory.clone());
-            if !DATA_CONTEXT.project.snapshots().1.contains_key(&directory) {
+            if !DATA_CONTEXT
+                .project
+                .file_tree
+                .snapshots()
+                .1
+                .contains_key(&directory)
+            {
                 self.load_directory(directory, cx);
             }
         }

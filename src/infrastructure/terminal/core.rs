@@ -1,5 +1,5 @@
 use super::*;
-use crate::domain::terminal::{TerminalCell, TerminalSnapshot};
+use crate::domain::terminal::{TerminalCell, TerminalDataContextSnapshot};
 use alacritty_terminal::{
     event::WindowSize,
     event_loop::EventLoop,
@@ -90,7 +90,7 @@ pub(super) fn finish_output(session: &mut Session) {
     parser.advance(&mut *session.term.lock(), text.as_bytes());
 }
 
-pub(super) fn snapshot(session: &Session) -> TerminalSnapshot {
+pub(super) fn snapshot(session: &Session) -> TerminalDataContextSnapshot {
     use alacritty_terminal::grid::Dimensions;
     let term = session.term.lock();
     let content = term.renderable_content();
@@ -146,7 +146,7 @@ pub(super) fn snapshot(session: &Session) -> TerminalSnapshot {
     } else {
         None
     };
-    TerminalSnapshot {
+    TerminalDataContextSnapshot {
         command: session.command.clone(),
         exit_code: session.exit_code,
         generation: session.generation,

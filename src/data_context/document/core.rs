@@ -1,5 +1,5 @@
 use super::DocumentContext;
-use crate::domain::document::DocumentSnapshot;
+use crate::domain::document::DocumentDataContextSnapshot;
 use crate::event_bus::refresh_gui::GuiComponent;
 use anyhow::{Result, anyhow};
 use std::{path::Path, sync::Arc};
@@ -8,8 +8,8 @@ impl DocumentContext {
     pub(super) fn modify(
         &self,
         path: &Path,
-        change: impl FnOnce(&mut DocumentSnapshot) -> Result<()>,
-    ) -> Result<Arc<DocumentSnapshot>> {
+        change: impl FnOnce(&mut DocumentDataContextSnapshot) -> Result<()>,
+    ) -> Result<Arc<DocumentDataContextSnapshot>> {
         let snapshot = {
             let mut documents = self
                 .documents

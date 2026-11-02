@@ -18,7 +18,7 @@ impl FileSystem {
         &self,
         root: PathBuf,
         query: String,
-    ) -> Result<crate::domain::project::ContentSearchSnapshot> {
+    ) -> Result<crate::domain::project::ContentSearchDataContextSnapshot> {
         core::run("content_search", PathBuf::new(), move || {
             core::search_content(root, query)
         })
@@ -78,7 +78,7 @@ impl FileSystem {
         &self,
         root: PathBuf,
         file: Option<PathBuf>,
-    ) -> Result<crate::domain::run::RunConfiguration> {
+    ) -> Result<crate::domain::run::RunConfigurationDataContextSnapshot> {
         core::run(
             "run_configuration",
             file.clone().unwrap_or_default(),
@@ -86,8 +86,15 @@ impl FileSystem {
         )
         .await
     }
-    pub(crate) async fn file_run_configuration(&self, root: PathBuf, file: PathBuf) -> Result<crate::domain::run::RunConfiguration> {
-        core::run("file_run_configuration", file.clone(), move || core::file_run_configuration(root, file)).await
+    pub(crate) async fn file_run_configuration(
+        &self,
+        root: PathBuf,
+        file: PathBuf,
+    ) -> Result<crate::domain::run::RunConfigurationDataContextSnapshot> {
+        core::run("file_run_configuration", file.clone(), move || {
+            core::file_run_configuration(root, file)
+        })
+        .await
     }
     /// All offsets refer to the original file. Expected bytes protect the target blocks.
     pub async fn modify_blocks(
@@ -215,7 +222,7 @@ impl FileSystem {
     pub async fn save_document(
         &self,
         root: PathBuf,
-        document: Arc<crate::domain::document::DocumentSnapshot>,
+        document: Arc<crate::domain::document::DocumentDataContextSnapshot>,
     ) -> Result<Arc<[u8]>> {
         super::document::save(root, document).await
     }

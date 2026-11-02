@@ -1,12 +1,12 @@
 mod external;
-use crate::domain::terminal::{TerminalId, TerminalSnapshot};
+use crate::domain::terminal::{TerminalDataContextSnapshot, TerminalId};
 use std::{
     collections::{HashMap, HashSet},
     sync::{Arc, RwLock},
 };
 
 pub struct TerminalContext {
-    snapshots: RwLock<HashMap<TerminalId, Arc<TerminalSnapshot>>>,
+    snapshots: RwLock<HashMap<TerminalId, Arc<TerminalDataContextSnapshot>>>,
     retired: RwLock<HashSet<TerminalId>>,
 }
 impl TerminalContext {

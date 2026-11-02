@@ -1,7 +1,7 @@
 use super::*;
 use crate::event_bus::refresh_gui::GuiComponent;
 impl TerminalContext {
-    pub fn snapshot(&self, id: TerminalId) -> Arc<TerminalSnapshot> {
+    pub fn snapshot(&self, id: TerminalId) -> Arc<TerminalDataContextSnapshot> {
         self.snapshots
             .read()
             .unwrap()
@@ -9,7 +9,7 @@ impl TerminalContext {
             .cloned()
             .unwrap_or_default()
     }
-    pub(crate) fn publish(&self, id: TerminalId, snapshot: TerminalSnapshot) {
+    pub(crate) fn publish(&self, id: TerminalId, snapshot: TerminalDataContextSnapshot) {
         let retired = self.retired.read().unwrap();
         if retired.contains(&id) {
             return;

@@ -1,10 +1,10 @@
 use super::{DirectoryScan, ScanResult, ScanTask, measure};
-use crate::domain::statistics::{ExtensionStatistics, StatisticsSnapshot};
+use crate::domain::statistics::{ExtensionStatistics, StatisticsDataContextSnapshot};
 use anyhow::{Context, Result};
 use std::{collections::BTreeMap, fs, path::PathBuf, time::Instant};
 use tokio::task::JoinSet;
 
-pub(super) async fn scan(root: PathBuf) -> Result<StatisticsSnapshot> {
+pub(super) async fn scan(root: PathBuf) -> Result<StatisticsDataContextSnapshot> {
     let started = Instant::now();
     let root = tokio::task::spawn_blocking(move || root.canonicalize())
         .await
@@ -18,7 +18,7 @@ pub(super) async fn scan(root: PathBuf) -> Result<StatisticsSnapshot> {
     let mut pending = vec![ScanTask::Directory(root)];
     let mut running = JoinSet::new();
     let mut groups = BTreeMap::<String, ExtensionStatistics>::new();
-    let mut snapshot = StatisticsSnapshot::default();
+    let mut snapshot = StatisticsDataContextSnapshot::default();
     let mut directories = 0_u64;
 
     loop {

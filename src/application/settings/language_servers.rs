@@ -12,7 +12,10 @@ impl SettingsService {
         action: ServerManagementAction,
     ) -> Result<Vec<ManagedServer>> {
         // Different families install independently; cleanup requires exclusive cache access.
-        let cleanup = matches!(&action, ServerManagementAction::CleanHistory);
+        let cleanup = matches!(
+            &action,
+            ServerManagementAction::CleanHistory | ServerManagementAction::Delete { .. }
+        );
         let _exclusive = if cleanup {
             Some(self.server_io.write().await)
         } else {
@@ -24,9 +27,9 @@ impl SettingsService {
             Some(self.server_io.read().await)
         };
         let key = match &action {
-            ServerManagementAction::Update(key) | ServerManagementAction::Select { key, .. } => {
-                key.as_str()
-            }
+            ServerManagementAction::Update(key)
+            | ServerManagementAction::Select { key, .. }
+            | ServerManagementAction::Delete { key, .. } => key.as_str(),
             ServerManagementAction::Refresh => "refresh",
             ServerManagementAction::CleanHistory => "cleanup",
         }
@@ -41,7 +44,7 @@ impl SettingsService {
         let _snapshot = self.server_snapshot_io.lock().await;
         let servers = INFRASTRUCTURE.language_servers.managed_servers().await;
         if let Ok(servers) = &servers {
-            DATA_CONTEXT.settings.set_servers(servers.clone());
+            DATA_CONTEXT.settings.publish_servers(servers.clone());
         }
         result?;
         tracing::info!(key, "LSP management operation completed");

@@ -1,7 +1,7 @@
 use super::DocumentService;
 use crate::{
     data_context::DATA_CONTEXT,
-    domain::image_preview::{ImagePreviewSnapshot, PreviewImageFormat},
+    domain::image_preview::{ImagePreviewDataContextSnapshot, PreviewImageFormat},
     infrastructure::INFRASTRUCTURE,
 };
 use anyhow::{Context as _, Result, ensure};
@@ -11,7 +11,10 @@ use std::{
 };
 
 impl DocumentService {
-    pub(super) async fn open_image_core(&self, path: PathBuf) -> Result<Arc<ImagePreviewSnapshot>> {
+    pub(super) async fn open_image_core(
+        &self,
+        path: PathBuf,
+    ) -> Result<Arc<ImagePreviewDataContextSnapshot>> {
         let path = if path.is_absolute() {
             path
         } else {
@@ -34,7 +37,7 @@ impl DocumentService {
         Ok(snapshot)
     }
 
-    pub(super) async fn refresh_image_core(&self, expected: Arc<ImagePreviewSnapshot>) {
+    pub(super) async fn refresh_image_core(&self, expected: Arc<ImagePreviewDataContextSnapshot>) {
         let (bytes, error) = match self.read_image_bytes(&expected.path).await {
             Ok(bytes) => (Arc::from(bytes), None),
             Err(error) => {

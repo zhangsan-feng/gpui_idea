@@ -1,5 +1,5 @@
 use super::*;
-use crate::domain::terminal::TerminalSnapshot;
+use crate::domain::terminal::TerminalDataContextSnapshot;
 use alacritty_terminal::{event::WindowSize, event_loop::Msg, grid::Scroll, term::test::TermSize};
 use anyhow::{Context, Result, anyhow};
 use std::{borrow::Cow, path::PathBuf};
@@ -180,7 +180,7 @@ impl TerminalStore {
         id: TerminalId,
         generation: Option<u64>,
         events: Vec<Event>,
-    ) -> Result<TerminalSnapshot> {
+    ) -> Result<TerminalDataContextSnapshot> {
         tokio::task::spawn_blocking(move || {
             let mut sessions = self.sessions.lock().unwrap();
             let session = sessions

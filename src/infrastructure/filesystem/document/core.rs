@@ -1,5 +1,5 @@
 use super::{BUFFER_SIZE, LoadedFile, TextDecoder};
-use crate::domain::document::{DocumentSnapshot, LineEnding, TextFormat};
+use crate::domain::document::{DocumentDataContextSnapshot, LineEnding, TextFormat};
 use anyhow::{Context, Result, bail};
 use ropey::RopeBuilder;
 use std::{
@@ -135,7 +135,7 @@ pub(super) fn read(root: &Path, path: &Path) -> Result<LoadedFile> {
     };
     tracing::debug!(path = %path.display(), bytes = bytes.len(), chunks,
         buffer_bytes = BUFFER_SIZE, "document loaded with buffered chunks");
-    let document = DocumentSnapshot {
+    let document = DocumentDataContextSnapshot {
         formatted_revision: None,
         path: path.to_path_buf(),
         scope_root: root.to_path_buf(),
@@ -153,7 +153,7 @@ pub(super) fn read(root: &Path, path: &Path) -> Result<LoadedFile> {
     })
 }
 
-pub(super) fn save(root: &Path, document: &DocumentSnapshot) -> Result<Arc<[u8]>> {
+pub(super) fn save(root: &Path, document: &DocumentDataContextSnapshot) -> Result<Arc<[u8]>> {
     validate(root, &document.path)?;
     let mut bytes = Vec::new();
     if document.format.bom {

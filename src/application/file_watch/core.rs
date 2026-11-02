@@ -1,7 +1,7 @@
 use crate::{
     data_context::DATA_CONTEXT,
     data_context::refresh::FileRefreshBatch,
-    domain::project::DirectorySnapshot,
+    domain::project::DirectoryDataContextSnapshot,
     event_bus::{FileChanges, RefreshDataContext},
     infrastructure::INFRASTRUCTURE,
 };
@@ -58,15 +58,21 @@ pub(super) async fn refresh(changes: &FileChanges) {
             }
         }));
     }
-    let (_, directories) = DATA_CONTEXT.project.snapshots();
+    let (_, directories) = DATA_CONTEXT.project.file_tree.snapshots();
     for relative in directories.keys() {
         let absolute = root.join(relative);
         if !changes.rescan
             && !changes.paths.iter().any(|path| {
-                (path.extension().is_some_and(|ext| ext == "go")
-                    && path.parent() == Some(absolute.as_path()))
-                    || (path.file_name().is_some_and(|name| name == "Cargo.toml")
-                        && path.parent().is_some_and(|parent| absolute.starts_with(parent)))
+                (INFRASTRUCTURE.language_servers.is_code_package_marker(path)
+                    && path.parent().and_then(Path::parent) == Some(absolute.as_path()))
+                    || (INFRASTRUCTURE.language_servers.supports_file_run(path)
+                        && path.parent() == Some(absolute.as_path()))
+                    || (INFRASTRUCTURE
+                        .language_servers
+                        .is_file_run_project_marker(path)
+                        && path
+                            .parent()
+                            .is_some_and(|parent| absolute.starts_with(parent)))
             })
             && !changes
                 .tree_paths
@@ -80,11 +86,11 @@ pub(super) async fn refresh(changes: &FileChanges) {
             .list_directory(root.to_owned(), relative.clone())
             .await
         {
-            Ok(entries) => DirectorySnapshot {
+            Ok(entries) => DirectoryDataContextSnapshot {
                 entries: entries.into(),
                 error: None,
             },
-            Err(error) => DirectorySnapshot {
+            Err(error) => DirectoryDataContextSnapshot {
                 entries: Vec::new().into(),
                 error: Some(format!("{error:#}")),
             },
@@ -115,6 +121,9 @@ pub(super) async fn refresh(changes: &FileChanges) {
         statistics,
         image_updated,
     });
+    crate::application::APPLICATION
+        .project
+        .schedule_file_run_refresh();
     tracing::debug!(
         paths = changes.paths.len(),
         raw_events = changes.event_count,

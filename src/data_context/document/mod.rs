@@ -1,7 +1,7 @@
 mod core;
 mod external;
 
-use crate::domain::document::DocumentSnapshot;
+use crate::domain::document::DocumentDataContextSnapshot;
 use std::{
     collections::HashMap,
     path::PathBuf,
@@ -9,7 +9,7 @@ use std::{
 };
 
 pub struct DocumentContext {
-    documents: Mutex<HashMap<PathBuf, Arc<DocumentSnapshot>>>,
+    documents: Mutex<HashMap<PathBuf, Arc<DocumentDataContextSnapshot>>>,
     autosave_paused: AtomicBool,
 }
 impl DocumentContext {

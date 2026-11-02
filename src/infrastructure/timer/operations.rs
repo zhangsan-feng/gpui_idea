@@ -1,5 +1,5 @@
 use crate::{
-    domain::document::DocumentSnapshot,
+    domain::document::DocumentDataContextSnapshot,
     infrastructure::{INFRASTRUCTURE, LocalChangeGuard},
 };
 use anyhow::Result;
@@ -7,7 +7,7 @@ use std::{path::PathBuf, sync::Arc};
 use tokio::sync::oneshot;
 
 pub(super) async fn save_file(
-    document: Arc<DocumentSnapshot>,
+    document: Arc<DocumentDataContextSnapshot>,
     completion: oneshot::Sender<Result<Arc<[u8]>>>,
 ) {
     tracing::debug!(path = %document.path.display(), revision = document.revision, "timer handling SaveFile event");

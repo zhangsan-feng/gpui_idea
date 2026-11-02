@@ -33,7 +33,7 @@ impl ExtensionStatistics {
     }
 }
 #[derive(Clone, Default)]
-pub struct StatisticsSnapshot {
+pub struct StatisticsDataContextSnapshot {
     pub extensions: Vec<ExtensionStatistics>,
     pub total: ExtensionStatistics,
     pub skipped_files: u64,

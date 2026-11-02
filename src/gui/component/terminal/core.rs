@@ -2,7 +2,7 @@ mod scrollbar;
 use super::*;
 use crate::{
     application::{APPLICATION, lifecycle::run_application},
-    domain::terminal::TerminalSnapshot,
+    domain::terminal::TerminalDataContextSnapshot,
 };
 use gpui_kit::*;
 use std::ops::Range;
@@ -146,7 +146,7 @@ impl TerminalView {
                 .min(snapshot.columns.saturating_sub(1)),
         )
     }
-    pub(super) fn copy_text(&self, snapshot: &TerminalSnapshot) -> String {
+    pub(super) fn copy_text(&self, snapshot: &TerminalDataContextSnapshot) -> String {
         let (start, end) = self
             .selection
             .map(|(a, b)| (a.min(b), a.max(b)))

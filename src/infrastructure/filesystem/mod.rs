@@ -1,4 +1,5 @@
 mod core;
+pub(in crate::infrastructure) use core::run_configuration as run_tools;
 mod directory;
 mod document;
 mod external;

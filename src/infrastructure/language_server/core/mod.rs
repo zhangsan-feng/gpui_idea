@@ -1,5 +1,7 @@
 mod configuration;
 mod formatting;
+mod highlights;
+mod runnables;
 mod runtime;
 mod start;
 mod sync;
@@ -89,7 +91,9 @@ pub(super) struct Session {
     sync_kind: u64,
     completion_supported: bool,
     definition_supported: bool,
+    highlight_supported: bool,
     formatting_supported: bool,
+    file_run_supported: bool,
     documents: HashMap<PathBuf, (i32, String)>,
     readiness: watch::Receiver<Readiness>,
     rust: bool,

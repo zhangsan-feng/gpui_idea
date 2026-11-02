@@ -16,6 +16,8 @@ pub(super) const LANGUAGE: Language = Language {
     configuration: core::configuration,
     initialization_options: core::initialization_options,
     native_version: None,
-    detect_workspace: false,
-    workspace_markers: &[],
+    detect_workspace: core::detect_workspace,
+    file_run: None,
+    file_extensions: &["json"],
+    code_package: None,
 };

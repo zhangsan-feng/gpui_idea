@@ -3,7 +3,9 @@ use std::sync::atomic::{AtomicBool, Ordering};
 
 static STARTED: AtomicBool = AtomicBool::new(false);
 
-pub(super) fn warm_document(snapshot: std::sync::Arc<crate::domain::document::DocumentSnapshot>) {
+pub(super) fn warm_document(
+    snapshot: std::sync::Arc<crate::domain::document::DocumentDataContextSnapshot>,
+) {
     if !DATA_CONTEXT.has_project() || !snapshot.path.starts_with(DATA_CONTEXT.project_root()) {
         return;
     }
@@ -46,7 +48,12 @@ pub(super) async fn start() -> anyhow::Result<()> {
     let mut inventory = INFRASTRUCTURE.language_servers.subscribe_inventory();
     tokio::spawn(async move {
         loop {
-            DATA_CONTEXT.set_language_servers(inventory.borrow_and_update().clone());
+            DATA_CONTEXT
+                .language_servers
+                .publish_servers(inventory.borrow_and_update().clone());
+            crate::application::APPLICATION
+                .project
+                .schedule_file_run_refresh();
             if inventory.changed().await.is_err() {
                 break;
             }
@@ -55,7 +62,7 @@ pub(super) async fn start() -> anyhow::Result<()> {
     tokio::spawn(async move {
         loop {
             let current = status.borrow_and_update().clone();
-            DATA_CONTEXT.set_language_server_status(current);
+            DATA_CONTEXT.language_servers.publish_status(current);
             if status.changed().await.is_err() {
                 break;
             }

@@ -1,12 +1,12 @@
-use crate::domain::project::{ContentMatch, ContentSearchSnapshot};
+use crate::domain::project::{ContentMatch, ContentSearchDataContextSnapshot};
 use anyhow::{Context, Result};
 use std::{fs, io::Read, path::PathBuf};
 
 pub(in crate::infrastructure::filesystem) fn search_content(
     root: PathBuf,
     query: String,
-) -> Result<ContentSearchSnapshot> {
-    let mut snapshot = ContentSearchSnapshot::default();
+) -> Result<ContentSearchDataContextSnapshot> {
+    let mut snapshot = ContentSearchDataContextSnapshot::default();
     if query.is_empty() {
         return Ok(snapshot);
     }

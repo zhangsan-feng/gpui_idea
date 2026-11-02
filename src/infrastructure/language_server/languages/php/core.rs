@@ -7,8 +7,10 @@ use tokio::process::Command;
 pub(in crate::infrastructure::language_server) fn configuration(_section: &str) -> Value {
     json!({"completion": {"insertUseDeclaration": false, "triggerParameterHints": false}})
 }
-pub(in crate::infrastructure::language_server) fn initialization_options() -> Value {
-    let storage = storage();
+pub(in crate::infrastructure::language_server) fn initialization_options(
+    root: &std::path::Path,
+) -> Value {
+    let storage = storage(root);
     json!({"storagePath": storage.join("storage"), "globalStoragePath": storage.join("global")})
 }
 
@@ -20,12 +22,12 @@ pub(in crate::infrastructure::language_server) const NODE: managed::node::NodeSe
         companion: None,
     };
 pub(in crate::infrastructure::language_server) fn prepare(
-    _root: &Path,
+    root: &Path,
     context: &InstallContext,
 ) -> Result<(Command, Option<String>)> {
     let command = managed::node_server(&NODE, context)?;
     for directory in ["storage", "global"] {
-        std::fs::create_dir_all(storage().join(directory))?;
+        std::fs::create_dir_all(storage(root).join(directory))?;
     }
     Ok(command)
 }
@@ -33,8 +35,17 @@ pub(in crate::infrastructure::language_server) fn install(context: &InstallConte
     managed::node_server(&NODE, context).map(|_| ())
 }
 
-fn storage() -> std::path::PathBuf {
-    crate::infrastructure::paths::get()
-        .data
-        .join("lsp/intelephense")
+fn storage(root: &Path) -> std::path::PathBuf {
+    crate::infrastructure::paths::project_data_directory(
+        &crate::infrastructure::paths::get().data,
+        root,
+    )
+    .join("lsp/intelephense")
+}
+
+pub(super) fn detect_workspace(root: &std::path::Path) -> bool {
+    super::LANGUAGE
+        .markers
+        .iter()
+        .any(|marker| root.join(marker).is_file())
 }

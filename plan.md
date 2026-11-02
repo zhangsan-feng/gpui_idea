@@ -1,4 +1,42 @@
 ## 当前完成的进度
+- 源码及搜索结果跳转在布局完成后将目标行定位至编辑区上方约三分之一处，兼顾已打开和首次加载的文件；增加定位滚动诊断日志。cargo build --offline、定向 rustfmt --check 和 git diff --check 通过，已更新 target/debug/gpui_idea.exe，待实际 GUI 检查。
+- 按最新要求移除鼠标悬浮功能：删除 GUI 自绘/命中/请求、application 悬浮编排、infrastructure hover 请求及能力声明、诊断日志；保留 Ctrl＋点击跳转、补全和现有高亮。gpui-base 的悬浮相关文件已恢复原版，仅保留 Tab 修复。
+- 移除悬浮后的 cargo build --offline、定向 rustfmt --check、git diff --check 通过，已更新 target/debug/gpui_idea.exe；逐文件对比原版 gpui-base 确认仅保留 Tab 补丁，未新增测试用例，待实际 GUI 验证。
+- 按要求恢复 gpui-base 的原版悬浮源码（注册接口、诊断字段、过期结果检查及编辑取消补丁全部撤回）；逐文件对比原版 0.8.0，现仅 element.rs、input/mod.rs 与新增 tab_layout.rs 存在 Tab 排版修复差异。
+- 悬浮由项目 GUI 层接收鼠标事件并防抖请求 application，自绘卡片保持 IDEA 样式；使用固定 input_bounds 与 visible_row_range、字形位置二分查找命中，规避原组件滚动后使用已偏移 last_bounds 判定鼠标范围的问题。滚动、编辑、失焦和移出取消请求，回调校验光标、选区、文本和滚动状态；日志记录命中偏移、可见行和滚动量。
+- 悬浮提示按 IDEA 参考图改为项目 GUI 自绘：紧凑卡片、代码块分区、语言标签、语法高亮、细边框与浅阴影，并适配深色主题。复用现有 HoverProvider 请求入口，将结果交给项目视图，原生弹窗保持空，避免重复；本次尝试新增的组件库自定义渲染开关已撤回。
+- 自绘悬浮的 cargo check --offline、cargo build --offline、定向 rustfmt --check 与 git diff --check 通过，已更新 target/debug/gpui_idea.exe；未新增测试用例，未实际操作 GUI，待用户验证视觉效果。
+- 悬浮功能现已启用；同一符号悬浮复用结果，离开触发区与弹窗、编辑、移动光标或失焦后清理，窗口边缘自动调整弹窗位置。
+- 为对比 rust-analyzer 内存使用，临时将 LSP_HOVER_ENABLED 设为 false，停止注册悬浮 provider，从源头停止 textDocument/hover 请求；保留实现以便恢复。选词/语义高亮、补全及跳转保持现有行为。
+- 停用悬浮版本 cargo build --offline、定向格式检查和 plan.md 差异检查通过，已更新 target/debug/gpui_idea.exe，待用户重启并对比内存。
+- LSP 悬浮修复已接通：为支持语言注册 HoverProvider，后台 application 换算 UTF-16 位置并请求基础设施的 textDocument/hover；复用组件 Markdown 提示弹窗，支持能力协商、超时/取消、编辑后清理及过期文本校验。增加默认可见的 provider 注册、触发、请求、结果日志。
+- 本次悬浮修复的 cargo check --offline、cargo build --offline、定向 rustfmt --check 与 git diff --check 已通过，已生成更新的 target/debug/gpui_idea.exe；仅有增量缓存硬链接回退复制提示，未新增测试用例，待用户实际 GUI 验证。
+- LSP 悬浮根因已由日志确认：2026-10-30 10:20:32、10:22:00 均收到鼠标悬浮事件，但 HoverProvider 未注册；组件本身支持悬浮，原先缺失应用注册与 textDocument/hover 请求链路。
+- 编辑器新增选中完整标识符的同名词高亮，以及无选区时光标所在符号的 LSP documentHighlight 语义高亮；独立装饰层适配浅色/深色，后台匹配与 UTF-16 位置换算、防抖、取消及过期结果校验已接入。语义请求复用已有会话，不抢占补全/跳转。
+- 本次高亮改动的 cargo check --offline、cargo build --offline、定向 rustfmt --check 和 git diff --check 通过，已更新 target/debug/gpui_idea.exe；仅有增量缓存硬链接回退复制的环境提示，未新增测试用例，未实际操作 GUI。
+- 编辑区右键菜单“运行”移至第一项，并与复制/粘贴分组显示；保持原有显示条件与禁用状态。
+- 按要求回退 error 模块及 error_event 事件总线，移除 LSP/终端异常报告、输出尾部采集和退出 flush，恢复 logging 中原有 panic 日志钩子与 LSP Child 生命周期；保留数据目录、DataContextSnapshot 及 project/file_tree 拆分。
+- error 回退后的 cargo check --offline、cargo build --offline、定向格式检查与 git diff --check 通过，已更新 Debug 程序，未新增测试用例。
+- 文件树内存状态从 ProjectState 拆分至 data_context/project/file_tree/，独立维护目录快照、revision 与锁；按 mod.rs/core.rs/external.rs 分责，通过 DATA_CONTEXT.project.file_tree 访问，文件监听、运行能力刷新、GUI 与批量刷新调用均已迁移。
+- project/file_tree 拆分的 cargo check --offline、cargo build --offline、定向格式检查与 git diff --check 通过，已更新 Debug 程序；未新增测试用例，实际 GUI 操作待验证。
+- data_context 对外发布的数据快照统一命名为 <业务名称>DataContextSnapshot，覆盖文档、目录、搜索、Git/提交详情、统计、图片、终端、历史、运行配置及运行会话，并同步 infrastructure/application/GUI 调用。
+- 设置新增 SettingsDataContextSnapshot，LSP 新增独立 LanguageServerContext 与 LanguageServerDataContextSnapshot；读取返回 Arc，字段更新在锁内合并到最新快照，无变化不替换，释放锁后通知对应 GUI。
+- 设置窗口订阅快照刷新服务器列表和系统集成状态，保留未保存的配置草稿；LSP 状态栏及详情使用同一快照，保留文档 revision、终端 generation、搜索 request 和文件批量刷新机制。
+- 自查修正设置窗口首次读取与订阅之间可能漏掉后台发布的空隙，改为建立订阅后立即重读状态；核对快照替换均不修改已发布 Arc，设置/LSP 独立字段写入在锁内合并，持久化字段格式保持兼容。
+- 快照统一及自查修正后的 cargo check --offline、cargo build --offline、定向 rustfmt --check 与 git diff --check 通过，已更新默认 Debug 程序；未新增测试用例、未进行界面自动操作。
+- 项目数据统一写入 data/projects/<项目名>-<稳定路径标识>/：workspace.json 保存工作区状态，lsp/ 保存 PHP、Java 的项目缓存；同名项目隔离，Windows 大小写及内部路径前缀使用相同目录。
+- 兼容原 workspace-sessions 哈希文件，读取时校验项目归属、原子写入新目录后清理旧文件并记录迁移日志；全局历史索引和设置保留原位置，旧共享 LSP 缓存保留，新缓存按项目重新生成。
+- 本次目录调整的 cargo check --offline、cargo build --offline、定向格式检查和 git diff --check 通过，已更新 Debug 程序；未新增测试用例，实际迁移及 GUI 恢复待验证。
+- LSP 管理的每个已安装版本新增独立删除按钮，运行中版本标记“使用中”并禁用删除；后台锁定会话、安装槽后重新校验占用和目录边界。
+- 删除固定版本后清除固定选择；失效安装缓存并刷新版本列表，支持删除最后一个未运行版本；操作复用后台任务及按服务器反馈。cargo check --offline、cargo build --offline、格式和差异检查通过，默认 Debug 程序已更新；未新增测试用例，实际设置页交互待验证。
+- 文件运行能力增加由各语言模块提供的具体文件准入判断；Rust 仅允许 main.rs，仍要求有效 main 入口与 Cargo 可执行目标。菜单能力、点击执行及 LSP 查询都经过同一准入判断，避免服务端结果扩大可运行文件范围；cargo check --offline、cargo build --offline、格式及差异检查通过，已更新默认 Debug 程序，未新增测试用例。
+- 文件树运行改为所有语言模块共用的能力接口：Rust、Go、Python、JS/TS/JSX/TSX、PHP、Java 各自识别入口和生成配置；无执行语义的语言明确不提供运行目标。移除 application 的文件扩展名白名单。
+- 接入服务端可运行目标查询与后台菜单能力刷新，优先使用 LSP 目标，无对应接口时使用语言工具链规则；保留保存修改、运行配置复用和运行面板。
+- 使用已安装 rust-analyzer 对已有 test/rust 项目进行协议检查，确认返回 cargo 运行目标及参数；cargo check --offline、变更文件格式与差异检查通过，未新增测试用例。
+- 新代码已编译链接；默认 Debug 程序无法覆盖（系统拒绝访问），将新的链接产物另存为 target/debug/gpui_idea-file-run.exe，并核对 SHA-256 一致。实际 GUI 交互待验证。
+- LSP 项目识别与文件匹配下放各语言，会话管理统一按规范化工作区路径和语言族复用；预热、补全、跳转、格式化共用会话，初始化目录固定为工作区根目录，保留并发去重与失败重试。
+- 多语言项目启动所有匹配服务；Markdown 不再仅凭 package.json 预启动。默认记录 LSP 会话注册、启动及初始化日志。
+- cargo build --offline、变更文件格式检查和 git diff --check 通过，已更新 Debug 程序；未新增测试用例，实际 GUI 与多子项目的语言功能待验证。
 - 检查会话文件确认项目面板宽度已持久化；定位恢复后宽度变化来自 ResizablePanel 默认在容器尺寸变化时按比例缩放。
 - 项目面板宽度和底部面板高度改为 fixed，保持已保存的像素尺寸，将窗口尺寸差额分配给编辑区；保留手动拖动调整。补充恢复与保存的面板尺寸诊断日志。
 - 修复“打开新项目”目录输入框显示 Windows 内部路径前缀的问题，初始目录和浏览结果回填统一复用 component/path::display_path；创建项目的默认目录同步处理，兼容本地路径及 UNC 网络路径。
@@ -52,7 +90,39 @@
 - 同步调整水平滚动宽度计算，添加不包含源码内容的 Tab 诊断日志。
 - cargo check --offline 已通过；仅有增量缓存硬链接回退为复制的环境提示。
 
+- 代码内容搜索改为独立自绘普通窗口，移除 Dialog 及文件树中的搜索状态/输入订阅；窗口独立刷新输入、加载状态和结果。
+- 搜索请求使用跨窗口唯一编号，防抖及完成回调丢弃过期请求；application 直接返回对应请求的结果，仍将快照写入 data_context。
+- 新增输入变化、搜索开始/完成及结果应用日志（不记录搜索文本）；支持清空、连续输入、点击/Enter 定位、Esc 关闭及再次打开激活已有窗口。
+- 本次搜索窗口改动的 cargo build --offline、定向 rustfmt --check 和 git diff --check 通过，已生成 target/debug/gpui_idea.exe；仅有增量缓存硬链接回退复制的环境提示。未新增测试用例，未进行界面自动操作。
+
+- 编辑区右键菜单已收敛为复制、粘贴和运行；运行显示读取 data_context 文件树的 runnable，复用现有后台保存与运行流程；复制按选区启用，粘贴遵循只读状态，运行遵循关闭/文件操作/启动中的禁用状态。cargo check --offline、定向 rustfmt --check 和 git diff --check 通过，未新增测试用例。
+
+- 代码包目录识别已接入各 LSP 语言模块：Python 的 __init__.py/__init__.pyi、Go/Java 包声明、Rust 包根与模块目录、JS/TS 的 package.json、PHP 的 composer.json/namespace。后台目录扫描写入 data_context，图标复用现有 package.svg；移除 src 子目录一律视为包的规则，包标记及源文件变化刷新父目录图标，GUI 不执行 IO。
+- 本次代码包目录改动的 cargo build --offline、定向 rustfmt --check 和 git diff --check 通过，已更新 target/debug/gpui_idea.exe；未新增测试用例，未实际操作 GUI 验证。
+
+- 文件树收起目录时同步清除全部后代目录的展开状态，重新打开只展开当前层；项目根目录使用同样行为，并沿用现有工作区保存流程。cargo check --offline 通过，未新增测试用例。
+
+- 编辑区右键新增打开文件所在目录、复制项目路径、复制全盘路径；复用现有 Lucide 图标与文件定位基础能力，application 依据文档 scope_root 编排后台定位。保留复制/粘贴/运行，项目外文件禁用项目路径复制，完整路径移除 Windows 内部前缀。cargo check --offline、定向 rustfmt --check、git diff --check 通过，改动源码未混用换行符；未新增测试用例，未实际操作 GUI。
+
+- 图片预览新增放大/缩小按钮、Ctrl＋滚轮缩放及适应窗口复位，缩放范围为适应窗口尺寸的 0.1～8 倍；显示相对窗口倍率，放大后支持双向滚动条。缩放/滚动状态按图片标签保留，图片重新加载保留状态，关闭标签释放；GUI 状态在主线程创建，IO 仍走现有后台流程。cargo check --offline 通过，未新增测试用例，未实际操作 GUI。
+
 ## 当前的计划
+- 验证源码跳转在同文件、跨文件及首次打开文件时的落点，以及文件开头/末尾边界。
+- 实际验证鼠标悬浮不再弹出提示，以及 Ctrl＋点击跳转、补全与高亮保持正常。
+- 实际验证双击/拖选完整变量的同名词高亮、同名不同作用域的 LSP 语义高亮、中文/非 BMP 字符定位、快速移动/编辑/切换标签清理，以及无 LSP 支持时的选词高亮。
+- 实际验证编辑区右键菜单中“运行”位于第一项，以及不可运行文件的菜单顺序。
+- 实际验证图片按钮与 Ctrl＋滚轮缩放、上下限禁用、适应窗口、双向滚动、切换标签/刷新图片保留倍率及加载失败状态。
+- 实际验证编辑区右键打开文件所在目录、复制项目相对路径/全盘路径，以及项目外源码的项目路径禁用状态。
+- 实际检查多层目录展开后收起/重开父目录、根目录，以及相邻目录展开状态保持。
+- 实际检查上述语言包目录、普通/缓存目录及拖拽图标；检查新增/删除/重命名包标记和修改包声明后的自动刷新。
+- 实际验证编辑区右键复制/粘贴、可运行文件显示运行、不可运行文件隐藏运行，以及只读/忙碌状态与运行输出。
+- 实际验证 project/file_tree 拆分后的文件树展开、文件操作、监听刷新和运行菜单状态。
+- 实际检查快照统一后的文档编辑/保存、文件树刷新、终端输出、设置草稿及后台 LSP 状态更新。
+- 重启应用后实际核对旧工作区迁移、项目切换恢复，以及 PHP/Java 缓存隔离。
+- 实际验证单版本删除、使用中版本禁用、固定版本删除后恢复自动选择，以及删除最后一个版本后的安装入口。
+- 验证 Rust 仅 main.rs 显示运行，lib.rs、build.rs、自定义名称的二进制入口与普通模块均不显示；检查 LSP 就绪前后规则一致。
+- 实际检查各语言文件右键运行、不可执行文件隐藏、TS/JSX 的 tsx 运行器、Rust 服务就绪前后菜单刷新及运行配置复用。
+- 验证 AiSOC 根目录与 apps/mobile 文件同时触发时仅有一个 JS/TS LSP；检查多语言项目启动、补全、跳转、格式化及关闭。
 - 实际验证拖动项目面板宽度后关闭重开，以及启动最大化、切换最大化和底部面板显隐时尺寸保持。
 - 使用更新后的程序检查长项目列表滚动时“管理项目”按钮始终可见，以及项目选择、底部按钮和键盘关闭交互。
 - 使用新构建的程序重新打开“管理项目”，检查移除按钮悬停/按下、忙碌禁用状态及关闭窗口交互。
@@ -66,3 +136,5 @@
 - 在实际项目中验证各语言服务提供的回调模板；暂未实现 Tab 连续跳转及占位符联动编辑。
 - 实际验证 Go 及其他语言的函数补全交互。
 - 在重新构建的应用中打开原 Go 文件，确认缩进、光标、选择和水平滚动表现。
+
+- 验证新搜索窗口连续更换关键词、快速输入/清空、关闭重开、点击及 Enter 定位、Esc 关闭和窗口缩放。

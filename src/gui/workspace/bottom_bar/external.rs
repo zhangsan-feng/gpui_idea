@@ -14,7 +14,7 @@ impl BottomBar {
     pub(super) fn active_document(
         &self,
         cx: &App,
-    ) -> Option<std::sync::Arc<crate::domain::document::DocumentSnapshot>> {
+    ) -> Option<std::sync::Arc<crate::domain::document::DocumentDataContextSnapshot>> {
         let editor = self.peer_editor(cx);
         let state = &editor.read(cx).state;
         if state.open_files.is_empty() {

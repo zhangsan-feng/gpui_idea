@@ -8,8 +8,7 @@ struct IconRules {
     file_names: HashMap<String, String>,
     extensions: HashMap<String, String>,
     directory_names: HashMap<String, String>,
-    source_roots: Vec<String>,
-    source_directory_icon: String,
+    code_package_icon: String,
     fallback_file: String,
     fallback_directory: String,
 }
@@ -20,8 +19,7 @@ impl Default for IconRules {
             file_names: HashMap::new(),
             extensions: HashMap::new(),
             directory_names: HashMap::new(),
-            source_roots: Vec::new(),
-            source_directory_icon: "idea/folder.svg".into(),
+            code_package_icon: "idea/package.svg".into(),
             fallback_file: "idea/unknown.svg".into(),
             fallback_directory: "idea/folder.svg".into(),
         }
@@ -51,13 +49,17 @@ static RULES: LazyLock<IconRules> = LazyLock::new(|| {
 });
 
 pub(crate) fn project_icon(path: &Path, directory: bool) -> Img {
-    img(icon_path(path, directory))
+    project_icon_with_package(path, directory, false)
+}
+
+pub(crate) fn project_icon_with_package(path: &Path, directory: bool, code_package: bool) -> Img {
+    img(icon_path(path, directory, code_package))
         .w(px(16.))
         .h(px(16.))
         .flex_shrink_0()
 }
 
-fn icon_path(path: &Path, directory: bool) -> String {
+fn icon_path(path: &Path, directory: bool, code_package: bool) -> String {
     let name = path
         .file_name()
         .unwrap_or_default()
@@ -69,13 +71,11 @@ fn icon_path(path: &Path, directory: bool) -> String {
         &RULES.fallback_file
     };
     let asset = if directory {
-        RULES.directory_names.get(&name).or_else(|| {
-            RULES
-                .source_roots
-                .iter()
-                .any(|root| path.starts_with(Path::new(root)))
-                .then_some(&RULES.source_directory_icon)
-        })
+        if code_package {
+            Some(&RULES.code_package_icon)
+        } else {
+            RULES.directory_names.get(&name)
+        }
     } else {
         RULES.file_names.get(&name).or_else(|| {
             // Check longest compound suffix first (e.g. d.ts, tar.gz), then its final extension.

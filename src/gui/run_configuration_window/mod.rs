@@ -1,8 +1,8 @@
 mod core;
 mod ui;
 
-use crate::gui::workspace::Workspace;
 use crate::data_context::DATA_CONTEXT;
+use crate::gui::workspace::Workspace;
 use gpui_kit::component::input::InputState;
 use gpui_kit::{
     AppContext as _, Context, Entity, IntoElement, Render, Subscription, WeakEntity, Window,

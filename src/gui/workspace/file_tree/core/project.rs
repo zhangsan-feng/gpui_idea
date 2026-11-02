@@ -5,7 +5,7 @@ use crate::gui::workspace::TreeRow;
 use crate::gui::workspace::file_tree::FileTree;
 use crate::{
     application::lifecycle::run_application,
-    domain::project::{DirectorySnapshot, ProjectEntry},
+    domain::project::{DirectoryDataContextSnapshot, ProjectEntry},
 };
 use gpui_kit::{Context, Window};
 use std::{
@@ -22,13 +22,17 @@ impl FileTree {
     ) {
         if !self.state.expanded_directories.remove(&path) {
             self.state.expanded_directories.insert(path.clone());
-            let (_, snapshots) = DATA_CONTEXT.project.snapshots();
+            let (_, snapshots) = DATA_CONTEXT.project.file_tree.snapshots();
             if !snapshots
                 .get(&path)
                 .is_some_and(|snapshot| snapshot.error.is_none())
             {
                 self.load_directory(path.clone(), cx);
             }
+        } else {
+            self.state
+                .expanded_directories
+                .retain(|directory| !directory.starts_with(&path));
         }
         tracing::debug!(directory = %path.display(), expanded = self.state.expanded_directories.contains(&path), "project directory toggled");
         self.send(crate::event_bus::gui_event::GuiEvent::WindowBar(
@@ -101,7 +105,7 @@ impl FileTree {
     }
 
     pub(in crate::gui::workspace) fn rebuild_tree(&mut self) {
-        let (revision, snapshots) = DATA_CONTEXT.project.snapshots();
+        let (revision, snapshots) = DATA_CONTEXT.project.file_tree.snapshots();
         if !self.state.file_operation_running {
             self.state.project_selection.retain(|path| {
                 !snapshots
@@ -155,7 +159,7 @@ impl FileTree {
 fn append_directory(
     path: &Path,
     depth: usize,
-    snapshots: &HashMap<PathBuf, Arc<DirectorySnapshot>>,
+    snapshots: &HashMap<PathBuf, Arc<DirectoryDataContextSnapshot>>,
     expanded: &HashSet<PathBuf>,
     loading: &HashSet<PathBuf>,
     rows: &mut Vec<TreeRow>,

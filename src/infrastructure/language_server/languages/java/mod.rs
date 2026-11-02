@@ -1,6 +1,8 @@
 mod core;
+mod package;
 mod install;
 mod launch;
+mod run;
 mod runtime;
 use super::{Download, Language};
 pub(super) const LANGUAGE: Language = Language {
@@ -28,6 +30,8 @@ pub(super) const LANGUAGE: Language = Language {
     configuration: core::configuration,
     initialization_options: core::initialization_options,
     native_version: None,
-    detect_workspace: true,
-    workspace_markers: &[],
+    detect_workspace: core::detect_workspace,
+    file_run: Some(run::SUPPORT),
+    file_extensions: &["java"],
+    code_package: Some(package::SUPPORT),
 };

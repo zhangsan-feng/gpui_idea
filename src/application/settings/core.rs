@@ -10,7 +10,7 @@ impl SettingsService {
         let value = INFRASTRUCTURE.settings.load().await?;
         INFRASTRUCTURE.proxy.validate(&value.lsp_proxy)?;
         INFRASTRUCTURE.proxy.set_lsp(value.lsp_proxy.clone());
-        DATA_CONTEXT.settings.set(value);
+        DATA_CONTEXT.settings.publish_general(value);
         Ok(())
     }
 
@@ -19,8 +19,14 @@ impl SettingsService {
         value.lsp_proxy.url = value.lsp_proxy.url.trim().to_owned();
         value.appearance.ui_font = value.appearance.ui_font.trim().to_owned();
         value.appearance.editor_font = value.appearance.editor_font.trim().to_owned();
-        anyhow::ensure!(!value.appearance.ui_font.is_empty() && !value.appearance.editor_font.is_empty(), "字体名称不能为空");
-        anyhow::ensure!((9..=36).contains(&value.appearance.editor_size), "编辑器字号须在 9–36 之间");
+        anyhow::ensure!(
+            !value.appearance.ui_font.is_empty() && !value.appearance.editor_font.is_empty(),
+            "字体名称不能为空"
+        );
+        anyhow::ensure!(
+            (9..=36).contains(&value.appearance.editor_size),
+            "编辑器字号须在 9–36 之间"
+        );
         INFRASTRUCTURE.proxy.validate(&value.lsp_proxy)?;
         INFRASTRUCTURE.settings.save(value.clone()).await?;
         INFRASTRUCTURE.proxy.set_lsp(value.lsp_proxy.clone());
@@ -28,7 +34,7 @@ impl SettingsService {
         tracing::info!(ui_font = %value.appearance.ui_font, editor_font = %value.appearance.editor_font,
             editor_size = value.appearance.editor_size, dark = value.appearance.theme == crate::domain::settings::ColorTheme::Dark,
             "appearance settings saved");
-        DATA_CONTEXT.settings.set(value);
+        DATA_CONTEXT.settings.publish_general(value);
         Ok(())
     }
 }

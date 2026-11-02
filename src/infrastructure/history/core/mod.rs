@@ -1,7 +1,9 @@
 mod migration;
 mod storage;
 
-use crate::domain::history::{OpenHistory, OpenHistoryEntry, OpenKind, WorkspaceSession};
+use crate::domain::history::{
+    HistoryDataContextSnapshot, OpenHistoryEntry, OpenKind, WorkspaceSession,
+};
 use anyhow::{Context, Result, bail};
 use std::{
     fs,
@@ -26,7 +28,7 @@ pub(super) fn lock_history(path: &Path) -> Result<fs::File> {
     Ok(file)
 }
 
-pub(super) fn read(path: &Path) -> Result<OpenHistory> {
+pub(super) fn read(path: &Path) -> Result<HistoryDataContextSnapshot> {
     storage::hydrate(path, storage::load_index(path)?)
 }
 
@@ -56,7 +58,7 @@ pub(super) fn prune_expanded_directories(mut session: WorkspaceSession) -> Works
     session
 }
 
-pub(super) fn forget_project(path: &Path, project: &Path) -> Result<OpenHistory> {
+pub(super) fn forget_project(path: &Path, project: &Path) -> Result<HistoryDataContextSnapshot> {
     let mut index = storage::load_index(path)?;
     index
         .entries
@@ -90,7 +92,11 @@ pub(super) fn validate_target(kind: OpenKind, path: &Path) -> Result<PathBuf> {
     path.canonicalize().context("无法解析历史路径")
 }
 
-pub(super) fn record(path: &Path, kind: OpenKind, target: &Path) -> Result<OpenHistory> {
+pub(super) fn record(
+    path: &Path,
+    kind: OpenKind,
+    target: &Path,
+) -> Result<HistoryDataContextSnapshot> {
     if kind != OpenKind::Project {
         return read(path);
     }
@@ -112,7 +118,10 @@ pub(super) fn record(path: &Path, kind: OpenKind, target: &Path) -> Result<OpenH
     storage::hydrate(path, index)
 }
 
-pub(super) fn save_session(path: &Path, session: WorkspaceSession) -> Result<OpenHistory> {
+pub(super) fn save_session(
+    path: &Path,
+    session: WorkspaceSession,
+) -> Result<HistoryDataContextSnapshot> {
     let mut index = storage::load_index(path)?;
     let previous = index.clone();
     let existing = index

@@ -14,11 +14,13 @@ impl SettingsService {
         let _guard = self.system_io.lock().await;
         match INFRASTRUCTURE.system_integration.context_menu(action).await {
             Ok(status) => {
-                DATA_CONTEXT.settings.set_context_menu(Some(status.clone()));
+                DATA_CONTEXT
+                    .settings
+                    .publish_context_menu(Some(status.clone()));
                 Ok(status)
             }
             Err(error) => {
-                DATA_CONTEXT.settings.set_context_menu(None);
+                DATA_CONTEXT.settings.publish_context_menu(None);
                 tracing::error!(?action, error = %format!("{error:#}"), "system integration failed");
                 Err(error)
             }

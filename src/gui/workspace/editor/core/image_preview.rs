@@ -5,10 +5,31 @@ use crate::{
     data_context::DATA_CONTEXT,
     domain::image_preview::PreviewImageFormat,
 };
-use gpui_kit::{Context, Image, ImageFormat, Window};
+use gpui_kit::{Context, Image, ImageFormat, ScrollHandle, Window, point, px};
 use std::sync::Arc;
 
 impl Editor {
+    pub(in crate::gui::workspace::editor) fn zoom_image_preview(
+        &mut self,
+        factor: Option<f32>,
+        cx: &mut Context<Self>,
+    ) {
+        let Some(view) = self.state.image_previews.get_mut(&self.state.selected_file) else {
+            return;
+        };
+        if view.image.is_none() || view.error.is_some() {
+            return;
+        }
+        let zoom = factor.map_or(1., |factor| (view.zoom * factor).clamp(0.1, 8.));
+        if (zoom - view.zoom).abs() < f32::EPSILON {
+            return;
+        }
+        view.zoom = zoom;
+        // Reset the pan position so shrinking never leaves the image off-screen.
+        view.scroll.set_offset(point(px(0.), px(0.)));
+        cx.notify();
+    }
+
     pub(in crate::gui::workspace) fn open_image_preview(
         &mut self,
         file: ProjectFile,
@@ -54,7 +75,7 @@ impl Editor {
                         PreviewImageFormat::Pnm => ImageFormat::Pnm,
                     }, snapshot.bytes.to_vec())))
                 };
-                Ok(ImagePreviewView { image, revision: snapshot.revision, bytes: snapshot.bytes.len(), error: snapshot.error.clone() })
+                Ok((image, snapshot.revision, snapshot.bytes.len(), snapshot.error.clone()))
             }).await;
             let _ = this.update_in(cx, |this, window, cx| { {
                 this.state.loading_files.remove(&file);
@@ -63,7 +84,14 @@ impl Editor {
                     return;
                 }
                 match result {
-                    Ok(view) => { this.state.image_previews.insert(file.clone(), view); }
+                    Ok((image, revision, bytes, error)) => {
+                        let mut view = ImagePreviewView { image, revision, bytes, error, zoom: 1., scroll: ScrollHandle::new() };
+                        if let Some(previous) = this.state.image_previews.get(&file) {
+                            view.zoom = previous.zoom;
+                            view.scroll = previous.scroll.clone();
+                        }
+                        this.state.image_previews.insert(file.clone(), view);
+                    }
                     Err(error) => {
                         tracing::warn!(file = %file.relative_path().display(), %error, "image preview open failed");
                         this.state.load_errors.insert(file, format!("{error:#}"));

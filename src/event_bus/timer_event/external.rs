@@ -1,6 +1,7 @@
 use super::{TimerEvent, TimerEventBus, TimerRegistration};
 use crate::{
-    domain::document::DocumentSnapshot, event_bus::FileChanges, infrastructure::LocalChangeGuard,
+    domain::document::DocumentDataContextSnapshot, event_bus::FileChanges,
+    infrastructure::LocalChangeGuard,
 };
 use anyhow::{Context, Result, bail};
 use std::{
@@ -65,7 +66,10 @@ impl TimerEventBus {
         )
     }
 
-    pub(crate) async fn save_file(&self, document: Arc<DocumentSnapshot>) -> Result<Arc<[u8]>> {
+    pub(crate) async fn save_file(
+        &self,
+        document: Arc<DocumentDataContextSnapshot>,
+    ) -> Result<Arc<[u8]>> {
         let id = self.next_id.fetch_add(1, Ordering::Relaxed);
         let (completion, receiver) = oneshot::channel();
         let _registration = self.register(

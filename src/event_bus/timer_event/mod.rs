@@ -1,7 +1,7 @@
 mod external;
 
 use super::FileChanges;
-use crate::{domain::document::DocumentSnapshot, infrastructure::LocalChangeGuard};
+use crate::{domain::document::DocumentDataContextSnapshot, infrastructure::LocalChangeGuard};
 use anyhow::Result;
 use std::{
     path::PathBuf,
@@ -27,7 +27,7 @@ pub(crate) enum TimerEvent {
     },
     SaveFile {
         id: u64,
-        document: Arc<DocumentSnapshot>,
+        document: Arc<DocumentDataContextSnapshot>,
         completion: oneshot::Sender<Result<Arc<[u8]>>>,
     },
     ExcludeGuiFileChange {

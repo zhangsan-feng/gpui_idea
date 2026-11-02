@@ -1,10 +1,10 @@
 use super::HistoryContext;
-use crate::domain::history::OpenHistory;
+use crate::domain::history::HistoryDataContextSnapshot;
 use crate::event_bus::refresh_gui::GuiComponent;
 use std::sync::Arc;
 
 impl HistoryContext {
-    pub(super) fn replace(&self, history: OpenHistory) {
+    pub(super) fn replace(&self, history: HistoryDataContextSnapshot) {
         *self
             .snapshot
             .lock()

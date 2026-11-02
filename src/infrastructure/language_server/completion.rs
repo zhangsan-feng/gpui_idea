@@ -1,4 +1,4 @@
-use super::{LanguageServers, SessionSlot, core, launch};
+use super::{LanguageServers, core};
 use anyhow::{Context as _, Result};
 use lsp_types::{CompletionResponse, Position};
 use std::{path::PathBuf, sync::atomic::Ordering, time::Duration};
@@ -19,19 +19,8 @@ impl LanguageServers {
             !*cancelled.borrow() && !cancelled.has_changed().is_err(),
             "补全已取消"
         );
-        let family = launch::family(language)?;
-        let source = path.clone();
-        let root =
-            tokio::task::spawn_blocking(move || launch::document_root(&root, &source, family))
-                .await?;
-        anyhow::ensure!(!self.stopping.load(Ordering::Acquire), "语言服务正在关闭");
-        let cell = self
-            .sessions
-            .lock()
-            .await
-            .entry((root.clone(), family))
-            .or_insert_with(|| std::sync::Arc::new(SessionSlot::new(self.status.session())))
-            .clone();
+        let family = Self::document_family(&path, language)?;
+        let cell = self.session_slot(root.clone(), family, true).await?;
         // Yield outstanding warmup/requests before synchronizing this snapshot.
         anyhow::ensure!(
             !*cancelled.borrow() && cancelled.has_changed().is_ok(),
@@ -65,7 +54,7 @@ impl LanguageServers {
             }
         }
         if session.is_none() {
-            *session = Some(self.start_slot(&root, family, &cell).await?);
+            *session = Some(self.start_slot(family, &cell).await?);
         }
         anyhow::ensure!(
             !self.stopping.load(Ordering::Acquire)

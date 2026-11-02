@@ -1,5 +1,5 @@
 use super::{common::*, interpreted, javascript, native, rust};
-use crate::domain::run::RunConfiguration;
+use crate::domain::run::RunConfigurationDataContextSnapshot;
 use anyhow::{Context, Result, bail};
 use std::path::{Path, PathBuf};
 
@@ -8,7 +8,7 @@ use std::path::{Path, PathBuf};
 pub(in crate::infrastructure::filesystem) fn resolve(
     root: PathBuf,
     selected: Option<PathBuf>,
-) -> Result<RunConfiguration> {
+) -> Result<RunConfigurationDataContextSnapshot> {
     let root = root.canonicalize().context("项目目录不可访问")?;
     let file = selected
         .as_ref()
@@ -93,7 +93,7 @@ pub(in crate::infrastructure::filesystem) fn resolve(
     Ok(result)
 }
 
-fn project(directory: &Path, root: &Path) -> Result<RunConfiguration> {
+fn project(directory: &Path, root: &Path) -> Result<RunConfigurationDataContextSnapshot> {
     let manifest = ["Cargo.toml", "package.json", "go.mod", "CMakeLists.txt"]
         .into_iter()
         .filter_map(|name| nearest(directory, root, name))

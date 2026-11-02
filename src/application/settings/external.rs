@@ -11,7 +11,11 @@ impl SettingsService {
     }
 
     pub(crate) fn managed_servers(&self) -> Vec<crate::domain::language_server::ManagedServer> {
-        crate::data_context::DATA_CONTEXT.settings.servers()
+        crate::data_context::DATA_CONTEXT
+            .settings
+            .snapshot()
+            .servers
+            .to_vec()
     }
 
     pub(crate) async fn manage_servers(

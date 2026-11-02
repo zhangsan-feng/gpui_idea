@@ -59,8 +59,9 @@ impl BottomBar {
                 })
                 .unwrap_or("自动保存")
         };
-        let status = DATA_CONTEXT.language_server_status();
-        let installation = lsp::installation_detail();
+        let language_servers = DATA_CONTEXT.language_servers.snapshot();
+        let status = &language_servers.status;
+        let installation = lsp::installation_detail(&language_servers);
         let installing = installation.is_some();
         let (lsp_label, lsp_color, lsp_detail) = if installing {
             ("LSP 安装中", ACCENT, installation.unwrap_or_default())
@@ -70,7 +71,7 @@ impl BottomBar {
                 LanguageServerStatus::Starting => {
                     ("LSP 启动中", ACCENT, "正在启动并初始化语言服务".to_owned())
                 }
-                LanguageServerStatus::Preparing(detail) => ("LSP 准备中", ACCENT, detail),
+                LanguageServerStatus::Preparing(detail) => ("LSP 准备中", ACCENT, detail.clone()),
                 LanguageServerStatus::Indexing => (
                     "LSP 索引中",
                     ACCENT,
@@ -82,8 +83,8 @@ impl BottomBar {
                     ACCENT,
                     "正在后台分析已打开的 Rust 文档，预热源码跳转缓存".to_owned(),
                 ),
-                LanguageServerStatus::Warning(detail) => ("LSP 警告", 0xd97706, detail),
-                LanguageServerStatus::Error(detail) => ("LSP 异常", 0xdc2626, detail),
+                LanguageServerStatus::Warning(detail) => ("LSP 警告", 0xd97706, detail.clone()),
+                LanguageServerStatus::Error(detail) => ("LSP 异常", 0xdc2626, detail.clone()),
             }
         };
         let install_detail = installing.then(|| lsp_detail.clone());
@@ -133,10 +134,19 @@ impl BottomBar {
                             .py_1()
                             .rounded_sm()
                             .cursor_pointer()
-                            .hover(|style| style.bg(crate::component::appearance::background(0xe8eaf0)))
-                            .when(open, |indicator| indicator.bg(crate::component::appearance::background(0xe8eaf0)))
+                            .hover(|style| {
+                                style.bg(crate::component::appearance::background(0xe8eaf0))
+                            })
+                            .when(open, |indicator| {
+                                indicator.bg(crate::component::appearance::background(0xe8eaf0))
+                            })
                             .text_color(crate::component::appearance::foreground(lsp_color))
-                            .child(div().size(px(6.)).rounded_full().bg(crate::component::appearance::background(lsp_color)))
+                            .child(
+                                div()
+                                    .size(px(6.))
+                                    .rounded_full()
+                                    .bg(crate::component::appearance::background(lsp_color)),
+                            )
                             .child(lsp_label)
                             .when_some(install_detail, |indicator, detail| {
                                 indicator.child(div().max_w(px(240.)).truncate().child(detail))
@@ -152,7 +162,7 @@ impl BottomBar {
                             ))
                             .into_any_element()
                     })
-                    .content(move |_, _, _| lsp::details(&lsp_detail)),
+                    .content(move |_, _, _| lsp::details(&lsp_detail, &language_servers)),
             )
             .child(
                 div()
@@ -181,7 +191,12 @@ impl BottomBar {
                 },
             )
             .when(!image, |bar| bar.child(div().child("4 spaces")))
-            .child(div().w(px(1.)).h(px(14.)).bg(crate::component::appearance::background(BORDER)))
+            .child(
+                div()
+                    .w(px(1.))
+                    .h(px(14.))
+                    .bg(crate::component::appearance::background(BORDER)),
+            )
             .child(div().child("GPUI Kit"))
     }
 }

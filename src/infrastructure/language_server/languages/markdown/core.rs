@@ -9,7 +9,9 @@ use tokio::process::Command;
 pub(in crate::infrastructure::language_server) fn configuration(_section: &str) -> Value {
     Value::Null
 }
-pub(in crate::infrastructure::language_server) fn initialization_options() -> Value {
+pub(in crate::infrastructure::language_server) fn initialization_options(
+    _root: &std::path::Path,
+) -> Value {
     json!({})
 }
 
@@ -45,4 +47,10 @@ pub(in crate::infrastructure::language_server) fn download_release(
     let entry = stage.join("marksman.exe");
     http::download(&source, &entry, context)?;
     Ok((source, entry))
+}
+
+pub(super) fn detect_workspace(root: &std::path::Path) -> bool {
+    [".marksman.toml", "mkdocs.yml"]
+        .iter()
+        .any(|marker| root.join(marker).is_file())
 }

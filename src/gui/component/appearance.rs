@@ -3,7 +3,7 @@ use gpui_kit::component::{Theme, ThemeMode, highlighter::HighlightTheme};
 use gpui_kit::{App, Hsla};
 
 pub(crate) fn apply(cx: &mut App) {
-    let appearance = DATA_CONTEXT.settings.get().appearance;
+    let appearance = DATA_CONTEXT.settings.snapshot().general.appearance.clone();
     let dark = appearance.theme == ColorTheme::Dark;
     Theme::change(
         if dark {
@@ -32,11 +32,25 @@ pub(crate) fn apply(cx: &mut App) {
 }
 
 pub(crate) fn ui_font() -> gpui_kit::SharedString {
-    DATA_CONTEXT.settings.get().appearance.ui_font.into()
+    DATA_CONTEXT
+        .settings
+        .snapshot()
+        .general
+        .appearance
+        .ui_font
+        .clone()
+        .into()
 }
 
 pub(crate) fn editor_font() -> gpui_kit::SharedString {
-    DATA_CONTEXT.settings.get().appearance.editor_font.into()
+    DATA_CONTEXT
+        .settings
+        .snapshot()
+        .general
+        .appearance
+        .editor_font
+        .clone()
+        .into()
 }
 
 pub(crate) fn color(value: u32) -> Hsla {
@@ -45,7 +59,7 @@ pub(crate) fn color(value: u32) -> Hsla {
 
 pub(crate) fn foreground(value: u32) -> Hsla {
     let mut color: Hsla = gpui_kit::rgb(value).into();
-    if DATA_CONTEXT.settings.get().appearance.theme != ColorTheme::Dark {
+    if DATA_CONTEXT.settings.snapshot().general.appearance.theme != ColorTheme::Dark {
         return color;
     }
     if color.l < 0.5 {
@@ -60,7 +74,7 @@ pub(crate) fn foreground(value: u32) -> Hsla {
 
 pub(crate) fn background(value: u32) -> Hsla {
     let mut color: Hsla = gpui_kit::rgb(value).into();
-    if DATA_CONTEXT.settings.get().appearance.theme != ColorTheme::Dark {
+    if DATA_CONTEXT.settings.snapshot().general.appearance.theme != ColorTheme::Dark {
         return color;
     }
     match value {
@@ -80,7 +94,9 @@ pub(crate) fn background(value: u32) -> Hsla {
 
 pub(crate) fn border(value: u32) -> Hsla {
     let color: Hsla = gpui_kit::rgb(value).into();
-    if DATA_CONTEXT.settings.get().appearance.theme == ColorTheme::Dark && color.s < 0.25 {
+    if DATA_CONTEXT.settings.snapshot().general.appearance.theme == ColorTheme::Dark
+        && color.s < 0.25
+    {
         gpui_kit::rgb(0x3b3e46).into()
     } else {
         foreground(value)
