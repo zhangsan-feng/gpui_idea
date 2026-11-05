@@ -9,6 +9,7 @@ UI 样式参考 [Tailwind CSS](https://tailwindcss.com/)
 图标设计与语义参考 [Lucide](https://lucide.dev/)；优先复用项目已有的 Lucide 图标资源，避免引入重复图标依赖。
 
 明确的需求不要设计方案直接开始执行
+修改完成代码记得 cargo build
 
 个责任边界
 core.rs (核心功能 数据流向)
@@ -34,3 +35,12 @@ gui 交互层
 ## 编写计划文档 plan.md
 当前完成的进度
 当前的计划
+
+## 项目架构
+
+- `main.rs` 
+- `gui` 
+- `application`（`APPLICATION`）
+- `infrastructure`（`INFRASTRUCTURE`）
+- `data_context`（`DATA_CONTEXT`）
+

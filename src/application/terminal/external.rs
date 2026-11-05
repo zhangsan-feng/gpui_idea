@@ -2,6 +2,22 @@ use super::{TerminalService, core};
 use crate::{domain::terminal::TerminalId, infrastructure::INFRASTRUCTURE};
 use anyhow::{Result, ensure};
 impl TerminalService {
+    pub(crate) async fn start_in_directory(
+        &self,
+        id: TerminalId,
+        directory: std::path::PathBuf,
+    ) -> Result<()> {
+        ensure!(matches!(id, TerminalId::Local(_)), "仅本地终端支持指定目录");
+        let root = crate::data_context::DATA_CONTEXT
+            .require_project_root()?
+            .to_owned();
+        let directory = INFRASTRUCTURE
+            .filesystem
+            .resolve_directory(root, directory)
+            .await?;
+        tracing::info!(?id, directory = %directory.display(), "opening terminal in project directory");
+        core::start_at(id, directory, None).await
+    }
     pub(crate) async fn release(&self, id: TerminalId) -> Result<()> {
         ensure!(
             matches!(id, TerminalId::RunInstance(_)),

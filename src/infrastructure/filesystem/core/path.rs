@@ -1,8 +1,21 @@
-use anyhow::{Context, Result, bail};
+use anyhow::{Context, Result, bail, ensure};
 use std::{
     fs,
     path::{Component, Path, PathBuf},
 };
+
+pub(in crate::infrastructure::filesystem) fn resolve_directory(
+    root: &Path,
+    relative: &Path,
+) -> Result<PathBuf> {
+    let path = if relative.as_os_str().is_empty() {
+        root.canonicalize().context("项目根目录不可访问")?
+    } else {
+        resolve(root, relative, false)?
+    };
+    ensure!(path.is_dir(), "终端工作目录不存在或不是文件夹");
+    Ok(path)
+}
 
 pub(in crate::infrastructure::filesystem) fn resolve(
     root: &Path,

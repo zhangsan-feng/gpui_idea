@@ -9,6 +9,32 @@ use gpui_kit::{
 };
 use std::{path::Path, sync::Arc};
 
+pub(super) fn select_line_for_cut(
+    editor: &mut gpui_kit::component::input::EditorState,
+    cx: &mut gpui_kit::Context<gpui_kit::component::input::EditorState>,
+) {
+    use gpui_kit::component::input::RopeExt as _;
+
+    // Let the component handle existing selections and enforce edit restrictions.
+    if !editor.is_editable() || editor.presentation().is_masked() || editor.is_copyable() {
+        return;
+    }
+    let text = editor.text();
+    let row = text.offset_to_point(editor.cursor()).row;
+    let mut start = text.line_start_offset(row);
+    let end = text.line_start_offset(row + 1);
+    // Removing the final empty line also removes its preceding line ending.
+    if start == end && start > 0 {
+        start -= 1;
+        if text.slice(..start).chars().reversed().next() == Some('\r') {
+            start -= 1;
+        }
+    }
+    if start < end {
+        editor.set_selected_range(start..end, cx);
+    }
+}
+
 pub(crate) fn language_for_path(path: &Path) -> &'static str {
     language_definition(path).map_or("plaintext", |language| language.name)
 }

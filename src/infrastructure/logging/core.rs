@@ -12,6 +12,14 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
 
     let mut dispatch = fern::Dispatch::new()
         .level(log::LevelFilter::Warn)
+        .level_for(
+            "gpui_idea::infrastructure::terminal::core",
+            log::LevelFilter::Info,
+        )
+        .level_for(
+            "gpui_idea::application::terminal::external",
+            log::LevelFilter::Info,
+        )
         .level_for("gpui_idea::gui::code_search_window", log::LevelFilter::Info)
         .level_for(
             "gpui_idea::application::project::core::content_search",

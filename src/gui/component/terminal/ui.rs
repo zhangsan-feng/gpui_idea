@@ -1,3 +1,4 @@
+mod progress_bar;
 mod scrollbar;
 use super::*;
 use gpui_kit::prelude::FluentBuilder;
@@ -56,6 +57,7 @@ impl TerminalView {
             .on_mouse_up(
                 MouseButton::Left,
                 cx.listener(|this, _, _, _| {
+                    tracing::debug!(terminal = ?this.id, selection = ?this.selection, "terminal selection completed; backgrounds painted before glyphs");
                     this.dragging = false;
                     this.scrollbar_grab = None;
                 }),
@@ -104,7 +106,22 @@ impl TerminalView {
                                             rgb(if selected { 0xc4dcff } else { cell.background }),
                                         ));
                                     }
+                                }
+                                // Paint every background before any glyph. A wide glyph spans
+                                // two cells; its spacer's selection fill must stay behind it.
+                                for (index, cell) in snapshot.cells.iter().enumerate() {
+                                    let row = index / snapshot.columns;
+                                    let col = index % snapshot.columns;
+                                    let origin = point(
+                                        bounds.left() + px(col as f32 * metrics.cell_width),
+                                        bounds.top() + px(row as f32 * metrics.cell_height),
+                                    );
                                     if cell.text.trim().is_empty() {
+                                        continue;
+                                    }
+                                    // Terminal graphics must meet at cell boundaries and
+                                    // must not depend on the font's fallback glyphs.
+                                    if progress_bar::paint(cell, origin, metrics, window) {
                                         continue;
                                     }
                                     let mut font = font(metrics.font);

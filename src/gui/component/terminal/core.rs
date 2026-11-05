@@ -11,18 +11,32 @@ impl TerminalView {
     pub(crate) fn start(&mut self, cx: &mut Context<Self>) {
         self.start_session(cx);
     }
+    pub(crate) fn start_in_directory(
+        &mut self,
+        directory: std::path::PathBuf,
+        cx: &mut Context<Self>,
+    ) {
+        self.working_directory = Some(directory);
+        self.start_session(cx);
+    }
     fn start_session(&mut self, cx: &mut Context<Self>) {
         self.focus_pending = true;
         self.starting = true;
         self.error = None;
         let id = self.id;
+        let directory = self.working_directory.clone();
         let previous = self.operation_task.take();
         self.operation_task = Some(cx.spawn(async move |view, cx| {
             if let Some(previous) = previous {
                 previous.await;
             }
-            let result =
-                run_application(async move { APPLICATION.terminal.start(id, None).await }).await;
+            let result = run_application(async move {
+                match directory {
+                    Some(directory) => APPLICATION.terminal.start_in_directory(id, directory).await,
+                    None => APPLICATION.terminal.start(id, None).await,
+                }
+            })
+            .await;
             let _ = view.update(cx, |this, cx| {
                 this.starting = false;
                 this.started = result.is_ok();

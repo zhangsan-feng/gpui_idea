@@ -93,6 +93,15 @@ pub(super) fn project_menu(
     ))
     .separator()
     .item(menu_item(
+        "打开终端",
+        IconName::Terminal,
+        FileTreeMenuAction::OpenTerminal,
+        enabled && !is_link && !multiple,
+        &view,
+        &path,
+        is_directory,
+    ))
+    .item(menu_item(
         "打开文件所在目录",
         IconName::FolderOpen,
         FileTreeMenuAction::Reveal,

@@ -51,6 +51,7 @@ pub(super) fn start(
     let generation = GENERATION.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
     Ok((
         Session {
+            progress_glyphs_logged: 0,
             stopped: false,
             output_finalized: false,
             completion_written: false,
@@ -90,7 +91,7 @@ pub(super) fn finish_output(session: &mut Session) {
     parser.advance(&mut *session.term.lock(), text.as_bytes());
 }
 
-pub(super) fn snapshot(session: &Session) -> TerminalDataContextSnapshot {
+pub(super) fn snapshot(session: &mut Session) -> TerminalDataContextSnapshot {
     use alacritty_terminal::grid::Dimensions;
     let term = session.term.lock();
     let content = term.renderable_content();
@@ -111,6 +112,25 @@ pub(super) fn snapshot(session: &Session) -> TerminalDataContextSnapshot {
             continue;
         }
         let cell = indexed.cell;
+        // Record code points, never command output. At most one entry for each
+        // Rich bar symbol (or decoding replacement) per terminal session.
+        let glyph_bit = match cell.c {
+            '\u{2501}' => 1,
+            '\u{2578}' => 2,
+            '\u{257a}' => 4,
+            '\u{fffd}' => 8,
+            _ => 0,
+        };
+        if glyph_bit != 0 && session.progress_glyphs_logged & glyph_bit == 0 {
+            session.progress_glyphs_logged |= glyph_bit;
+            tracing::info!(
+                generation = session.generation,
+                codepoint = %format!("U+{:04X}", cell.c as u32),
+                row,
+                column = indexed.point.column.0,
+                "terminal progress glyph parsed"
+            );
+        }
         let mut foreground = resolve_color(cell.fg, content.colors);
         let mut background = resolve_color(cell.bg, content.colors);
         if cell.flags.contains(Flags::INVERSE) {

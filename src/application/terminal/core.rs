@@ -5,6 +5,14 @@ use anyhow::Result;
 
 pub(super) async fn start(id: TerminalId, command: Option<String>) -> Result<()> {
     let root = DATA_CONTEXT.require_project_root()?.to_owned();
+    start_at(id, root, command).await
+}
+
+pub(super) async fn start_at(
+    id: TerminalId,
+    root: std::path::PathBuf,
+    command: Option<String>,
+) -> Result<()> {
     if let Some((generation, mut events)) = INFRASTRUCTURE.terminal.start(id, root, command).await?
     {
         publish(id).await?;

@@ -41,6 +41,7 @@ struct ShellLaunch {
 }
 
 struct Session {
+    progress_glyphs_logged: u8,
     stopped: bool,
     output_finalized: bool,
     completion_written: bool,

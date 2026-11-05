@@ -178,7 +178,7 @@ impl Workspace {
                         .as_ref()
                         .and_then(|saved| saved.run_height)
                         .unwrap_or(250.)))
-                    .size_range(px(120.)..px(500.))
+                    .size_range(px(120.)..px(1024.))
                     .fixed()
                     .flex_none()
                     .child(

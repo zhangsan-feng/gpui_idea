@@ -3,6 +3,16 @@ use anyhow::Result;
 use std::{path::PathBuf, sync::Arc};
 
 impl FileSystem {
+    pub(crate) async fn resolve_directory(
+        &self,
+        root: PathBuf,
+        relative: PathBuf,
+    ) -> Result<PathBuf> {
+        core::run("resolve_directory", relative.clone(), move || {
+            core::path::resolve_directory(&root, &relative)
+        })
+        .await
+    }
     pub(crate) async fn validate_entry_batch(
         &self,
         root: PathBuf,

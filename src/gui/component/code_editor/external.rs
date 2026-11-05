@@ -38,7 +38,15 @@ pub(crate) fn completion_dropdown(
     content: impl gpui_kit::IntoElement,
     cx: &App,
 ) -> gpui_kit::Div {
-    super::completion::wrap(editor, content, cx)
+    use gpui_kit::InteractiveElement as _;
+
+    let cut_editor = editor.clone();
+    super::completion::wrap(editor, content, cx).capture_action(
+        move |_: &gpui_kit::component::input::Cut, _, cx| {
+            cut_editor.update(cx, core::select_line_for_cut);
+            // Continue dispatching Cut to the component for clipboard and undo handling.
+        },
+    )
 }
 
 pub(crate) fn dismiss_completions(

@@ -135,11 +135,13 @@ pub(super) fn read(root: &Path, path: &Path) -> Result<LoadedFile> {
     };
     tracing::debug!(path = %path.display(), bytes = bytes.len(), chunks,
         buffer_bytes = BUFFER_SIZE, "document loaded with buffered chunks");
+    let text = decoder.builder.finish();
     let document = DocumentDataContextSnapshot {
         formatted_revision: None,
         path: path.to_path_buf(),
         scope_root: root.to_path_buf(),
-        text: decoder.builder.finish(),
+        saved_text: text.clone(),
+        text,
         revision: 0,
         saved_revision: 0,
         saving: false,

@@ -6,11 +6,35 @@ use crate::{
 use gpui_kit::AppContext as _;
 use gpui_kit::Context;
 impl BottomPanel {
+    pub(in crate::gui::workspace) fn open_terminal(
+        &mut self,
+        directory: std::path::PathBuf,
+        cx: &mut Context<BottomPanel>,
+    ) {
+        self.add_terminal_tab(Some(directory), cx);
+        self.state.active_tool = ToolWindow::Terminal;
+        self.send(crate::event_bus::gui_event::GuiEvent::LeftSidebar(
+            crate::gui::workspace::left_sidebar::Event::SetRunPanel(true),
+        ));
+        self.send(crate::event_bus::gui_event::GuiEvent::WindowBar(
+            crate::gui::workspace::window_bar::Event::ScheduleSave,
+        ));
+    }
     pub(in crate::gui::workspace) fn add_terminal(&mut self, cx: &mut Context<BottomPanel>) {
+        self.add_terminal_tab(None, cx);
+    }
+    fn add_terminal_tab(
+        &mut self,
+        directory: Option<std::path::PathBuf>,
+        cx: &mut Context<BottomPanel>,
+    ) {
         self.state.terminal_sequence += 1;
         let id = crate::domain::terminal::TerminalId::Local(self.state.terminal_sequence);
         let view = cx.new(|cx| crate::gui::component::terminal::TerminalView::new(id, cx));
-        view.update(cx, |terminal, cx| terminal.start(cx));
+        view.update(cx, |terminal, cx| match directory {
+            Some(directory) => terminal.start_in_directory(directory, cx),
+            None => terminal.start(cx),
+        });
         self.state
             .terminal_tabs
             .push(crate::gui::workspace::TerminalTab {

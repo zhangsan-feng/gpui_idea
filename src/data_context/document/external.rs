@@ -53,6 +53,7 @@ impl DocumentContext {
                 }
                 tracing::warn!(path = %loaded.path.display(), "external document change conflicts with local edits");
             } else {
+                next.saved_text = loaded.text.clone();
                 next.text = loaded.text;
                 next.disk_bytes = loaded.disk_bytes;
                 next.format = loaded.format;
@@ -158,9 +159,19 @@ impl DocumentContext {
     }
     pub(crate) fn edit(&self, path: &Path, text: Rope, changed: bool) -> Result<()> {
         self.modify(path, |doc| {
+            if doc.text == text {
+                return Ok(());
+            }
+            let was_dirty = doc.dirty();
             doc.text = text;
             if changed {
                 doc.revision += 1;
+            }
+            if !doc.dirty() {
+                doc.saved_revision = doc.revision;
+                if was_dirty {
+                    tracing::info!(path = %path.display(), revision = doc.revision, saving = doc.saving, "document content restored to saved baseline; save not needed");
+                }
             }
             Ok(())
         })?;
@@ -215,6 +226,10 @@ impl DocumentContext {
             if current.saving {
                 bail!("文件正在保存，请稍后再试");
             }
+            if !current.dirty() {
+                tracing::debug!(path = %path.display(), "document save skipped: content unchanged");
+                return Ok(None);
+            }
             let mut next = (**current).clone();
             next.saving = true;
             if let Some((revision, text)) = formatted {
@@ -228,17 +243,20 @@ impl DocumentContext {
                 }
             }
             next.save_error = None;
+            // Formatting may restore the exact text already on disk.
+            next.saving = next.dirty();
             let next = Arc::new(next);
             documents.insert(path.to_owned(), next.clone());
-            next
+            next.saving.then_some(next)
         };
         self.notify();
-        Ok(Some(snapshot))
+        Ok(snapshot)
     }
     pub(crate) fn finish_save(
         &self,
         path: &Path,
         revision: u64,
+        saved_text: Rope,
         result: Result<Arc<[u8]>>,
     ) -> Result<()> {
         self.modify(path, |doc| {
@@ -246,6 +264,9 @@ impl DocumentContext {
             match result {
                 Ok(bytes) => {
                     doc.disk_bytes = bytes;
+                    // The completed write belongs to its captured buffer, even
+                    // when newer edits or undo arrived while IO was running.
+                    doc.saved_text = saved_text;
                     doc.saved_revision = revision;
                     doc.save_error = None;
                 }

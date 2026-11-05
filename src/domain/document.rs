@@ -18,6 +18,7 @@ pub struct DocumentDataContextSnapshot {
     pub path: PathBuf,
     pub scope_root: PathBuf,
     pub text: Rope,
+    pub(crate) saved_text: Rope,
     pub revision: u64,
     pub(crate) formatted_revision: Option<u64>,
     pub saved_revision: u64,
@@ -28,6 +29,6 @@ pub struct DocumentDataContextSnapshot {
 }
 impl DocumentDataContextSnapshot {
     pub fn dirty(&self) -> bool {
-        self.revision != self.saved_revision
+        self.revision != self.saved_revision && self.text != self.saved_text
     }
 }

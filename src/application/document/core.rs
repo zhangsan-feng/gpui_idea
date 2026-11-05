@@ -68,8 +68,11 @@ impl DocumentService {
     }
     pub(super) async fn open_core(&self, relative: PathBuf) -> Result<OpenedDocument> {
         let path = self.resolve(&relative)?;
-        self.open_at_root(DATA_CONTEXT.project_root().to_owned(), path)
-            .await
+        let opened = self
+            .open_at_root(DATA_CONTEXT.project_root().to_owned(), path)
+            .await?;
+        APPLICATION.project.schedule_file_run_refresh();
+        Ok(opened)
     }
     pub(super) async fn open_external_core(&self, path: PathBuf) -> Result<OpenedDocument> {
         if !path.is_absolute()
@@ -105,12 +108,23 @@ impl DocumentService {
         })
     }
     pub(super) async fn save_core(&self, path: PathBuf, automatic: bool) -> Result<()> {
+        let current = DATA_CONTEXT
+            .documents
+            .snapshot(&path)
+            .ok_or_else(|| anyhow::anyhow!("文件尚未打开"))?;
+        if !current.dirty() {
+            tracing::debug!(file = %path.display(), "document save skipped: content unchanged");
+            return Ok(());
+        }
         let formatted = self.format_before_save(&path, automatic).await;
         let _refresh = APPLICATION.file_watch.lock_refresh().await;
         let current = DATA_CONTEXT
             .documents
             .snapshot(&path)
             .ok_or_else(|| anyhow::anyhow!("文件尚未打开"))?;
+        if !current.dirty() {
+            return Ok(());
+        }
         let relative = path.strip_prefix(&current.scope_root)?.to_owned();
         let change = INFRASTRUCTURE
             .filesystem
@@ -134,7 +148,7 @@ impl DocumentService {
         let error = result.as_ref().err().map(|error| format!("{error:#}"));
         DATA_CONTEXT
             .documents
-            .finish_save(&path, revision, result)?;
+            .finish_save(&path, revision, snapshot.text.clone(), result)?;
         tracing::info!(file = %path.display(), revision, elapsed_ms = started.elapsed().as_millis(), success = error.is_none(), "document save completed");
         if let Some(error) = error {
             bail!(error);

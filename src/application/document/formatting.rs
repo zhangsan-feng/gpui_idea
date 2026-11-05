@@ -15,10 +15,9 @@ impl DocumentService {
         }
         let snapshot = DATA_CONTEXT.documents.snapshot(path)?;
         if snapshot.saving
+            || !snapshot.dirty()
             || (automatic
-                && (DATA_CONTEXT.documents.autosave_paused()
-                    || snapshot.save_error.is_some()
-                    || !snapshot.dirty()))
+                && (DATA_CONTEXT.documents.autosave_paused() || snapshot.save_error.is_some()))
         {
             return None;
         }

@@ -25,6 +25,56 @@ impl ProjectService {
 
 async fn refresh() {
     let root = DATA_CONTEXT.project_root().to_owned();
+    // Restored tabs and search results can open files without expanding their parents.
+    // Populate the shared tree cache so both editor and tree menus use the same capability.
+    for document in DATA_CONTEXT.documents.snapshots() {
+        if document.scope_root != root {
+            continue;
+        }
+        let Ok(relative) = document.path.strip_prefix(&root) else {
+            continue;
+        };
+        if !INFRASTRUCTURE.language_servers.supports_file_run(relative) {
+            continue;
+        }
+        let Some(directory) = relative.parent() else {
+            continue;
+        };
+        let _guard = APPLICATION.file_watch.lock_refresh().await;
+        if DATA_CONTEXT.project_root() != root {
+            return;
+        }
+        let (_, directories) = DATA_CONTEXT.project.file_tree.snapshots();
+        if directories.get(directory).is_some_and(|snapshot| {
+            snapshot.error.is_none()
+                && snapshot
+                    .entries
+                    .iter()
+                    .any(|entry| entry.relative_path == relative)
+        }) {
+            continue;
+        }
+        match INFRASTRUCTURE
+            .filesystem
+            .list_directory(root.clone(), directory.to_owned())
+            .await
+        {
+            Ok(entries) if DATA_CONTEXT.project_root() == root => {
+                tracing::info!(file = %relative.display(), directory = %directory.display(), "opened document run capability directory loaded");
+                DATA_CONTEXT.project.file_tree.set_directory(
+                    directory.to_owned(),
+                    crate::domain::project::DirectoryDataContextSnapshot {
+                        entries: entries.into(),
+                        error: None,
+                    },
+                );
+            }
+            Ok(_) => return,
+            Err(error) => {
+                tracing::warn!(file = %relative.display(), %error, "opened document run capability directory load failed");
+            }
+        }
+    }
     let (_, directories) = DATA_CONTEXT.project.file_tree.snapshots();
     for (directory, original) in directories {
         let mut entries = original.entries.to_vec();

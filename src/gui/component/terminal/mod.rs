@@ -12,6 +12,7 @@ pub(crate) fn init(cx: &mut gpui_kit::App) {
 }
 
 pub(crate) struct TerminalView {
+    working_directory: Option<std::path::PathBuf>,
     scrollbar_bounds: Option<gpui_kit::Bounds<gpui_kit::Pixels>>,
     scrollbar_grab: Option<f32>,
     id: TerminalId,
@@ -78,6 +79,7 @@ impl TerminalView {
         })
         .detach();
         Self {
+            working_directory: None,
             scrollbar_bounds: None,
             scrollbar_grab: None,
             id,

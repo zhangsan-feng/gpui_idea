@@ -112,6 +112,7 @@ pub(crate) enum Event {
     ResetRunAutomatic,
     StartExecution(crate::domain::run::RunAction),
     RunFile(std::path::PathBuf),
+    OpenTerminal(std::path::PathBuf),
     StopRun,
     SetRunProfile(String),
 }
@@ -180,6 +181,7 @@ impl BottomPanel {
                     self.start_execution(value, window, cx);
                 }
                 Event::RunFile(file) => self.run_file(file, cx),
+                Event::OpenTerminal(directory) => self.open_terminal(directory, cx),
                 Event::StopRun => {
                     self.stop_run(cx);
                 }

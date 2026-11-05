@@ -30,6 +30,11 @@ impl FileTree {
             path.parent().unwrap_or(Path::new("")).to_owned()
         };
         match action {
+            FileTreeMenuAction::OpenTerminal => {
+                self.send(crate::event_bus::gui_event::GuiEvent::BottomPanel(
+                    crate::gui::workspace::bottom_panel::Event::OpenTerminal(directory),
+                ));
+            }
             FileTreeMenuAction::Run => {
                 self.send(crate::event_bus::gui_event::GuiEvent::BottomPanel(
                     crate::gui::workspace::bottom_panel::Event::RunFile(path),
