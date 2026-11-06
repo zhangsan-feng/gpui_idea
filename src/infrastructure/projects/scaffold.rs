@@ -227,5 +227,6 @@ pub(super) async fn create(
         copy(&stage.directory, &stage.destination).with_context(|| format!("复制项目失败，请检查 {}", stage.destination.display()))?;
         tracing::info!(language = request.language.label(), path = %stage.destination.display(), "project initialized");
         Ok(stage.destination.clone())
-    }).await?
+    })
+    .await?
 }

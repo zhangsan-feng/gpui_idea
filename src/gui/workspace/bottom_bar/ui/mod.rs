@@ -90,10 +90,10 @@ impl BottomBar {
         let install_detail = installing.then(|| lsp_detail.clone());
         h_flex()
             .w_full()
-            .h(px(32.))
+            .h(px(STATUS_BAR_HEIGHT))
             .flex_shrink_0()
             .items_center()
-            .gap_3()
+            .gap(px(10.))
             .px_2()
             .border_t_1()
             .border_color(crate::component::appearance::border(BORDER))
@@ -191,12 +191,5 @@ impl BottomBar {
                 },
             )
             .when(!image, |bar| bar.child(div().child("4 spaces")))
-            .child(
-                div()
-                    .w(px(1.))
-                    .h(px(14.))
-                    .bg(crate::component::appearance::background(BORDER)),
-            )
-            .child(div().child("GPUI Kit"))
     }
 }

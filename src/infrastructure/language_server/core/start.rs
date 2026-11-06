@@ -138,28 +138,33 @@ impl Session {
             warmed: HashSet::new(),
         };
         let initialization_options = configuration::initialization_options(family, root);
-        let initialized = session.request("initialize", json!({
-            "processId": std::process::id(), "clientInfo": {"name":"gpui-idea"},
-            "rootUri": root_uri, "workspaceFolders": workspace_folders,
-            "capabilities": {
-                "general":{"positionEncodings":["utf-16"]},
-                "workspace":{"configuration":true,"workspaceFolders":true},
-                "textDocument":{
-                    "completion":{"completionItem":{"snippetSupport":true,"insertReplaceSupport":true}},
-                    "definition":{"linkSupport":true},"synchronization":{"didSave":true},
-                    "formatting":{"dynamicRegistration":false},
-                    "documentHighlight":{"dynamicRegistration":false},
-                    "semanticTokens":{
-                        "requests":{"full":true},"formats":["relative"],
-                        "tokenTypes":["namespace","type","struct","variable","function","method","macro","keyword","comment","string","number","operator"],
-                        "tokenModifiers":[]
-                    }
-                },
-                "window":{"workDoneProgress":true},
-                "experimental":{"serverStatusNotification":true}
-            },
-            "initializationOptions": initialization_options
-        })).await;
+        let initialized = session
+            .request(
+                "initialize",
+                json!({
+                    "processId": std::process::id(), "clientInfo": {"name":"gpui-idea"},
+                    "rootUri": root_uri, "workspaceFolders": workspace_folders,
+                    "capabilities": {
+                        "general":{"positionEncodings":["utf-16"]},
+                        "workspace":{"configuration":true,"workspaceFolders":true},
+                        "textDocument":{
+                            "completion":{"completionItem":{"snippetSupport":true,"insertReplaceSupport":true}},
+                            "definition":{"linkSupport":true},"synchronization":{"didSave":true},
+                            "formatting":{"dynamicRegistration":false},
+                            "documentHighlight":{"dynamicRegistration":false},
+                            "semanticTokens":{
+                                "requests":{"full":true},"formats":["relative"],
+                                "tokenTypes":["namespace","type","struct","variable","function","method","macro","keyword","comment","string","number","operator"],
+                                "tokenModifiers":[]
+                            }
+                        },
+                        "window":{"workDoneProgress":true},
+                        "experimental":{"serverStatusNotification":true}
+                    },
+                    "initializationOptions": initialization_options
+                }),
+            )
+            .await;
         let capabilities = match initialized {
             Ok(value) => value,
             Err(error) => {

@@ -1,6 +1,7 @@
 mod batch;
 mod content_search;
 mod file_tree;
+mod git;
 mod run;
 mod run_capabilities;
 mod run_configurations;

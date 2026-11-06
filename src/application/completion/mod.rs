@@ -1,7 +1,7 @@
 mod core;
 mod external;
-mod keywords;
 mod insertion;
+mod keywords;
 mod semantic;
 mod snippet;
 

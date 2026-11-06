@@ -28,7 +28,10 @@ pub(in crate::gui::workspace) fn init_component_data(
                 .as_ref()
                 .is_none_or(|saved| saved.project_panel_open),
         run_panel_open: DATA_CONTEXT.has_project()
-            && session.as_ref().is_none_or(|saved| saved.run_panel_open),
+            && session.as_ref().is_none_or(|saved| {
+                // Git occupies the workbench; reopen on the code page instead.
+                saved.run_panel_open && saved.active_tool != ToolWindow::Git
+            }),
         project_resize: cx.new(|_| ResizableState::default()),
         run_resize: cx.new(|_| ResizableState::default()),
     }
@@ -79,17 +82,24 @@ impl LeftSidebar {
             self.workspace.entity_id(),
             crate::event_bus::refresh_gui::GuiComponent::LeftSidebar,
         );
-        self.subscription = Some(cx.spawn_in(window, async move |view,cx| {
+        self.subscription = Some(cx.spawn_in(window, async move |view, cx| {
             loop {
                 let event = tokio::select! {
                     changed = refresh.changed() => { if changed.is_err() { break; } None }
                     event = events.receiver.recv() => { let Some(event) = event else { break; }; Some(event) }
                 };
-                if view.update_in(cx,|this,window,cx| {
-                    if let Some(event) = event { this.handle_event(event,window,cx); }
-                    else {  }
-                    cx.notify();
-                }).is_err() { break; }
+                if view
+                    .update_in(cx, |this, window, cx| {
+                        if let Some(event) = event {
+                            this.handle_event(event, window, cx);
+                        } else {
+                        }
+                        cx.notify();
+                    })
+                    .is_err()
+                {
+                    break;
+                }
             }
         }));
     }

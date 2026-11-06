@@ -60,9 +60,6 @@ pub(in crate::infrastructure::filesystem) fn resolve(
                                 if project_profile.build_command.is_some() {
                                     profile.build_command = project_profile.build_command.clone();
                                 }
-                                if project_profile.debug_command.is_some() {
-                                    profile.debug_command = project_profile.debug_command.clone();
-                                }
                             }
                         }
                         file_config

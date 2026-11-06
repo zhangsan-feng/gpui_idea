@@ -5,7 +5,7 @@ use std::{
     path::Path,
 };
 
-pub(super) fn file(path: &Path) -> Result<(u64, u64, u64)> {
+pub(super) fn file(path: &Path) -> Result<(u64, u64, u64, bool)> {
     let file = File::open(path)?;
     let bytes = file.metadata()?.len();
     let mut reader = BufReader::with_capacity(64 * 1024, file);
@@ -27,12 +27,12 @@ pub(super) fn file(path: &Path) -> Result<(u64, u64, u64)> {
             {
                 text
             }
-            _ => return Ok((bytes, 0, 0)),
+            _ => return Ok((bytes, 0, 0, true)),
         };
         lines += 1;
         if !text.trim().trim_start_matches('\u{feff}').trim().is_empty() {
             non_empty_lines += 1;
         }
     }
-    Ok((bytes, lines, non_empty_lines))
+    Ok((bytes, lines, non_empty_lines, false))
 }

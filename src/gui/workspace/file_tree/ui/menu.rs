@@ -33,9 +33,11 @@ pub(super) fn project_menu(
         item.kind == "gpui-idea-project-entry" && item.project_root == DATA_CONTEXT.project_root()
     });
     let runnable = view.upgrade().is_some_and(|view| {
-        view.read(cx).state.tree_rows.iter().any(|row| {
-            matches!(row, crate::gui::workspace::TreeRow::Entry(entry, _) if entry.relative_path == path && entry.runnable)
-        })
+        view.read(cx)
+            .state
+            .tree_rows
+            .iter()
+            .any(|row| matches!(row, crate::gui::workspace::TreeRow::Entry(entry, _) if entry.relative_path == path && entry.runnable))
     });
     let menu = if !is_directory && !is_link && runnable {
         menu.item(menu_item(

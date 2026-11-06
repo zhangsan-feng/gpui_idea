@@ -21,11 +21,15 @@ fn project_entry_icon(path: &Path, directory: bool) -> gpui_kit::Img {
     crate::gui::component::project_icon::project_icon_with_package(
         path,
         directory,
-        directory && DATA_CONTEXT.project.file_tree.is_code_package_directory(path),
+        directory
+            && DATA_CONTEXT
+                .project
+                .file_tree
+                .is_code_package_directory(path),
     )
 }
 
-const PROJECT_HEADER_HEIGHT: f32 = 34.;
+const PROJECT_HEADER_HEIGHT: f32 = WORKBENCH_HEADER_HEIGHT;
 const PROJECT_ROOT_ROW_HEIGHT: f32 = 25.;
 const PROJECT_TREE_ROW_HEIGHT: f32 = 24.;
 const PROJECT_TREE_INDENT: f32 = 16.;
@@ -37,7 +41,6 @@ const PROJECT_TREE_STATUS_ICON_SIZE: f32 = 9.;
 #[derive(Clone, Copy)]
 struct ProjectTreePalette {
     panel: Hsla,
-    border: Hsla,
     foreground: Hsla,
     muted: Hsla,
     hover: Hsla,
@@ -52,9 +55,8 @@ struct ProjectTreePalette {
 impl ProjectTreePalette {
     fn from_theme(theme: &Theme) -> Self {
         Self {
-            panel: theme.sidebar,
-            border: theme.sidebar_border,
-            foreground: theme.sidebar_foreground,
+            panel: crate::component::appearance::background(PANEL_BG),
+            foreground: crate::component::appearance::foreground(TEXT),
             muted: theme.muted_foreground,
             hover: theme.list_hover,
             selected: theme.list_active,
@@ -79,12 +81,10 @@ impl FileTree {
             "project-tree",
             self.state.tree_rows.len(),
             cx.processor(|this, range: Range<usize>, _, cx| {
-                {
-                    range
-                        .filter_map(|index| this.state.tree_rows.get(index).cloned())
-                        .map(|row| this.tree_row(row, cx))
-                        .collect::<Vec<_>>()
-                }
+                range
+                    .filter_map(|index| this.state.tree_rows.get(index).cloned())
+                    .map(|row| this.tree_row(row, cx))
+                    .collect::<Vec<_>>()
             }),
         )
         .with_sizing_behavior(ListSizingBehavior::Auto)
@@ -204,13 +204,11 @@ impl FileTree {
         h_flex()
             .h(px(PROJECT_HEADER_HEIGHT))
             .flex_shrink_0()
-            .px_2()
+            .px(px(12.))
             .items_center()
             .gap_1()
-            .border_b_1()
-            .border_color(palette.border)
             .bg(palette.panel)
-            .text_size(px(13.))
+            .text_size(px(12.))
             .text_color(palette.foreground)
             .font_weight(FontWeight(600.))
             .child(div().flex_1().child("Project"))

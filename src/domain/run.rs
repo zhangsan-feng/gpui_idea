@@ -6,7 +6,6 @@ pub enum RunAction {
     #[default]
     Run,
     Build,
-    Debug,
 }
 
 #[derive(Clone, Debug, Default, Serialize, Deserialize)]
@@ -14,15 +13,10 @@ pub struct RunProfile {
     pub name: String,
     pub command: String,
     pub build_command: Option<String>,
-    pub debug_command: Option<String>,
     #[serde(default)]
     pub argument_prefix: String,
     #[serde(default)]
     pub argument_template: Option<String>,
-    #[serde(default)]
-    pub debug_argument_prefix: String,
-    #[serde(default)]
-    pub debug_argument_template: Option<String>,
 }
 
 impl RunProfile {
@@ -30,7 +24,6 @@ impl RunProfile {
         match action {
             RunAction::Run => Some(self.command.as_str()),
             RunAction::Build => self.build_command.as_deref(),
-            RunAction::Debug => self.debug_command.as_deref(),
         }
         .filter(|command| !command.trim().is_empty())
     }

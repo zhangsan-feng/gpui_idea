@@ -84,11 +84,9 @@ impl BottomPanel {
                         .hover(|style| style.bg(crate::component::appearance::background(0xe7e9ed)))
                         .child(icon(IconName::RefreshCw, 14., MUTED))
                         .on_click(cx.listener(|this, _, _, cx| {
-                            {
-                                this.state.terminal_tabs[this.state.active_terminal]
-                                    .view
-                                    .update(cx, |terminal, cx| terminal.start(cx))
-                            }
+                            this.state.terminal_tabs[this.state.active_terminal]
+                                .view
+                                .update(cx, |terminal, cx| terminal.start(cx))
                         })),
                     )
                     .child(

@@ -1,7 +1,7 @@
 mod core;
-mod package;
 mod install;
 mod launch;
+mod package;
 mod run;
 mod runtime;
 use super::{Download, Language};

@@ -42,6 +42,12 @@ impl BottomPanel {
 
 impl BottomPanel {
     pub(in crate::gui::workspace) fn initialize(&mut self, cx: &mut Context<Self>) {
+        self.state
+            .git_input_subscriptions
+            .push(cx.observe(&self.state.git_message, |_, _, cx| cx.notify()));
+        self.state
+            .git_input_subscriptions
+            .push(cx.observe(&self.state.git_summary, |_, _, cx| cx.notify()));
         self.state.git_filter_subscription =
             Some(cx.observe(&self.state.git_filter, |_, _, cx| cx.notify()));
         self.state.run_views.insert(

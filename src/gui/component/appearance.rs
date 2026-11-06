@@ -78,7 +78,7 @@ pub(crate) fn background(value: u32) -> Hsla {
         return color;
     }
     match value {
-        0x272a31 | 0x3a3e47 => return gpui_kit::rgb(0x202228).into(),
+        0x272a31 | 0x27282e | 0x3a3e47 => return gpui_kit::rgb(0x202228).into(),
         0xffffff => return gpui_kit::rgb(0x1e1f22).into(),
         _ => {}
     }

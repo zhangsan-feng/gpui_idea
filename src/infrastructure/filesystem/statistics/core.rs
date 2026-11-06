@@ -1,7 +1,14 @@
-use super::{DirectoryScan, ScanResult, ScanTask, measure};
-use crate::domain::statistics::{ExtensionStatistics, StatisticsDataContextSnapshot};
+use super::{DirectoryGroups, DirectoryScan, ScanResult, ScanTask, measure};
+use crate::domain::statistics::{
+    DirectoryStatistics, ExtensionStatistics, StatisticsDataContextSnapshot,
+};
 use anyhow::{Context, Result};
-use std::{collections::BTreeMap, fs, path::PathBuf, time::Instant};
+use std::{
+    collections::BTreeMap,
+    fs,
+    path::{Path, PathBuf},
+    time::Instant,
+};
 use tokio::task::JoinSet;
 
 pub(super) async fn scan(root: PathBuf) -> Result<StatisticsDataContextSnapshot> {
@@ -15,9 +22,9 @@ pub(super) async fn scan(root: PathBuf) -> Result<StatisticsDataContextSnapshot>
         .unwrap_or(4)
         .clamp(4, 32);
     tracing::debug!(path = %root.display(), concurrency, "project statistics scan started");
-    let mut pending = vec![ScanTask::Directory(root)];
+    let mut pending = vec![ScanTask::Directory(root.clone())];
     let mut running = JoinSet::new();
-    let mut groups = BTreeMap::<String, ExtensionStatistics>::new();
+    let mut groups = BTreeMap::<PathBuf, DirectoryGroups>::new();
     let mut snapshot = StatisticsDataContextSnapshot::default();
     let mut directories = 0_u64;
 
@@ -41,37 +48,69 @@ pub(super) async fn scan(root: PathBuf) -> Result<StatisticsDataContextSnapshot>
         {
             ScanResult::Directory(result) => {
                 directories += 1;
-                pending.extend(result.tasks);
+                let is_root = result.path == root;
+                if let Some(directory) = top_level_directory(&root, &result.path) {
+                    groups.entry(directory).or_default();
+                }
+                // The overview contains root folders only, including all their descendants.
+                pending.extend(
+                    result
+                        .tasks
+                        .into_iter()
+                        .filter(|task| !is_root || matches!(task, ScanTask::Directory(_))),
+                );
                 snapshot.skipped_files += result.skipped;
             }
             ScanResult::File {
+                directory,
+                binary,
                 extension,
                 bytes,
                 lines,
                 code,
             } => {
-                let group =
-                    groups
-                        .entry(extension.clone())
-                        .or_insert_with(|| ExtensionStatistics {
-                            extension,
-                            ..Default::default()
-                        });
+                let Some(directory) = top_level_directory(&root, &directory) else {
+                    continue;
+                };
+                let directory = groups.entry(directory).or_default();
+                let group = directory
+                    .extensions
+                    .entry(extension.clone())
+                    .or_insert_with(|| ExtensionStatistics {
+                        extension,
+                        ..Default::default()
+                    });
                 group.add(bytes, lines, code);
+                group.binary_files += u64::from(binary);
+                directory.total.add(bytes, lines, code);
+                directory.total.binary_files += u64::from(binary);
                 snapshot.total.add(bytes, lines, code);
+                snapshot.total.binary_files += u64::from(binary);
             }
             ScanResult::Skipped => snapshot.skipped_files += 1,
         }
     }
-    snapshot.extensions = groups.into_values().collect();
+    snapshot.directories = groups
+        .into_iter()
+        .map(|(path, group)| DirectoryStatistics {
+            path,
+            extensions: group.extensions.into_values().collect(),
+            total: group.total,
+        })
+        .collect();
     snapshot.total.extension = "Total".into();
     snapshot.scanned_at = chrono::Local::now().format("%H:%M:%S").to_string();
     tracing::debug!(
         files = snapshot.total.count,
         lines = snapshot.total.lines,
-        groups = snapshot.extensions.len(),
+        groups = snapshot
+            .directories
+            .iter()
+            .map(|directory| directory.extensions.len())
+            .sum::<usize>(),
         skipped = snapshot.skipped_files,
         directories,
+        root_folders = snapshot.directories.len(),
         concurrency,
         elapsed_ms = started.elapsed().as_millis(),
         "project statistics scan completed"
@@ -79,11 +118,22 @@ pub(super) async fn scan(root: PathBuf) -> Result<StatisticsDataContextSnapshot>
     Ok(snapshot)
 }
 
+fn top_level_directory(root: &Path, directory: &Path) -> Option<PathBuf> {
+    directory
+        .strip_prefix(root)
+        .ok()?
+        .components()
+        .next()
+        .map(|component| PathBuf::from(component.as_os_str()))
+}
+
 fn execute(task: ScanTask) -> ScanResult {
     match task {
         ScanTask::Directory(path) => ScanResult::Directory(read_directory(path)),
         ScanTask::File(path) => match measure::file(&path) {
-            Ok((bytes, lines, code)) => ScanResult::File {
+            Ok((bytes, lines, code, binary)) => ScanResult::File {
+                directory: path.parent().unwrap_or(&path).to_owned(),
+                binary,
                 extension: path
                     .extension()
                     .and_then(|ext| ext.to_str())
@@ -102,7 +152,10 @@ fn execute(task: ScanTask) -> ScanResult {
 }
 
 fn read_directory(path: PathBuf) -> DirectoryScan {
-    let mut result = DirectoryScan::default();
+    let mut result = DirectoryScan {
+        path: path.clone(),
+        ..Default::default()
+    };
     let entries = match fs::read_dir(&path) {
         Ok(entries) => entries,
         Err(error) => {

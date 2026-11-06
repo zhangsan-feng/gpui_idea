@@ -54,7 +54,7 @@ impl SettingsWindow {
 
     fn matches_search(&self, cx: &Context<Self>) -> bool {
         let query = self.search.read(cx).value().trim().to_lowercase();
-        query.is_empty() || "常规配置 自动格式化 保存 代理 proxy 网络 下载".contains(&query)
+        query.is_empty() || "常规配置 代码格式化 自动格式化代码 自动化格式化代码 保存时自动格式化代码 format formatting 代理 proxy 网络 下载".contains(&query)
     }
 
     fn sidebar(&self, cx: &mut Context<Self>) -> Div {
@@ -64,7 +64,8 @@ impl SettingsWindow {
             || "外观 字体 字号 主题 浅色 深色 font theme appearance".contains(&query);
         let matches_system = query.is_empty()
             || "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query);
-        let matches_lsp = query.is_empty() || "lsp 管理 语言服务器 server 版本 安装 更新 rust go java toml markdown python javascript typescript html css json yaml php intelephense pyright taplo marksman".contains(&query)
+        let matches_lsp = query.is_empty()
+            || "lsp 管理 语言服务器 server 版本 安装 更新 rust go java toml markdown python javascript typescript html css json yaml php intelephense pyright taplo marksman".contains(&query)
             || self.servers.iter().any(|server| format!("{} {}", server.name, server.languages).to_lowercase().contains(&query));
         v_flex()
             .w(px(220.))
@@ -222,21 +223,62 @@ impl SettingsWindow {
     }
 
     fn content(&self, cx: &mut Context<Self>) -> Div {
-        v_flex().h_full().flex_1().min_w_0().min_h_0()
+        v_flex()
+            .h_full()
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
             .child(crate::gui::component::panel::settings_header("常规配置"))
-            .child(v_flex().flex_1().min_h_0().mx_4().mb_4().pt_5().gap_3().border_t_1().border_color(crate::component::appearance::border(BORDER))
-                .id("general-settings-content").overflow_y_scroll()
-                .when(self.matches_search(cx), |content| content
-                    .child(Checkbox::new("auto-format-on-save").checked(self.draft.auto_format).disabled(self.saving)
-                        .label("保存时自动格式化")
-                        .on_click(cx.listener(|this, checked: &bool, _, cx| {
-                            this.draft.auto_format = *checked; this.error = None; cx.notify();
-                        })))
-                    .child(div().pl_6().text_size(px(12.)).text_color(crate::component::appearance::foreground(MUTED))
-                        .child("保存文件时使用当前语言的 LSP 格式化，适用于手动保存和自动保存。"))
-                    .child(div().pl_6().text_size(px(12.)).text_color(crate::component::appearance::foreground(MUTED))
-                        .child("语言服务不支持格式化或格式化失败时，仍会保存原内容。"))
-                    .child(self.proxy_settings(cx))))
+            .child(
+                v_flex()
+                    .flex_1()
+                    .min_h_0()
+                    .mx_4()
+                    .mb_4()
+                    .pt_5()
+                    .gap_3()
+                    .border_t_1()
+                    .border_color(crate::component::appearance::border(BORDER))
+                    .id("general-settings-content")
+                    .overflow_y_scroll()
+                    .when(self.matches_search(cx), |content| {
+                        content
+                            .child(self.formatting_settings(cx))
+                            .child(self.proxy_settings(cx))
+                    }),
+            )
+    }
+
+    fn formatting_settings(&self, cx: &mut Context<Self>) -> Div {
+        v_flex()
+            .p_4()
+            .gap_3()
+            .rounded_lg()
+            .bg(crate::component::appearance::background(0xffffff))
+            .border_1()
+            .border_color(crate::component::appearance::border(BORDER))
+            .child(div().font_weight(FontWeight::SEMIBOLD).child("代码格式化"))
+            .child(
+                Checkbox::new("auto-format-on-save")
+                    .checked(self.draft.auto_format)
+                    .disabled(self.saving || self.system_busy)
+                    .label("保存时自动格式化代码")
+                    .on_click(cx.listener(|this, checked: &bool, _, cx| {
+                        this.draft.auto_format = *checked;
+                        this.error = None;
+                        cx.notify();
+                    })),
+            )
+            .child(
+                v_flex()
+                    .pl_6()
+                    .gap_2()
+                    .text_size(px(12.))
+                    .text_color(crate::component::appearance::foreground(MUTED))
+                    .child("开启后，手动保存和自动保存都会格式化代码。")
+                    .child("需要当前语言服务支持格式化；格式化失败时仍会保存原内容。")
+                    .child("点击“应用”或“确定”后生效；关闭此项仍可使用主菜单“格式化代码”或 Ctrl+Alt+L。"),
+            )
     }
 
     fn proxy_settings(&self, cx: &mut Context<Self>) -> Div {

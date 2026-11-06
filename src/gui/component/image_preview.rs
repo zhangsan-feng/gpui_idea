@@ -36,9 +36,7 @@ pub(crate) fn render(
                 .text_color(crate::component::appearance::foreground(MUTED))
                 .child("图片预览")
                 .child(div().flex_1())
-                .when_some(bytes, |bar, bytes| {
-                    bar.child(format!("{:.1} KB", bytes as f64 / 1024.))
-                })
+                .when_some(bytes, |bar, bytes| bar.child(format!("{:.1} KB", bytes as f64 / 1024.)))
                 .child(controls),
         )
         .child(
@@ -62,36 +60,23 @@ pub(crate) fn render(
                                     v_flex()
                                         .gap_2()
                                         .text_size(px(13.))
-                                        .text_color(crate::component::appearance::foreground(
-                                            0xb42318,
-                                        ))
+                                        .text_color(crate::component::appearance::foreground(0xb42318))
                                         .child("图片无法预览")
                                         .child(div().text_size(px(12.)).child(error.clone())),
                                 )
                             } else if let Some(image) = image {
                                 let extent = zoom.max(1.);
                                 view.child(
-                            div()
-                                .w(relative(extent))
-                                .h(relative(extent))
-                                .flex_shrink_0()
-                                .flex()
-                                .items_center()
-                                .justify_center()
-                                .child(
-                                    img(image)
-                                        .w(relative(zoom / extent))
-                                        .h(relative(zoom / extent))
-                                        .flex_shrink_0()
-                                        .object_fit(ObjectFit::Contain)
-                                        .with_loading(|| image_message("正在解码图片…"))
-                                        .with_fallback(|| {
-                                            image_message(
-                                                "无法解码此图片，文件可能已损坏或格式不受支持",
-                                            )
-                                        }),
-                                ),
-                        )
+                                    div().w(relative(extent)).h(relative(extent)).flex_shrink_0().flex().items_center().justify_center().child(
+                                        img(image)
+                                            .w(relative(zoom / extent))
+                                            .h(relative(zoom / extent))
+                                            .flex_shrink_0()
+                                            .object_fit(ObjectFit::Contain)
+                                            .with_loading(|| image_message("正在解码图片…"))
+                                            .with_fallback(|| image_message("无法解码此图片，文件可能已损坏或格式不受支持")),
+                                    ),
+                                )
                             } else {
                                 view.child(image_message("正在读取图片…"))
                             }

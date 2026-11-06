@@ -123,7 +123,6 @@ impl ProjectService {
                 tracing::info!(?file, command = %snapshot.command, label = %snapshot.label, request,
                     profiles = ?snapshot.profiles.iter().map(|profile| profile.name.as_str()).collect::<Vec<_>>(),
                     build = snapshot.profiles.iter().any(|profile| profile.build_command.is_some()),
-                    debug = snapshot.profiles.iter().any(|profile| profile.debug_command.is_some()),
                     "run configuration detected");
                 self.publish_run_configuration(snapshot);
                 Ok(())

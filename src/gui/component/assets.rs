@@ -10,7 +10,6 @@ gpui_kit::assets::icon_assets!(
         ArrowRight,
         ArrowDownToLine,
         BellDot,
-        BugPlay,
         ChevronDown,
         ChevronRight,
         ChartNoAxesCombined,

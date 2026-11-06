@@ -157,38 +157,6 @@ fn resolve_cargo(
         }
     };
     let build = command.replacen("cargo run", "cargo build", 1);
-    let mut debug_argument_template = None;
-    let debug = if cfg!(windows) {
-        None
-    } else {
-        let debugger = executable("rust-gdb").or_else(|| executable("rust-lldb"));
-        debugger.map(|debugger| {
-            let target_directory =
-                Path::new(metadata["target_directory"].as_str().unwrap_or("target"));
-            let mut binary = target_directory.join("debug");
-            if kind(target, "example") {
-                binary = binary.join("examples");
-            }
-            let binary = binary.join(name);
-            let prefix = if debugger.to_string_lossy().contains("lldb") {
-                "--"
-            } else {
-                "--args"
-            };
-            debug_argument_template = Some(format!(
-                "{} && {} {prefix} {} __GPUI_PROGRAM_ARGUMENTS__",
-                wrap(&build),
-                quote(&debugger),
-                quote(&binary)
-            ));
-            format!(
-                "{} && {} {prefix} {}",
-                wrap(&build),
-                quote(debugger),
-                quote(binary)
-            )
-        })
-    };
     Ok(RunConfigurationDataContextSnapshot {
         command: wrap(&command),
         label: format!("Rust · {name}"),
@@ -197,21 +165,15 @@ fn resolve_cargo(
                 name: "dev".into(),
                 command: wrap(&command),
                 build_command: Some(wrap(&build)),
-                debug_command: debug,
                 argument_prefix: "--".into(),
                 argument_template: None,
-                debug_argument_prefix: String::new(),
-                debug_argument_template,
             },
             RunProfile {
                 name: "release".into(),
                 command: wrap(&format!("{command} --release")),
                 build_command: Some(wrap(&format!("{build} --release"))),
-                debug_command: None,
                 argument_prefix: "--".into(),
                 argument_template: None,
-                debug_argument_prefix: String::new(),
-                debug_argument_template: None,
             },
         ],
         ..Default::default()
@@ -250,11 +212,8 @@ fn build_only(
                 } else {
                     build.clone()
                 })),
-                debug_command: None,
                 argument_prefix: String::new(),
                 argument_template: None,
-                debug_argument_prefix: String::new(),
-                debug_argument_template: None,
             })
             .collect(),
         ..Default::default()

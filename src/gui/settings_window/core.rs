@@ -1,7 +1,12 @@
 use super::*;
 
 impl SettingsWindow {
-    pub(in crate::gui) fn apply(&mut self, close: bool, window: &mut Window, cx: &mut Context<Self>) {
+    pub(in crate::gui) fn apply(
+        &mut self,
+        close: bool,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) {
         if self.saving || self.system_busy {
             return;
         }

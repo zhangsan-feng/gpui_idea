@@ -11,6 +11,7 @@ enum ScanTask {
 
 #[derive(Default)]
 struct DirectoryScan {
+    path: PathBuf,
     tasks: Vec<ScanTask>,
     skipped: u64,
 }
@@ -18,10 +19,18 @@ struct DirectoryScan {
 enum ScanResult {
     Directory(DirectoryScan),
     File {
+        directory: PathBuf,
+        binary: bool,
         extension: String,
         bytes: u64,
         lines: u64,
         code: u64,
     },
     Skipped,
+}
+
+#[derive(Default)]
+struct DirectoryGroups {
+    extensions: std::collections::BTreeMap<String, crate::domain::statistics::ExtensionStatistics>,
+    total: crate::domain::statistics::ExtensionStatistics,
 }

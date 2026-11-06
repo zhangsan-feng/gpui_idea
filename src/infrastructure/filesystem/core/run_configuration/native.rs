@@ -17,7 +17,6 @@ pub(in crate::infrastructure) fn go(
     } else {
         quote(file.unwrap())
     };
-    let debug = executable("dlv").map(|_| in_directory(directory, &format!("dlv debug {target}")));
     let output = directory
         .join(".gpui-run")
         .join(if cfg!(windows) { "go.exe" } else { "go" });
@@ -25,7 +24,7 @@ pub(in crate::infrastructure) fn go(
         output.parent().unwrap(),
         &format!("go build -o {} {target}", quote(&output)),
     );
-    let mut result = configuration(
+    configuration(
         if manifest.is_some() {
             "Go · 包"
         } else {
@@ -33,10 +32,7 @@ pub(in crate::infrastructure) fn go(
         },
         in_directory(directory, &format!("go run {target}")),
         Some(in_directory(directory, &build)),
-        debug,
-    );
-    result.profiles[0].debug_argument_prefix = "--".into();
-    result
+    )
 }
 
 pub(super) fn cpp(
@@ -82,13 +78,10 @@ fn compiled_file(
         &format!("{compiler} {flags} {} -o {}", quote(file), quote(&output)),
     );
     let run = format!("{build} && {}", quote(&output));
-    let debug = executable("gdb")
-        .map(|_| in_directory(directory, &format!("{build} && gdb {}", quote(&output))));
     let mut result = configuration(
         label,
         in_directory(directory, &run),
         Some(in_directory(directory, &build)),
-        debug,
     );
     result.profiles[0].argument_template = Some(in_directory(
         directory,
@@ -97,13 +90,6 @@ fn compiled_file(
             &format!("&& {} __GPUI_PROGRAM_ARGUMENTS__", quote(&output)),
         ),
     ));
-    result.profiles[0].debug_argument_template =
-        result.profiles[0].debug_command.as_ref().map(|command| {
-            command.replace(
-                &format!("gdb {}", quote(&output)),
-                &format!("gdb --args {} __GPUI_PROGRAM_ARGUMENTS__", quote(&output)),
-            )
-        });
     result
 }
 
@@ -116,6 +102,5 @@ pub(super) fn cmake(directory: &Path) -> Result<RunConfigurationDataContextSnaps
             directory,
             "cmake -S . -B .gpui-run/cmake && cmake --build .gpui-run/cmake",
         )),
-        None,
     ))
 }

@@ -5,11 +5,12 @@ use gpui_kit::component::input::Editor as CodeEditor;
 use std::cell::Cell;
 
 mod empty;
+mod gutter;
 mod image_preview;
 mod menu;
 mod tabs;
 
-const TAB_HEIGHT: f32 = 36.;
+const TAB_HEIGHT: f32 = WORKBENCH_HEADER_HEIGHT - TAB_SCROLLBAR_HEIGHT - 1.;
 const TAB_SCROLLBAR_HEIGHT: f32 = 4.;
 const TAB_TEXT: u32 = 0xd65360;
 const SOURCE_TAB_TEXT: u32 = 0x2563eb;
@@ -31,35 +32,24 @@ impl Editor {
             .on_action(cx.listener(|this, _: &super::RevealEditorFile, _, cx| {
                 this.reveal_current_file(cx);
             }))
-            .on_action(cx.listener(|this, _: &super::CopyEditorProjectPath, _, cx| {
-                this.copy_current_path(false, cx);
-            }))
-            .on_action(cx.listener(|this, _: &super::CopyEditorAbsolutePath, _, cx| {
-                this.copy_current_path(true, cx);
-            }))
+            .on_action(
+                cx.listener(|this, _: &super::CopyEditorProjectPath, _, cx| {
+                    this.copy_current_path(false, cx);
+                }),
+            )
+            .on_action(
+                cx.listener(|this, _: &super::CopyEditorAbsolutePath, _, cx| {
+                    this.copy_current_path(true, cx);
+                }),
+            )
             .bg(crate::component::appearance::background(EDITOR_BG));
         if self.state.open_files.is_empty() {
             if !DATA_CONTEXT.has_project() {
                 return editor.child(self.empty_workspace(cx));
             }
             return editor
-                .child(
-                    div()
-                        .h(px(TAB_HEIGHT + TAB_SCROLLBAR_HEIGHT + 1.))
-                        .flex_shrink_0()
-                        .border_b_1()
-                        .border_color(crate::component::appearance::border(BORDER))
-                        .bg(crate::component::appearance::background(EDITOR_BG)),
-                )
-                .child(
-                    div()
-                        .flex_1()
-                        .flex()
-                        .items_center()
-                        .justify_center()
-                        .text_color(crate::component::appearance::foreground(MUTED))
-                        .child("双击项目树文件，或将文件拖入这里打开"),
-                );
+                .bg(crate::component::appearance::background(PANEL_BG))
+                .child(self.empty_editor());
         }
         editor = editor.child(self.editor_tabs(cx));
         if crate::domain::image_preview::PreviewImageFormat::for_path(
@@ -119,7 +109,12 @@ impl Editor {
                 .h(relative(1.))
                 .w_full()
                 .font_family(crate::component::appearance::editor_font())
-                .text_size(px(DATA_CONTEXT.settings.snapshot().general.appearance.editor_size as f32));
+                .text_size(px(DATA_CONTEXT
+                    .settings
+                    .snapshot()
+                    .general
+                    .appearance
+                    .editor_size as f32));
             editor.child(
                 div()
                     .relative()
@@ -145,6 +140,7 @@ impl Editor {
                             },
                         ),
                     )
+                    .child(self.gutter_separator(state))
                     .child(self.editor_wheel_handler(state, cx)),
             )
         } else {

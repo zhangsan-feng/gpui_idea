@@ -47,20 +47,14 @@ impl SettingsWindow {
         let subscription = cx.observe(&search, |this, search, cx| {
             let query = search.read(cx).value().trim().to_lowercase();
             if !query.is_empty() {
-                if "外观 字体 字号 主题 浅色 深色 font theme appearance".contains(&query)
-                {
+                if "外观 字体 字号 主题 浅色 深色 font theme appearance".contains(&query) {
                     this.page = SettingsPage::Appearance;
-                } else if "常规配置 自动格式化 保存 代理 proxy 网络 下载".contains(&query)
-                {
+                } else if "常规配置 代码格式化 自动格式化代码 自动化格式化代码 保存时自动格式化代码 format formatting 代理 proxy 网络 下载".contains(&query) {
                     this.page = SettingsPage::General;
-                } else if "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query)
-                {
+                } else if "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query) {
                     this.page = SettingsPage::System;
                     if this.system_status.is_none() && !this.system_busy {
-                        this.manage_context_menu(
-                            crate::domain::settings::ContextMenuAction::Refresh,
-                            cx,
-                        );
+                        this.manage_context_menu(crate::domain::settings::ContextMenuAction::Refresh, cx);
                     }
                 } else {
                     this.page = SettingsPage::LanguageServers;

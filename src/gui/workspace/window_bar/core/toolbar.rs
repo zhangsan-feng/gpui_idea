@@ -14,6 +14,9 @@ impl WindowBar {
             return;
         }
         match action {
+            ToolbarAction::FormatCode => self.send(crate::event_bus::gui_event::GuiEvent::Editor(
+                crate::gui::workspace::editor::Event::FormatCurrent,
+            )),
             ToolbarAction::OpenProject => self.open_project_window(
                 crate::gui::project_manager_window::ProjectWindowKind::Open,
                 window,

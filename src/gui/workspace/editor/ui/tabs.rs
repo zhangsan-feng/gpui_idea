@@ -152,22 +152,23 @@ impl Editor {
             .child(div().min_w_0().truncate().child(label.clone()))
             .when(dirty, |tab| tab.child(div().text_color(crate::component::appearance::foreground(ACCENT)).child("●")))
             .when(saving, |tab| tab.child(div().text_color(crate::component::appearance::foreground(MUTED)).child("保存中")))
-            .when(self.state.loading_files.contains(file), |tab| tab.child(div().text_color(crate::component::appearance::foreground(MUTED)).child("打开中")))
+            .when(self.state.loading_files.contains(file), |tab| {
+                tab.child(div().text_color(crate::component::appearance::foreground(MUTED)).child("打开中"))
+            })
             .when(failed, |tab| tab.child(icon(IconName::CircleAlert, 13., 0xb42318)))
             .child(
-                crate::gui::component::controls::icon_button(SharedString::from(format!("close-editor-tab-{path}")), 20., 20.).flex_shrink_0()
+                crate::gui::component::controls::icon_button(SharedString::from(format!("close-editor-tab-{path}")), 20., 20.)
+                    .flex_shrink_0()
                     .rounded_sm()
-                    .when(!active, |button| {
-                        button.invisible().group_hover(group_id, |style| style.visible())
-                    })
+                    .when(!active, |button| button.invisible().group_hover(group_id, |style| style.visible()))
                     .hover(|style| style.bg(crate::component::appearance::background(0xeaeaf0)))
                     .tooltip(|window, cx| Tooltip::new("关闭文件").build(window, cx))
                     .child(icon(IconName::X, 12., TAB_INDICATOR))
                     .on_mouse_down(MouseButton::Left, |_, _, cx| cx.stop_propagation())
-                    .on_click(cx.listener(move |this, _, window, cx| { {
+                    .on_click(cx.listener(move |this, _, window, cx| {
                         cx.stop_propagation();
                         this.close_editor_tab(&closed_file, window, cx);
-                     } })),
+                    })),
             )
             .when(active, |tab| {
                 tab.child(
@@ -181,21 +182,26 @@ impl Editor {
                         .bg(crate::component::appearance::background(indicator_color)),
                 )
             })
-            .on_click(cx.listener(move |this, _, window, cx| { {
+            .on_click(cx.listener(move |this, _, window, cx| {
                 this.select_file(selected_file.clone(), window, cx);
-             } }))
-            .on_drag(DraggedEditorTab { file: file.clone(), label, external_source }, |drag, _, _, cx| {
-                tracing::debug!(file = %drag.file.relative_path().display(), "editor tab drag started");
-                cx.new(|_| drag.clone())
-            })
+            }))
+            .on_drag(
+                DraggedEditorTab {
+                    file: file.clone(),
+                    label,
+                    external_source,
+                },
+                |drag, _, _, cx| {
+                    tracing::debug!(file = %drag.file.relative_path().display(), "editor tab drag started");
+                    cx.new(|_| drag.clone())
+                },
+            )
             .drag_over::<DraggedEditorTab>(|style, _, _, _| style.bg(crate::component::appearance::background(0xeeeef5)))
-            .on_drop(cx.listener(move |this, drag: &DraggedEditorTab, window, cx| { {
+            .on_drop(cx.listener(move |this, drag: &DraggedEditorTab, window, cx| {
                 cx.stop_propagation();
                 this.move_editor_tab(&drag.file, &target_file, window, cx);
-             } }))
-            .context_menu(move |menu, _, _| {
-                menu.menu_with_disabled("关闭所有", Box::new(CloseAllDocuments), close_all_disabled)
-            })
+            }))
+            .context_menu(move |menu, _, _| menu.menu_with_disabled("关闭所有", Box::new(CloseAllDocuments), close_all_disabled))
             .into_any_element()
     }
 }

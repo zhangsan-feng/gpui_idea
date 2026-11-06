@@ -35,10 +35,7 @@ pub(super) fn read(path: &Path) -> Result<HistoryDataContextSnapshot> {
 pub(super) fn prune_expanded_directories(mut session: WorkspaceSession) -> WorkspaceSession {
     session.expanded_directories.retain(|relative| {
         // Only inspect project-relative paths, even if a caller bypasses session validation.
-        if relative
-            .components()
-            .any(|part| !matches!(part, std::path::Component::Normal(_)))
-        {
+        if relative.components().any(|part| !matches!(part, std::path::Component::Normal(_))) {
             return false;
         }
         let path = session.project_root.join(relative);

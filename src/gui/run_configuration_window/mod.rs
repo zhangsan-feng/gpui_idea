@@ -142,7 +142,7 @@ impl Render for RunConfigurationWindow {
         gpui_kit::component::v_flex()
             .size_full()
             .child(crate::component::operation_title_bar::render(
-                "运行 / 调试配置",
+                "运行配置",
                 true,
                 cx,
             ))

@@ -157,9 +157,7 @@ pub(in crate::infrastructure::language_server) fn clean_history() -> Result<()> 
                 directory = old.directory,
                 "Removing historical LSP version"
             );
-            fs::remove_dir_all(&old.path).with_context(|| {
-                format!("无法清理 LSP 历史版本 {}；文件被占用时请关闭使用旧版本的项目后重试，部分版本可能已清理，请刷新列表", old.directory)
-            })?;
+            fs::remove_dir_all(&old.path).with_context(|| format!("无法清理 LSP 历史版本 {}；文件被占用时请关闭使用旧版本的项目后重试，部分版本可能已清理，请刷新列表", old.directory))?;
             removed += 1;
         }
     }

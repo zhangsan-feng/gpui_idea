@@ -48,7 +48,6 @@ pub(super) fn configuration(
     label: impl Into<String>,
     command: String,
     build_command: Option<String>,
-    debug_command: Option<String>,
 ) -> RunConfigurationDataContextSnapshot {
     RunConfigurationDataContextSnapshot {
         label: label.into(),
@@ -57,11 +56,8 @@ pub(super) fn configuration(
             name: "default".into(),
             command,
             build_command,
-            debug_command,
             argument_prefix: String::new(),
             argument_template: None,
-            debug_argument_prefix: String::new(),
-            debug_argument_template: None,
         }],
         ..Default::default()
     }

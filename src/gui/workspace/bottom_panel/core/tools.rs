@@ -134,16 +134,22 @@ impl BottomPanel {
         if !crate::data_context::DATA_CONTEXT.has_project() {
             return;
         }
-        if self.state.git_loading {
+        if self.state.git_loading || self.state.git_busy {
             return;
         }
         self.state.git_loading = true;
+        self.state.git_diff_request += 1;
+        self.state.git_diff_key.clear();
+        self.state.git_diff_loading = false;
         cx.spawn(async move |this, cx| {
             let result = run_application(async { APPLICATION.project.git_status().await }).await;
             let _ = this.update(cx, |this, cx| {
                 this.state.git_loading = false;
                 if let Err(error) = result {
                     tracing::warn!(%error,"Git status failed");
+                }
+                if this.state.git_history_selected {
+                    this.set_git_history(true, cx);
                 }
                 crate::event_bus::EVENT_BUS.refresh_gui.notify(&[
                     crate::event_bus::refresh_gui::GuiComponent::BottomPanel,
@@ -185,6 +191,15 @@ impl BottomPanel {
         hash: String,
         cx: &mut Context<BottomPanel>,
     ) {
+        if self.state.git_busy {
+            return;
+        }
+        self.state.git_diff_request += 1;
+        self.state.git_diff_key.clear();
+        self.state.git_diff_loading = false;
+        self.state
+            .git_history_files_scroll
+            .set_offset(gpui_kit::point(gpui_kit::px(0.), gpui_kit::px(0.)));
         self.state.selected_git_commit = Some(hash.clone());
         self.state.git_details_loading = true;
         crate::event_bus::EVENT_BUS.refresh_gui.notify(&[
@@ -200,6 +215,19 @@ impl BottomPanel {
             let _ = this.update(cx, |this, cx| {
                 if this.state.selected_git_commit.as_ref() == Some(&requested) {
                     this.state.git_details_loading = false;
+                    if result.is_ok() && this.state.git_history_selected {
+                        let details = crate::data_context::DATA_CONTEXT
+                            .project
+                            .git_details(&requested);
+                        if let Some(file) = details.files.first() {
+                            this.select_git_diff(
+                                file.path.clone(),
+                                false,
+                                Some(requested.clone()),
+                                cx,
+                            );
+                        }
+                    }
                 }
                 if let Err(error) = result {
                     tracing::warn!(%error,"Git commit details failed");

@@ -50,13 +50,16 @@ pub(super) async fn refresh(changes: &FileChanges) {
             .filesystem
             .read_document(document.scope_root.clone(), document.path.clone())
             .await;
-        document_updates.push((document.clone(), match result {
-            Ok(loaded) => Ok(loaded.document),
-            Err(error) => {
-                tracing::warn!(path = %document.path.display(), %error, "watched document reload failed");
-                Err(format!("磁盘文件已删除或无法重新读取：{error:#}；保留编辑器内容"))
-            }
-        }));
+        document_updates.push((
+            document.clone(),
+            match result {
+                Ok(loaded) => Ok(loaded.document),
+                Err(error) => {
+                    tracing::warn!(path = %document.path.display(), %error, "watched document reload failed");
+                    Err(format!("磁盘文件已删除或无法重新读取：{error:#}；保留编辑器内容"))
+                }
+            },
+        ));
     }
     let (_, directories) = DATA_CONTEXT.project.file_tree.snapshots();
     for relative in directories.keys() {

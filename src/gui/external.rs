@@ -48,11 +48,14 @@ pub fn open_workspace(cx: &mut App) -> Result<()> {
         ..WindowOptions::default()
     };
     gpui_kit::open_window(options, cx, move |window, cx| {
-        cx.bind_keys([gpui_kit::KeyBinding::new(
-            "ctrl-s",
-            super::workspace::SaveDocument,
-            Some("Workspace"),
-        )]);
+        cx.bind_keys([
+            gpui_kit::KeyBinding::new("ctrl-s", super::workspace::SaveDocument, Some("Workspace")),
+            gpui_kit::KeyBinding::new(
+                "ctrl-alt-l",
+                super::workspace::editor::FormatCode,
+                Some("Workspace"),
+            ),
+        ]);
         let workspace = cx.new(|cx| super::workspace::Workspace::new(window, cx));
         let weak = workspace.downgrade();
         window.on_window_should_close(cx, move |_window, cx| {

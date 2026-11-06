@@ -58,11 +58,7 @@ pub(crate) fn dismiss(editor: &Entity<EditorState>, cx: &mut App) {
     }
 }
 
-pub(crate) fn wrap(
-    editor: &Entity<EditorState>,
-    content: impl IntoElement,
-    cx: &App,
-) -> Div {
+pub(crate) fn wrap(editor: &Entity<EditorState>, content: impl IntoElement, cx: &App) -> Div {
     let Some(menu) = cx
         .try_global::<CompletionRegistry>()
         .and_then(|registry| registry.0.get(&editor.entity_id()))

@@ -3,6 +3,7 @@ mod definition;
 mod document;
 mod document_sync;
 mod drop;
+mod formatting;
 mod image_preview;
 mod menu;
 mod navigation;

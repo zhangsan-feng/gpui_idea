@@ -38,11 +38,7 @@ pub(super) fn javascript(manifest: &Path) -> Result<Option<RunConfigurationDataC
         .as_str()
         .filter(|s| !s.trim().is_empty())
         .map(|_| in_directory(directory, &format!("{executable} run build")));
-    let debug = package["scripts"]["debug"]
-        .as_str()
-        .filter(|s| !s.trim().is_empty())
-        .map(|_| in_directory(directory, &format!("{executable} run debug")));
-    if script.is_none() && build.is_none() && debug.is_none() {
+    if script.is_none() && build.is_none() {
         return Ok(None);
     }
     let mut result = configuration(
@@ -51,12 +47,10 @@ pub(super) fn javascript(manifest: &Path) -> Result<Option<RunConfigurationDataC
             .map(|script| in_directory(directory, &format!("{executable} run {script}")))
             .unwrap_or_default(),
         build,
-        debug,
     );
     result.profiles[0].name = script.unwrap_or("default").into();
     if manager == "npm" {
         result.profiles[0].argument_prefix = "--".into();
-        result.profiles[0].debug_argument_prefix = "--".into();
     }
     for alternate in ["start", "dev"] {
         if Some(alternate) != script
@@ -86,10 +80,6 @@ pub(in crate::infrastructure) fn javascript_file(
                 directory,
                 &format!("node --check {}", quote(file)),
             )),
-            Some(in_directory(
-                directory,
-                &format!("node inspect {}", quote(file)),
-            )),
         ));
     }
     if let Some(manifest) = manifest {
@@ -105,7 +95,6 @@ pub(in crate::infrastructure) fn javascript_file(
                     manifest.parent().unwrap(),
                     &format!("{} {}", quote(runner), quote(file)),
                 ),
-                None,
                 None,
             ));
         }

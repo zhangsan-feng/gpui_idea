@@ -72,9 +72,7 @@ pub(in crate::infrastructure::language_server) fn node_server(
                         .1
                 ));
             }
-            core::run(command, context, package).context(
-            "请确认系统 Node.js/npm 满足服务器版本要求（详见安装日志），且可以访问 npm registry",
-        )?;
+            core::run(command, context, package).context("请确认系统 Node.js/npm 满足服务器版本要求（详见安装日志），且可以访问 npm registry")?;
             let (entry, version) = entry(stage, package, binary)?;
             Ok(Installed {
                 entry: entry.strip_prefix(stage)?.to_owned(),

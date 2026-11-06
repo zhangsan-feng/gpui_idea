@@ -3,6 +3,20 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 impl ProjectService {
+    pub(crate) async fn git_action(&self, action: crate::domain::git::GitAction) -> Result<String> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
+        self.git_action_core(action).await
+    }
+    pub(crate) async fn git_diff(
+        &self,
+        key: String,
+        path: PathBuf,
+        staged: bool,
+        commit: Option<String>,
+    ) -> Result<()> {
+        crate::data_context::DATA_CONTEXT.require_project_root()?;
+        self.git_diff_core(key, path, staged, commit).await
+    }
     pub(crate) async fn run_file(&self, file: PathBuf) -> Result<()> {
         crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.run_file_core(file).await
@@ -80,6 +94,7 @@ impl ProjectService {
         self.execute_run_core(action).await
     }
     pub async fn git_details(&self, hash: String) -> Result<()> {
+        let _guard = self.git_operations.lock().await;
         crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.git_details_core(hash).await
     }
@@ -88,6 +103,7 @@ impl ProjectService {
         self.statistics_core().await
     }
     pub async fn git_status(&self) -> Result<()> {
+        let _guard = self.git_operations.lock().await;
         crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.git_status_core().await
     }

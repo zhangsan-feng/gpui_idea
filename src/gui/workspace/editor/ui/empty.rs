@@ -3,6 +3,27 @@ use crate::gui::workspace::ToolbarAction;
 use gpui_kit::component::button::{Button, ButtonVariants as _};
 
 impl Editor {
+    pub(super) fn empty_editor(&self) -> Div {
+        v_flex()
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .items_center()
+            .justify_center()
+            .child(
+                v_flex()
+                    .max_w_full()
+                    .px_6()
+                    .gap(px(20.))
+                    .text_size(px(16.))
+                    .text_color(crate::component::appearance::foreground(MUTED))
+                    .child("在左侧项目树中浏览文件")
+                    .child("双击文件，开始编辑")
+                    .child("点击顶部搜索，查找项目内容")
+                    .child("将文件拖放到此处打开"),
+            )
+    }
+
     pub(super) fn empty_workspace(&self, cx: &mut Context<Self>) -> Div {
         v_flex()
             .flex_1()

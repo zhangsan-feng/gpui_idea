@@ -19,9 +19,10 @@ pub(super) fn start(root: PathBuf) -> Result<FileSubscription> {
                     return;
                 }
                 let rescan = event.need_rescan();
-                let tree_changed = !matches!(event.kind,
-                    EventKind::Modify(notify::event::ModifyKind::Data(_))
-                    | EventKind::Modify(notify::event::ModifyKind::Metadata(_)));
+                let tree_changed = !matches!(
+                    event.kind,
+                    EventKind::Modify(notify::event::ModifyKind::Data(_)) | EventKind::Modify(notify::event::ModifyKind::Metadata(_))
+                );
                 let paths: Vec<_> = event
                     .paths
                     .into_iter()

@@ -28,9 +28,7 @@ impl TerminalView {
             .on_action(cx.listener(|this, _: &SendTab, _, cx| this.send_tab(cx)))
             .on_action(cx.listener(|this, _: &CopyTerminal, _, cx| this.copy(cx)))
             .on_action(cx.listener(|this, _: &PasteTerminal, _, cx| this.paste_clipboard(cx)))
-            .on_scroll_wheel(
-                cx.listener(|this, event: &ScrollWheelEvent, _, cx| this.scroll(event, cx)),
-            )
+            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| this.scroll(event, cx)))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, window, cx| {
@@ -77,32 +75,16 @@ impl TerminalView {
                     {
                         let entity = cx.entity();
                         move |bounds, _, window, cx| {
-                            window.handle_input(
-                                &focus,
-                                ElementInputHandler::new(bounds, entity.clone()),
-                                cx,
-                            );
+                            window.handle_input(&focus, ElementInputHandler::new(bounds, entity.clone()), cx);
                             window.with_content_mask(Some(ContentMask { bounds }), |window| {
                                 for (index, cell) in snapshot.cells.iter().enumerate() {
                                     let row = index / snapshot.columns;
                                     let col = index % snapshot.columns;
-                                    let origin = point(
-                                        bounds.left() + px(col as f32 * metrics.cell_width),
-                                        bounds.top() + px(row as f32 * metrics.cell_height),
-                                    );
-                                    let selected = selection.is_some_and(|(start, end)| {
-                                        (row, col) >= start && (row, col) <= end && start != end
-                                    });
+                                    let origin = point(bounds.left() + px(col as f32 * metrics.cell_width), bounds.top() + px(row as f32 * metrics.cell_height));
+                                    let selected = selection.is_some_and(|(start, end)| (row, col) >= start && (row, col) <= end && start != end);
                                     if cell.background != 0xffffff || selected {
                                         window.paint_quad(fill(
-                                            Bounds::new(
-                                                origin,
-                                                size(
-                                                    px(metrics.cell_width
-                                                        * if cell.wide { 2. } else { 1. }),
-                                                    px(metrics.cell_height),
-                                                ),
-                                            ),
+                                            Bounds::new(origin, size(px(metrics.cell_width * if cell.wide { 2. } else { 1. }), px(metrics.cell_height))),
                                             rgb(if selected { 0xc4dcff } else { cell.background }),
                                         ));
                                     }
@@ -112,10 +94,7 @@ impl TerminalView {
                                 for (index, cell) in snapshot.cells.iter().enumerate() {
                                     let row = index / snapshot.columns;
                                     let col = index % snapshot.columns;
-                                    let origin = point(
-                                        bounds.left() + px(col as f32 * metrics.cell_width),
-                                        bounds.top() + px(row as f32 * metrics.cell_height),
-                                    );
+                                    let origin = point(bounds.left() + px(col as f32 * metrics.cell_width), bounds.top() + px(row as f32 * metrics.cell_height));
                                     if cell.text.trim().is_empty() {
                                         continue;
                                     }
@@ -139,46 +118,19 @@ impl TerminalView {
                                         underline: None,
                                         strikethrough: None,
                                     };
-                                    let line = window.text_system().shape_line(
-                                        cell.text.clone().into(),
-                                        px(metrics.font_size),
-                                        &[run],
-                                        None,
-                                    );
-                                    let _ = line.paint(
-                                        origin,
-                                        px(metrics.cell_height),
-                                        TextAlign::Left,
-                                        None,
-                                        window,
-                                        cx,
-                                    );
+                                    let line = window.text_system().shape_line(cell.text.clone().into(), px(metrics.font_size), &[run], None);
+                                    let _ = line.paint(origin, px(metrics.cell_height), TextAlign::Left, None, window, cx);
                                     if cell.underline {
                                         window.paint_quad(fill(
-                                            Bounds::new(
-                                                point(
-                                                    origin.x,
-                                                    origin.y + px(metrics.cell_height - 2.),
-                                                ),
-                                                size(px(metrics.cell_width), px(1.)),
-                                            ),
+                                            Bounds::new(point(origin.x, origin.y + px(metrics.cell_height - 2.)), size(px(metrics.cell_width), px(1.))),
                                             rgb(cell.foreground),
                                         ));
                                     }
                                 }
                                 if let Some((row, col)) = snapshot.cursor {
-                                    let origin = point(
-                                        bounds.left() + px(col as f32 * metrics.cell_width),
-                                        bounds.top() + px(row as f32 * metrics.cell_height),
-                                    );
+                                    let origin = point(bounds.left() + px(col as f32 * metrics.cell_width), bounds.top() + px(row as f32 * metrics.cell_height));
                                     window.paint_quad(fill(
-                                        Bounds::new(
-                                            origin,
-                                            size(
-                                                px(if focus.is_focused(window) { 2. } else { 1. }),
-                                                px(metrics.cell_height),
-                                            ),
-                                        ),
+                                        Bounds::new(origin, size(px(if focus.is_focused(window) { 2. } else { 1. }), px(metrics.cell_height))),
                                         rgb(0x3574f0),
                                     ));
                                     if !composition.is_empty() {
@@ -190,20 +142,8 @@ impl TerminalView {
                                             underline: None,
                                             strikethrough: None,
                                         };
-                                        let line = window.text_system().shape_line(
-                                            composition.clone().into(),
-                                            px(metrics.font_size),
-                                            &[run],
-                                            None,
-                                        );
-                                        let _ = line.paint(
-                                            origin,
-                                            px(metrics.cell_height),
-                                            TextAlign::Left,
-                                            None,
-                                            window,
-                                            cx,
-                                        );
+                                        let line = window.text_system().shape_line(composition.clone().into(), px(metrics.font_size), &[run], None);
+                                        let _ = line.paint(origin, px(metrics.cell_height), TextAlign::Left, None, window, cx);
                                     }
                                 }
                             });
@@ -214,18 +154,7 @@ impl TerminalView {
                 .h_full()
                 .min_w_0(),
             )
-            .when(self.id.is_run(), |view| {
-                view.child(self.render_scrollbar(cx))
-            })
-            .when_some(error, |view, error| {
-                view.child(
-                    div()
-                        .absolute()
-                        .top_2()
-                        .left_2()
-                        .text_color(rgb(0xc42b35))
-                        .child(error),
-                )
-            })
+            .when(self.id.is_run(), |view| view.child(self.render_scrollbar(cx)))
+            .when_some(error, |view, error| view.child(div().absolute().top_2().left_2().text_color(rgb(0xc42b35)).child(error)))
     }
 }

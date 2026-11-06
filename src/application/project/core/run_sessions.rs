@@ -37,8 +37,12 @@ impl ProjectService {
         let _execution = self.run_executions.lock().await;
         let mut configuration = (*DATA_CONTEXT.project.run_configuration()).clone();
         if let Some(id) = configuration_id {
-            let saved = configuration.configurations.iter().find(|saved| saved.id == id)
-                .cloned().ok_or_else(|| anyhow::anyhow!("运行配置已删除"))?;
+            let saved = configuration
+                .configurations
+                .iter()
+                .find(|saved| saved.id == id)
+                .cloned()
+                .ok_or_else(|| anyhow::anyhow!("运行配置已删除"))?;
             Self::load_saved_run_configuration(&mut configuration, &saved);
         }
         if let Some(target) = target {
@@ -68,21 +72,9 @@ impl ProjectService {
                 base,
                 &saved.arguments,
                 profile
-                    .map(|profile| {
-                        if action == RunAction::Debug {
-                            profile.debug_argument_prefix.as_str()
-                        } else {
-                            profile.argument_prefix.as_str()
-                        }
-                    })
+                    .map(|profile| profile.argument_prefix.as_str())
                     .unwrap_or(""),
-                profile.and_then(|profile| {
-                    if action == RunAction::Debug {
-                        profile.debug_argument_template.as_deref()
-                    } else {
-                        profile.argument_template.as_deref()
-                    }
-                }),
+                profile.and_then(|profile| profile.argument_template.as_deref()),
             )?
         } else {
             base.to_owned()
@@ -224,7 +216,8 @@ impl ProjectService {
         &self,
         id: TerminalId,
     ) -> Result<()> {
-        self.execute_run_instances(RunAction::Run, Some(id), None).await
+        self.execute_run_instances(RunAction::Run, Some(id), None)
+            .await
     }
 
     pub(in crate::application::project) async fn close_run_instance_core(

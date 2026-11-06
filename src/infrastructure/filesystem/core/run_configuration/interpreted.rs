@@ -9,8 +9,8 @@ pub(in crate::infrastructure) fn resolve(
     extension: &str,
 ) -> RunConfigurationDataContextSnapshot {
     let file_arg = quote(file);
-    let (label, command, build, debug) = match extension {
-        "java" => ("Java", format!("java {file_arg}"), None, None),
+    let (label, command, build) = match extension {
+        "java" => ("Java", format!("java {file_arg}"), None),
         "py" | "pyw" => {
             let interpreter = [
                 ".venv/Scripts/python.exe",
@@ -33,20 +33,17 @@ pub(in crate::infrastructure) fn resolve(
                 "Python",
                 format!("{runner} {file_arg}"),
                 Some(format!("{runner} -m py_compile {file_arg}")),
-                Some(format!("{runner} -m pdb {file_arg}")),
             )
         }
         "rb" => (
             "Ruby",
             format!("ruby {file_arg}"),
             Some(format!("ruby -c {file_arg}")),
-            None,
         ),
         "php" => (
             "PHP",
             format!("php {file_arg}"),
             Some(format!("php -l {file_arg}")),
-            None,
         ),
         "ps1" => {
             let runner = if executable("pwsh").is_some() || !cfg!(windows) {
@@ -58,21 +55,18 @@ pub(in crate::infrastructure) fn resolve(
                 "PowerShell",
                 format!("{runner} -NoLogo -File {file_arg}"),
                 None,
-                None,
             )
         }
         "sh" => (
             "Shell",
             format!("bash {file_arg}"),
             Some(format!("bash -n {file_arg}")),
-            Some(format!("bash -x {file_arg}")),
         ),
-        "lua" => ("Lua", format!("lua {file_arg}"), None, None),
+        "lua" => ("Lua", format!("lua {file_arg}"), None),
         "pl" => (
             "Perl",
             format!("perl {file_arg}"),
             Some(format!("perl -c {file_arg}")),
-            Some(format!("perl -d {file_arg}")),
         ),
         _ => unreachable!(),
     };
@@ -83,6 +77,5 @@ pub(in crate::infrastructure) fn resolve(
         ),
         in_directory(directory, &command),
         build.map(|c| in_directory(directory, &c)),
-        debug.map(|c| in_directory(directory, &c)),
     )
 }

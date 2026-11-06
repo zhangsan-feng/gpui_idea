@@ -21,30 +21,8 @@ impl DocumentService {
         {
             return None;
         }
-        let language = crate::domain::language_server::language_for_path(path)?;
-        let revision = snapshot.revision;
-        let result = async {
-            let source = snapshot.text.clone();
-            let text = tokio::task::spawn_blocking(move || source.to_string()).await?;
-            let edits = INFRASTRUCTURE
-                .language_servers
-                .format_document(
-                    snapshot.scope_root.clone(),
-                    snapshot.path.clone(),
-                    text.clone(),
-                    language,
-                )
-                .await?;
-            if edits.is_empty() {
-                return Ok(None);
-            }
-            tokio::task::spawn_blocking(move || {
-                apply_edits(text, edits)
-                    .map(|text| Some((revision, ropey::Rope::from(text.as_str()))))
-            })
-            .await?
-        }
-        .await;
+        crate::domain::language_server::language_for_path(path)?;
+        let result = self.request_formatting(snapshot).await;
         match result {
             Ok(formatted) => formatted,
             Err(error) => {
@@ -52,6 +30,57 @@ impl DocumentService {
                 None
             }
         }
+    }
+    pub(super) async fn format_core(
+        &self,
+        path: std::path::PathBuf,
+    ) -> Result<Option<(u64, String)>> {
+        let snapshot = DATA_CONTEXT
+            .documents
+            .snapshot(&path)
+            .ok_or_else(|| anyhow::anyhow!("文件尚未打开"))?;
+        ensure!(!snapshot.saving, "文件正在保存，请稍后再格式化");
+        tracing::info!(path = %path.display(), revision = snapshot.revision, "manual document formatting requested");
+        let result = self.request_formatting(snapshot).await?;
+        let Some((revision, text)) = result else {
+            return Ok(None);
+        };
+        ensure!(
+            DATA_CONTEXT
+                .documents
+                .snapshot(&path)
+                .is_some_and(|current| current.revision == revision),
+            "格式化期间文件已修改，请重试"
+        );
+        let text = tokio::task::spawn_blocking(move || text.to_string()).await?;
+        Ok(Some((revision, text)))
+    }
+
+    async fn request_formatting(
+        &self,
+        snapshot: std::sync::Arc<crate::domain::document::DocumentDataContextSnapshot>,
+    ) -> Result<Option<(u64, ropey::Rope)>> {
+        let language = crate::domain::language_server::language_for_path(&snapshot.path)
+            .ok_or_else(|| anyhow::anyhow!("当前文件类型不支持格式化"))?;
+        let revision = snapshot.revision;
+        let source = snapshot.text.clone();
+        let text = tokio::task::spawn_blocking(move || source.to_string()).await?;
+        let edits = INFRASTRUCTURE
+            .language_servers
+            .format_document(
+                snapshot.scope_root.clone(),
+                snapshot.path.clone(),
+                text.clone(),
+                language,
+            )
+            .await?;
+        if edits.is_empty() {
+            return Ok(None);
+        }
+        tokio::task::spawn_blocking(move || {
+            apply_edits(text, edits).map(|text| Some((revision, ropey::Rope::from(text.as_str()))))
+        })
+        .await?
     }
 }
 

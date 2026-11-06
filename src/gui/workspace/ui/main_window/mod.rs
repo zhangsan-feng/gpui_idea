@@ -24,6 +24,16 @@ impl Workspace {
                     .border_1()
                     .border_color(crate::component::appearance::border(ACCENT))
             })
+            .on_action(cx.listener(
+                |_this, _: &crate::gui::workspace::editor::FormatCode, _, cx| {
+                    crate::event_bus::EVENT_BUS.gui_event.send(
+                        cx.entity().entity_id(),
+                        crate::event_bus::gui_event::GuiEvent::Editor(
+                            crate::gui::workspace::editor::Event::FormatCurrent,
+                        ),
+                    );
+                },
+            ))
             .on_action(cx.listener(|_this, _: &SaveDocument, _window, cx| {
                 crate::event_bus::EVENT_BUS.gui_event.send(
                     cx.entity().entity_id(),
@@ -57,7 +67,7 @@ impl Workspace {
                 AnyView::from(self.bottom_bar.clone()).cached(
                     StyleRefinement::default()
                         .w_full()
-                        .h(px(32.))
+                        .h(px(STATUS_BAR_HEIGHT))
                         .flex_shrink_0(),
                 ),
             )
@@ -150,6 +160,12 @@ impl Workspace {
     ) -> AnyElement {
         if !self.left_sidebar.read(cx).state.run_panel_open {
             return self.render_workbench(cx);
+        }
+
+        if self.bottom_panel.read(cx).state.active_tool == ToolWindow::Git {
+            return AnyView::from(self.bottom_panel.clone())
+                .cached(StyleRefinement::default().size_full())
+                .into_any_element();
         }
 
         gpui_kit::component::resizable::v_resizable("workspace-rows")

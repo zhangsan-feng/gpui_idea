@@ -32,6 +32,10 @@ impl WindowBar {
             )
             .child(div().w(px(10.)).flex_shrink_0())
             .child(self.main_menu(cx))
+            .child(self.project_menu(cx))
+            .when(DATA_CONTEXT.project.git().is_repository, |toolbar| {
+                toolbar.child(self.branch_menu(cx))
+            })
             .child(self.top_icon(
                 IconName::ArrowLeft,
                 "back",
@@ -51,10 +55,6 @@ impl WindowBar {
                 ToolbarAction::Forward,
                 cx,
             ))
-            .child(self.project_menu(cx))
-            .when(DATA_CONTEXT.project.git().is_repository, |toolbar| {
-                toolbar.child(self.branch_menu(cx))
-            })
             .child(
                 div()
                     .id("window-drag-area")
@@ -89,15 +89,6 @@ impl WindowBar {
                 0x59a869,
                 self.supports_run_action(RunAction::Run, cx),
                 ToolbarAction::Run(RunAction::Run),
-                cx,
-            ))
-            .child(self.top_icon(
-                IconName::BugPlay,
-                "debug",
-                "在终端调试当前配置",
-                0x59a869,
-                self.supports_run_action(RunAction::Debug, cx),
-                ToolbarAction::Run(RunAction::Debug),
                 cx,
             ))
             .when(running, |bar| {

@@ -56,17 +56,25 @@ impl BottomBar {
             self.workspace.entity_id(),
             crate::event_bus::refresh_gui::GuiComponent::BottomBar,
         );
-        self.subscription = Some(cx.spawn_in(window, async move |view,cx| {
+        self.subscription = Some(cx.spawn_in(window, async move |view, cx| {
             loop {
                 let event = tokio::select! {
                     changed = refresh.changed() => { if changed.is_err() { break; } None }
                     event = events.receiver.recv() => { let Some(event) = event else { break; }; Some(event) }
                 };
-                if view.update_in(cx,|this,window,cx| {
-                    if let Some(event) = event { this.handle_event(event,window,cx); }
-                    else { this.sync_cursor(cx); }
-                    cx.notify();
-                }).is_err() { break; }
+                if view
+                    .update_in(cx, |this, window, cx| {
+                        if let Some(event) = event {
+                            this.handle_event(event, window, cx);
+                        } else {
+                            this.sync_cursor(cx);
+                        }
+                        cx.notify();
+                    })
+                    .is_err()
+                {
+                    break;
+                }
             }
         }));
     }

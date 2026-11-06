@@ -62,22 +62,28 @@ impl Editor {
         cx.spawn_in(window, async move |this, cx| {
             let result = run_application(async move {
                 let snapshot = APPLICATION.documents.open_image_preview(path).await?;
-                let image = if snapshot.error.is_some() { None } else {
-                    Some(Arc::new(Image::from_bytes(match snapshot.format {
-                        PreviewImageFormat::Png => ImageFormat::Png,
-                        PreviewImageFormat::Jpeg => ImageFormat::Jpeg,
-                        PreviewImageFormat::Gif => ImageFormat::Gif,
-                        PreviewImageFormat::Webp => ImageFormat::Webp,
-                        PreviewImageFormat::Bmp => ImageFormat::Bmp,
-                        PreviewImageFormat::Ico => ImageFormat::Ico,
-                        PreviewImageFormat::Svg => ImageFormat::Svg,
-                        PreviewImageFormat::Tiff => ImageFormat::Tiff,
-                        PreviewImageFormat::Pnm => ImageFormat::Pnm,
-                    }, snapshot.bytes.to_vec())))
+                let image = if snapshot.error.is_some() {
+                    None
+                } else {
+                    Some(Arc::new(Image::from_bytes(
+                        match snapshot.format {
+                            PreviewImageFormat::Png => ImageFormat::Png,
+                            PreviewImageFormat::Jpeg => ImageFormat::Jpeg,
+                            PreviewImageFormat::Gif => ImageFormat::Gif,
+                            PreviewImageFormat::Webp => ImageFormat::Webp,
+                            PreviewImageFormat::Bmp => ImageFormat::Bmp,
+                            PreviewImageFormat::Ico => ImageFormat::Ico,
+                            PreviewImageFormat::Svg => ImageFormat::Svg,
+                            PreviewImageFormat::Tiff => ImageFormat::Tiff,
+                            PreviewImageFormat::Pnm => ImageFormat::Pnm,
+                        },
+                        snapshot.bytes.to_vec(),
+                    )))
                 };
                 Ok((image, snapshot.revision, snapshot.bytes.len(), snapshot.error.clone()))
-            }).await;
-            let _ = this.update_in(cx, |this, window, cx| { {
+            })
+            .await;
+            let _ = this.update_in(cx, |this, window, cx| {
                 this.state.loading_files.remove(&file);
                 if !this.state.open_files.contains(&file) {
                     APPLICATION.documents.release_image_preview(&file.path(DATA_CONTEXT.project_root()));
@@ -85,7 +91,14 @@ impl Editor {
                 }
                 match result {
                     Ok((image, revision, bytes, error)) => {
-                        let mut view = ImagePreviewView { image, revision, bytes, error, zoom: 1., scroll: ScrollHandle::new() };
+                        let mut view = ImagePreviewView {
+                            image,
+                            revision,
+                            bytes,
+                            error,
+                            zoom: 1.,
+                            scroll: ScrollHandle::new(),
+                        };
                         if let Some(previous) = this.state.image_previews.get(&file) {
                             view.zoom = previous.zoom;
                             view.scroll = previous.scroll.clone();
@@ -98,9 +111,14 @@ impl Editor {
                     }
                 }
                 this.sync_image_previews(window, cx);
-                crate::event_bus::EVENT_BUS.refresh_gui.notify(&[crate::event_bus::refresh_gui::GuiComponent::Editor, crate::event_bus::refresh_gui::GuiComponent::BottomBar, crate::event_bus::refresh_gui::GuiComponent::WindowBar]);
-             } });
-        }).detach();
+                crate::event_bus::EVENT_BUS.refresh_gui.notify(&[
+                    crate::event_bus::refresh_gui::GuiComponent::Editor,
+                    crate::event_bus::refresh_gui::GuiComponent::BottomBar,
+                    crate::event_bus::refresh_gui::GuiComponent::WindowBar,
+                ]);
+            });
+        })
+        .detach();
     }
 
     pub(in crate::gui::workspace) fn sync_image_previews(

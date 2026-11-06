@@ -23,9 +23,7 @@ impl WindowBar {
             size(px(1120.), px(680.)),
             window,
             cx,
-            |window, cx| {
-                cx.new(|cx| crate::gui::settings_window::SettingsWindow::new(window, cx))
-            },
+            |window, cx| cx.new(|cx| crate::gui::settings_window::SettingsWindow::new(window, cx)),
         ) {
             Ok((handle, _)) => self.state.settings_window = Some(handle),
             Err(error) => {

@@ -100,9 +100,7 @@ pub(in crate::infrastructure::language_server) fn compatible_release(
         }
         if numeric(required.trim())? <= current {
             if version != latest {
-                context.selection(format!(
-                    "gopls 最新版 {latest} 要求 Go {latest_required}+，当前 Go {current_text}，使用兼容版本 {version}"
-                ))?;
+                context.selection(format!("gopls 最新版 {latest} 要求 Go {latest_required}+，当前 Go {current_text}，使用兼容版本 {version}"))?;
             }
             return Ok(version.clone());
         }

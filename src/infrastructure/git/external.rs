@@ -4,6 +4,24 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 impl Git {
+    pub(crate) async fn operate(
+        &self,
+        root: PathBuf,
+        action: crate::domain::git::GitAction,
+    ) -> Result<String> {
+        super::operations::operate(root, action).await
+    }
+
+    pub(crate) async fn diff(
+        &self,
+        root: PathBuf,
+        path: PathBuf,
+        staged: bool,
+        commit: Option<String>,
+        original_path: Option<PathBuf>,
+    ) -> Result<String> {
+        super::operations::diff(root, path, staged, commit, original_path).await
+    }
     pub(crate) async fn snapshot(&self, root: PathBuf) -> Result<GitDataContextSnapshot> {
         core::snapshot(root).await
     }

@@ -5,6 +5,10 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 impl DocumentService {
+    pub(crate) async fn format(&self, path: PathBuf) -> Result<Option<(u64, String)>> {
+        self.format_core(path).await
+    }
+
     pub(crate) async fn reveal_location(&self, path: PathBuf) -> Result<()> {
         self.reveal_location_core(path).await
     }

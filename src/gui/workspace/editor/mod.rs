@@ -1,4 +1,15 @@
-gpui_kit::actions!(workspace, [SaveDocument, CloseAllDocuments, RunEditorFile, RevealEditorFile, CopyEditorProjectPath, CopyEditorAbsolutePath]);
+gpui_kit::actions!(
+    workspace,
+    [
+        FormatCode,
+        SaveDocument,
+        CloseAllDocuments,
+        RunEditorFile,
+        RevealEditorFile,
+        CopyEditorProjectPath,
+        CopyEditorAbsolutePath
+    ]
+);
 use std::path::Path;
 mod core;
 mod external;
@@ -29,6 +40,7 @@ pub(in crate::gui::workspace) struct State {
     pub(in crate::gui::workspace) open_files: Vec<ProjectFile>,
     pub(in crate::gui::workspace) editor_tabs_scroll: ScrollHandle,
     pub(in crate::gui::workspace) loading_files: HashSet<ProjectFile>,
+    pub(in crate::gui::workspace) formatting_files: HashSet<ProjectFile>,
     pub(in crate::gui::workspace) saving_files: HashSet<ProjectFile>,
     pub(in crate::gui::workspace) load_errors: HashMap<ProjectFile, String>,
     pub(in crate::gui::workspace) selected_file: ProjectFile,
@@ -65,6 +77,7 @@ pub(in crate::gui::workspace) fn init_component_data(
         open_files: Vec::new(),
         editor_tabs_scroll: ScrollHandle::new(),
         loading_files: HashSet::new(),
+        formatting_files: HashSet::new(),
         saving_files: HashSet::new(),
         load_errors: HashMap::new(),
         selected_file: ProjectFile("Cargo.toml".into()),
@@ -130,6 +143,7 @@ impl ProjectFile {
 pub(crate) enum Event {
     SelectFile(ProjectFile),
     SaveCurrent,
+    FormatCurrent,
     CloseAllEditorTabs,
     Navigate(bool),
     OpenContentMatch(crate::domain::project::ContentMatch),
@@ -162,17 +176,25 @@ impl Editor {
             self.workspace.entity_id(),
             crate::event_bus::refresh_gui::GuiComponent::Editor,
         );
-        self.subscription = Some(cx.spawn_in(window, async move |view,cx| {
+        self.subscription = Some(cx.spawn_in(window, async move |view, cx| {
             loop {
                 let event = tokio::select! {
                     changed = refresh.changed() => { if changed.is_err() { break; } None }
                     event = events.receiver.recv() => { let Some(event) = event else { break; }; Some(event) }
                 };
-                if view.update_in(cx,|this,window,cx| {
-                    if let Some(event) = event { this.handle_event(event,window,cx); }
-                    else { this.sync_documents(window,cx); }
-                    cx.notify();
-                }).is_err() { break; }
+                if view
+                    .update_in(cx, |this, window, cx| {
+                        if let Some(event) = event {
+                            this.handle_event(event, window, cx);
+                        } else {
+                            this.sync_documents(window, cx);
+                        }
+                        cx.notify();
+                    })
+                    .is_err()
+                {
+                    break;
+                }
             }
         }));
     }
@@ -187,6 +209,7 @@ impl Editor {
                 Event::SelectFile(value) => {
                     self.select_file(value, window, cx);
                 }
+                Event::FormatCurrent => self.format_current(window, cx),
                 Event::SaveCurrent => {
                     self.save_current(window, cx);
                 }

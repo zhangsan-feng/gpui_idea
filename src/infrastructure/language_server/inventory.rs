@@ -93,9 +93,7 @@ pub(super) fn initialized(
         }
         server.initialized = true;
         server.phase = LanguageServerPhase::Ready;
-        server.detail = server.selection_note.as_ref()
-            .map(|note| format!("语言服务已就绪；{note}"))
-            .unwrap_or_else(|| "语言服务已就绪".into());
+        server.detail = server.selection_note.as_ref().map(|note| format!("语言服务已就绪；{note}")).unwrap_or_else(|| "语言服务已就绪".into());
         tracing::info!(language = server.language, name = server.name, version = ?server.version, root = %server.root.display(), "Language server initialized");
     });
 }

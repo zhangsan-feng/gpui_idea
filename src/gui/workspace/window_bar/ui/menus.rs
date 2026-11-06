@@ -22,22 +22,87 @@ impl WindowBar {
             .w(px(40.))
             .tooltip("主菜单")
             .child(icon(IconName::Menu, 18., 0xb9bdc5))
-            .dropdown_menu(move |menu, _, _| {
-                menu.item(Self::toolbar_item(
-                    "新建项目…",
-                    ToolbarAction::CreateProject,
-                    true,
-                    false,
-                    &view,
-                ))
-                .item(Self::toolbar_item(
-                    "打开项目…",
-                    ToolbarAction::OpenProject,
-                    true,
-                    false,
-                    &view,
-                ))
+            .dropdown_menu(move |menu, _, cx| {
+                let can_format = view.upgrade().is_some_and(|view| {
+                    view.read(cx)
+                        .peer_editor(cx)
+                        .read(cx)
+                        .can_format_current(cx)
+                });
+                menu.min_w(px(264.))
+                    .max_w(px(264.))
+                    .item(Self::main_menu_item(
+                        "新建项目…",
+                        IconName::FilePlus,
+                        "",
+                        ToolbarAction::CreateProject,
+                        true,
+                        &view,
+                    ))
+                    .item(Self::main_menu_item(
+                        "打开项目…",
+                        IconName::FolderOpen,
+                        "",
+                        ToolbarAction::OpenProject,
+                        true,
+                        &view,
+                    ))
+                    .separator()
+                    .item(Self::main_menu_item(
+                        "格式化代码",
+                        IconName::Code,
+                        "Ctrl+Alt+L",
+                        ToolbarAction::FormatCode,
+                        can_format,
+                        &view,
+                    ))
             })
+    }
+
+    fn main_menu_item(
+        label: &'static str,
+        icon_name: IconName,
+        shortcut: &'static str,
+        action: ToolbarAction,
+        enabled: bool,
+        view: &WeakEntity<WindowBar>,
+    ) -> PopupMenuItem {
+        let view = view.clone();
+        PopupMenuItem::element(move |_, _| {
+            h_flex()
+                .w_full()
+                .min_w_0()
+                .h(px(26.))
+                .items_center()
+                .justify_between()
+                .gap(px(24.))
+                .font_family(crate::component::appearance::ui_font())
+                .text_size(px(12.))
+                .child(div().flex_1().child(label))
+                .child(
+                    div()
+                        .flex_shrink_0()
+                        .text_color(crate::component::appearance::foreground(if enabled {
+                            0x858b98
+                        } else {
+                            0xa8adb8
+                        }))
+                        .child(shortcut),
+                )
+        })
+        .icon(icon(
+            icon_name,
+            14.,
+            if enabled { 0x737987 } else { 0xa8adb8 },
+        ))
+        .disabled(!enabled)
+        .on_click(move |_, window, cx| {
+            if enabled {
+                let _ = view.update(cx, |this, cx| {
+                    this.toolbar_action(action.clone(), window, cx)
+                });
+            }
+        })
     }
 
     pub(super) fn branch_menu(&self, cx: &Context<WindowBar>) -> impl IntoElement {
@@ -64,8 +129,27 @@ impl WindowBar {
                 } else {
                     "当前项目没有可用的 Git 分支".into()
                 })
+                .map(|menu| {
+                    snapshot.branches.iter().fold(menu, |menu, branch| {
+                        let branch = branch.clone();
+                        let current = snapshot.branch == branch;
+                        menu.item(crate::gui::component::menu::item(
+                            branch.clone(),
+                            snapshot.is_repository && !current,
+                            current,
+                            &view,
+                            move |this, _window, _cx| {
+                                this.send(crate::event_bus::gui_event::GuiEvent::BottomPanel(
+                                    crate::gui::workspace::bottom_panel::Event::GitAction(
+                                        crate::domain::git::GitAction::Switch(branch.clone()),
+                                    ),
+                                ))
+                            },
+                        ))
+                    })
+                })
                 .item(Self::toolbar_item(
-                    "打开 Git Log",
+                    "打开 Git",
                     ToolbarAction::Tool(ToolWindow::Git),
                     true,
                     false,

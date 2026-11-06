@@ -3,6 +3,20 @@ use crate::event_bus::refresh_gui::GuiComponent;
 use std::sync::Arc;
 
 impl ProjectContext {
+    pub fn git_diff(&self) -> Arc<crate::domain::git::GitDiffSnapshot> {
+        self.state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .git_diff
+            .clone()
+    }
+    pub(crate) fn set_git_diff(&self, snapshot: crate::domain::git::GitDiffSnapshot) {
+        self.state
+            .lock()
+            .unwrap_or_else(|error| error.into_inner())
+            .git_diff = Arc::new(snapshot);
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::BottomPanel]);
+    }
     pub(crate) fn set_content_search(
         &self,
         snapshot: crate::domain::project::ContentSearchDataContextSnapshot,

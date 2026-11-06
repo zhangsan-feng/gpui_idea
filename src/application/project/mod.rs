@@ -2,6 +2,7 @@ mod core;
 mod external;
 
 pub struct ProjectService {
+    git_operations: tokio::sync::Mutex<()>,
     file_operations: tokio::sync::Mutex<()>,
     reads: tokio::sync::Semaphore,
     run_initialized: std::sync::atomic::AtomicBool,
@@ -14,6 +15,7 @@ pub struct ProjectService {
 impl ProjectService {
     pub(super) fn new() -> Self {
         Self {
+            git_operations: tokio::sync::Mutex::new(()),
             file_operations: tokio::sync::Mutex::new(()),
             reads: tokio::sync::Semaphore::new(2),
             run_initialized: std::sync::atomic::AtomicBool::new(false),

@@ -31,18 +31,10 @@ impl WindowBar {
                     let row_view = view.clone();
                     let select = view.clone();
                     let run_enabled = !busy && !saved.command.trim().is_empty();
-                    let running =
-                        DATA_CONTEXT
-                            .project
-                            .run_sessions()
-                            .instances
-                            .iter()
-                            .any(|instance| {
-                                let snapshot = DATA_CONTEXT.terminal.snapshot(instance.id);
-                                instance.configuration == id
-                                    && snapshot.generation > 0
-                                    && !snapshot.exited
-                            });
+                    let running = DATA_CONTEXT.project.run_sessions().instances.iter().any(|instance| {
+                        let snapshot = DATA_CONTEXT.terminal.snapshot(instance.id);
+                        instance.configuration == id && snapshot.generation > 0 && !snapshot.exited
+                    });
                     menu = menu.item(
                         PopupMenuItem::element(move |_, _cx| {
                             let run = row_view.clone();
@@ -56,11 +48,7 @@ impl WindowBar {
                                 .items_center()
                                 .rounded(px(3.))
                                 .bg(crate::component::appearance::background(if selected == id { 0xd5e2ff } else { 0xffffff }))
-                                .child(icon(
-                                    IconName::CirclePlay,
-                                    14.,
-                                    if running { 0x59a869 } else { MUTED },
-                                ))
+                                .child(icon(IconName::CirclePlay, 14., if running { 0x59a869 } else { MUTED }))
                                 .child(div().flex_1().min_w_0().truncate().child(name.clone()))
                                 .child(
                                     Button::new(("run-menu-start", id))
@@ -70,26 +58,15 @@ impl WindowBar {
                                         .px_0()
                                         .disabled(!run_enabled)
                                         .tooltip("运行此配置")
-                                        .child(icon(
-                                            IconName::Play,
-                                            14.,
-                                            if run_enabled { 0x59a869 } else { 0xb8bdc6 },
-                                        ))
+                                        .child(icon(IconName::Play, 14., if run_enabled { 0x59a869 } else { 0xb8bdc6 }))
                                         .on_click(move |_, window, cx| {
                                             cx.stop_propagation();
-                                            window.dispatch_action(
-                                                Box::new(gpui_kit::base::actions::Cancel),
-                                                cx,
-                                            );
+                                            window.dispatch_action(Box::new(gpui_kit::base::actions::Cancel), cx);
                                             let _ = run.update(cx, |this, cx| {
-                                                {
-                                                    this.toolbar_action(
-                                                        ToolbarAction::SelectRunConfiguration(id),
-                                                        window,
-                                                        cx,
-                                                    );
-                                                    this.send(crate::event_bus::gui_event::GuiEvent::BottomPanel(crate::gui::workspace::bottom_panel::Event::StartExecution(RunAction::Run)));
-                                                }
+                                                this.toolbar_action(ToolbarAction::SelectRunConfiguration(id), window, cx);
+                                                this.send(crate::event_bus::gui_event::GuiEvent::BottomPanel(crate::gui::workspace::bottom_panel::Event::StartExecution(
+                                                    RunAction::Run,
+                                                )));
                                             });
                                         }),
                                 )
@@ -101,49 +78,20 @@ impl WindowBar {
                                         .px_0()
                                         .disabled(!running)
                                         .tooltip("停止此配置的实例")
-                                        .child(icon(
-                                            IconName::Square,
-                                            13.,
-                                            if running { 0xf04468 } else { 0xb8bdc6 },
-                                        ))
+                                        .child(icon(IconName::Square, 13., if running { 0xf04468 } else { 0xb8bdc6 }))
                                         .on_click(move |_, window, cx| {
                                             cx.stop_propagation();
-                                            window.dispatch_action(
-                                                Box::new(gpui_kit::base::actions::Cancel),
-                                                cx,
-                                            );
-                                            let _ = stop.update(cx, |this, cx| {
-                                                {
-                                                    this.toolbar_action(
-                                                        ToolbarAction::StopRunConfiguration(id),
-                                                        window,
-                                                        cx,
-                                                    )
-                                                }
-                                            });
+                                            window.dispatch_action(Box::new(gpui_kit::base::actions::Cancel), cx);
+                                            let _ = stop.update(cx, |this, cx| this.toolbar_action(ToolbarAction::StopRunConfiguration(id), window, cx));
                                         }),
                                 )
                         })
                         .on_click(move |_, window, cx| {
-                            let _ = select.update(cx, |this, cx| {
-                                {
-                                    this.toolbar_action(
-                                        ToolbarAction::SelectRunConfiguration(id),
-                                        window,
-                                        cx,
-                                    )
-                                }
-                            });
+                            let _ = select.update(cx, |this, cx| this.toolbar_action(ToolbarAction::SelectRunConfiguration(id), window, cx));
                         }),
                     );
                 }
-                menu.separator().item(Self::toolbar_item(
-                    "编辑配置…",
-                    ToolbarAction::EditRun,
-                    true,
-                    false,
-                    &view,
-                ))
+                menu.separator().item(Self::toolbar_item("编辑配置…", ToolbarAction::EditRun, true, false, &view))
             })
     }
 

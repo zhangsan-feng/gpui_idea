@@ -171,8 +171,15 @@ async fn answer_server_request(
     let result = match method {
         "workspace/workspaceFolders" => workspace_folders.clone(),
         "workspace/configuration" => {
-            let values = message.pointer("/params/items").and_then(Value::as_array)
-                .map(|items| items.iter().map(|item| configuration(item.get("section").and_then(Value::as_str).unwrap_or_default())).collect::<Vec<_>>())
+            let values = message
+                .pointer("/params/items")
+                .and_then(Value::as_array)
+                .map(|items| {
+                    items
+                        .iter()
+                        .map(|item| configuration(item.get("section").and_then(Value::as_str).unwrap_or_default()))
+                        .collect::<Vec<_>>()
+                })
                 .unwrap_or_default();
             json!(values)
         }
@@ -327,7 +334,8 @@ impl Session {
                 json!({"text":text})
             };
             self.documents.insert(path, (version, text));
-            self.notify("textDocument/didChange", json!({"textDocument":{"uri":document_uri,"version":version},"contentChanges":[change]})).await?;
+            self.notify("textDocument/didChange", json!({"textDocument":{"uri":document_uri,"version":version},"contentChanges":[change]}))
+                .await?;
         } else {
             let params = json!({"textDocument":{"uri":document_uri,"languageId":language,"version":1,"text":text}});
             self.documents.insert(path, (1, text));
@@ -373,9 +381,7 @@ impl Session {
             loop {
                 match self.request("textDocument/semanticTokens/full", params.clone()).await {
                     Ok(_) => break,
-                    Err(error) if error.downcast_ref::<LspResponseError>()
-                        .is_some_and(|error| matches!(error.code, -32800 | -32801 | -32802))
-                        && attempts < 3 => {
+                    Err(error) if error.downcast_ref::<LspResponseError>().is_some_and(|error| matches!(error.code, -32800 | -32801 | -32802)) && attempts < 3 => {
                         attempts += 1;
                         tokio::time::sleep(Duration::from_millis(100 * attempts)).await;
                         self.wait_for_index().await?;
@@ -387,7 +393,8 @@ impl Session {
             tracing::debug!(path = %path.display(), analysis_ms = analysis_started.elapsed().as_millis(),
                 elapsed_ms = started.elapsed().as_millis(), "LSP document semantic warmup completed");
             Ok(())
-        }.await;
+        }
+        .await;
         self.finish_warmup();
         result
     }

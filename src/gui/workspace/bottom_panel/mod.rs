@@ -3,19 +3,35 @@ mod external;
 mod ui;
 use crate::gui::workspace::Workspace;
 use crate::gui::workspace::ui::*;
-use gpui_kit::component::input::InputState;
+use gpui_kit::component::input::{InputState, TextareaState};
 use std::collections::HashMap;
 pub(in crate::gui::workspace) struct State {
     pub(in crate::gui::workspace) run_config_revision: u64,
 
     pub(in crate::gui::workspace) run_configuration_window: Option<AnyWindowHandle>,
 
+    pub(super) git_message: Entity<TextareaState>,
+    pub(super) git_summary: Entity<InputState>,
+    pub(super) git_excluded: std::collections::HashSet<std::path::PathBuf>,
+    pub(super) git_input_subscriptions: Vec<Subscription>,
+    pub(super) git_busy: bool,
+    pub(super) git_feedback: Option<(bool, String)>,
+    pub(super) git_diff_key: String,
+    pub(super) git_diff_title: String,
+    pub(super) git_diff_loading: bool,
+    pub(super) git_diff_request: u64,
+    pub(super) git_columns: Entity<gpui_kit::component::ResizableState>,
+    pub(super) git_changes_scroll: ScrollHandle,
+    pub(super) git_diff_scroll: UniformListScrollHandle,
+    pub(super) git_history_selected: bool,
+    pub(super) git_history_scroll: UniformListScrollHandle,
+    pub(super) git_history_files_scroll: ScrollHandle,
+    pub(super) git_history_columns: Entity<gpui_kit::component::ResizableState>,
     pub(in crate::gui::workspace) git_filter: Entity<InputState>,
     pub(in crate::gui::workspace) git_filter_subscription: Option<Subscription>,
     pub(in crate::gui::workspace) terminal_tabs: Vec<TerminalTab>,
     pub(in crate::gui::workspace) active_terminal: usize,
     pub(in crate::gui::workspace) terminal_sequence: u64,
-    pub(in crate::gui::workspace) git_console_selected: bool,
     pub(in crate::gui::workspace) selected_git_commit: Option<String>,
     pub(in crate::gui::workspace) git_details_loading: bool,
     pub(in crate::gui::workspace) run_views: HashMap<
@@ -23,9 +39,8 @@ pub(in crate::gui::workspace) struct State {
         Entity<crate::gui::component::terminal::TerminalView>,
     >,
     pub(in crate::gui::workspace) statistics_loading: bool,
-    pub(in crate::gui::workspace) statistics_sort: usize,
-    pub(in crate::gui::workspace) statistics_descending: bool,
-    pub(in crate::gui::workspace) statistics_selected: Option<String>,
+    pub(in crate::gui::workspace) statistics_collapsed:
+        std::collections::HashSet<std::path::PathBuf>,
     pub(in crate::gui::workspace) statistics_scroll: UniformListScrollHandle,
     pub(in crate::gui::workspace) active_tool: ToolWindow,
     pub(in crate::gui::workspace) run_terminal:
@@ -49,7 +64,28 @@ pub(in crate::gui::workspace) fn init_component_data(
 
         run_configuration_window: None,
 
-        git_filter: cx.new(|cx| InputState::new(window, cx).placeholder("Text or hash")),
+        git_message: cx.new(|cx| {
+            TextareaState::new(window, cx)
+                .rows(4)
+                .placeholder("描述（可选）")
+        }),
+        git_summary: cx.new(|cx| InputState::new(window, cx).placeholder("摘要（必填）")),
+        git_excluded: std::collections::HashSet::new(),
+        git_input_subscriptions: Vec::new(),
+        git_busy: false,
+        git_feedback: None,
+        git_diff_key: String::new(),
+        git_diff_title: String::new(),
+        git_diff_loading: false,
+        git_diff_request: 0,
+        git_columns: cx.new(|_| gpui_kit::component::ResizableState::default()),
+        git_changes_scroll: ScrollHandle::new(),
+        git_diff_scroll: UniformListScrollHandle::new(),
+        git_history_selected: false,
+        git_history_scroll: UniformListScrollHandle::new(),
+        git_history_files_scroll: ScrollHandle::new(),
+        git_history_columns: cx.new(|_| gpui_kit::component::ResizableState::default()),
+        git_filter: cx.new(|cx| InputState::new(window, cx).placeholder("搜索提交、作者或哈希")),
         git_filter_subscription: None,
         terminal_tabs: vec![TerminalTab {
             id: crate::domain::terminal::TerminalId::Shell,
@@ -63,14 +99,11 @@ pub(in crate::gui::workspace) fn init_component_data(
         }],
         active_terminal: 0,
         terminal_sequence: 0,
-        git_console_selected: false,
         selected_git_commit: None,
         git_details_loading: false,
         run_views: HashMap::new(),
         statistics_loading: false,
-        statistics_sort: 0,
-        statistics_descending: false,
-        statistics_selected: None,
+        statistics_collapsed: std::collections::HashSet::new(),
         statistics_scroll: UniformListScrollHandle::new(),
         active_tool: session
             .as_ref()
@@ -108,6 +141,7 @@ pub(crate) enum Event {
     Initialize,
     ToggleTool(ToolWindow),
     RefreshGit,
+    GitAction(crate::domain::git::GitAction),
     OpenRunConfiguration,
     ResetRunAutomatic,
     StartExecution(crate::domain::run::RunAction),
@@ -140,17 +174,26 @@ impl BottomPanel {
             self.workspace.entity_id(),
             crate::event_bus::refresh_gui::GuiComponent::BottomPanel,
         );
-        self.subscription = Some(cx.spawn_in(window, async move |view,cx| {
+        self.subscription = Some(cx.spawn_in(window, async move |view, cx| {
             loop {
                 let event = tokio::select! {
                     changed = refresh.changed() => { if changed.is_err() { break; } None }
                     event = events.receiver.recv() => { let Some(event) = event else { break; }; Some(event) }
                 };
-                if view.update_in(cx,|this,window,cx| {
-                    if let Some(event) = event { this.handle_event(event,window,cx); }
-                    else { this.sync_run_configuration(window,cx); this.sync_run_views(cx); }
-                    cx.notify();
-                }).is_err() { break; }
+                if view
+                    .update_in(cx, |this, window, cx| {
+                        if let Some(event) = event {
+                            this.handle_event(event, window, cx);
+                        } else {
+                            this.sync_run_configuration(window, cx);
+                            this.sync_run_views(cx);
+                        }
+                        cx.notify();
+                    })
+                    .is_err()
+                {
+                    break;
+                }
             }
         }));
     }
@@ -168,6 +211,7 @@ impl BottomPanel {
                 Event::ToggleTool(value) => {
                     self.toggle_tool(value, cx);
                 }
+                Event::GitAction(action) => self.git_action(action, window, cx),
                 Event::RefreshGit => {
                     self.refresh_git(cx);
                 }

@@ -136,9 +136,13 @@ impl Runtime {
                 tracing::debug!(?health, quiescent = ?state.readiness.quiescent, active = state.progress.len(), "LSP server readiness notification");
             }),
             Some("$/progress") => {
-                let Some(token) = message.pointer("/params/token").filter(|token| token.is_string() || token.is_number()) else { return; };
+                let Some(token) = message.pointer("/params/token").filter(|token| token.is_string() || token.is_number()) else {
+                    return;
+                };
                 let kind = message.pointer("/params/value/kind").and_then(Value::as_str);
-                if !matches!(kind, Some("begin" | "end")) { return; }
+                if !matches!(kind, Some("begin" | "end")) {
+                    return;
+                }
                 let token = token.to_string();
                 self.update(|state| {
                     if kind == Some("begin") {

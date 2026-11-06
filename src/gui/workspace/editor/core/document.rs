@@ -135,10 +135,14 @@ impl Editor {
         let relative = file.relative_path().to_owned();
         cx.spawn_in(window, async move |this, cx| {
             let result = run_application(async move {
-                if relative.is_absolute() { documents.open_external(relative).await }
-                else { documents.open(relative).await }
-            }).await;
-            let _ = this.update_in(cx, |this, window, cx| { {
+                if relative.is_absolute() {
+                    documents.open_external(relative).await
+                } else {
+                    documents.open(relative).await
+                }
+            })
+            .await;
+            let _ = this.update_in(cx, |this, window, cx| {
                 this.state.loading_files.remove(&file);
                 match result {
                     Ok(opened) => {
@@ -147,11 +151,13 @@ impl Editor {
                         if tab_count > 0 {
                             tracing::debug!(file = %file.relative_path().display(), tab_count, tab_size = 4, "document contains hard tabs; preserving buffer offsets for display");
                         }
-                        let editor = cx.new(|cx| EditorState::new(window, cx)
-                            .language(crate::component::code_editor::language_for_path(file.relative_path()))
-                            .soft_wrap(false)
-                            .tab_size(TabSize { tab_size: 4, hard_tabs: false })
-                            .default_value(opened.initial_text));
+                        let editor = cx.new(|cx| {
+                            EditorState::new(window, cx)
+                                .language(crate::component::code_editor::language_for_path(file.relative_path()))
+                                .soft_wrap(false)
+                                .tab_size(TabSize { tab_size: 4, hard_tabs: false })
+                                .default_value(opened.initial_text)
+                        });
                         crate::component::code_editor::attach_completions(&editor, &opened.snapshot.path, window, cx);
                         let path = opened.snapshot.path.clone();
                         if let Some(view) = this.state.pending_file_views.remove(&path) {
@@ -169,9 +175,11 @@ impl Editor {
                             Self::position_jump_viewport(&editor, window, cx);
                         }
                         if let Err(error) = APPLICATION.documents.attach_editor_buffer(&path, editor.read(cx).text().clone(), opened.snapshot.revision) {
-                            this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!("{error:#}")))));
+                            this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!(
+                                "{error:#}"
+                            )))));
                         }
-                        let subscription = cx.subscribe_in(&editor, window, move |this, state, event: &InputEvent, _, cx| { {
+                        let subscription = cx.subscribe_in(&editor, window, move |this, state, event: &InputEvent, _, cx| {
                             if matches!(event, InputEvent::Change) {
                                 let committed = Instant::now();
                                 let buffer = state.read(cx).text().clone();
@@ -179,8 +187,15 @@ impl Editor {
                                     return;
                                 }
                                 if let Err(error) = APPLICATION.documents.edit(&path, buffer) {
-                                    this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!("{error:#}")))));
-                                    crate::event_bus::EVENT_BUS.refresh_gui.notify(&[crate::event_bus::refresh_gui::GuiComponent::Editor, crate::event_bus::refresh_gui::GuiComponent::FileTree, crate::event_bus::refresh_gui::GuiComponent::BottomBar, crate::event_bus::refresh_gui::GuiComponent::WindowBar]);
+                                    this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!(
+                                        "{error:#}"
+                                    )))));
+                                    crate::event_bus::EVENT_BUS.refresh_gui.notify(&[
+                                        crate::event_bus::refresh_gui::GuiComponent::Editor,
+                                        crate::event_bus::refresh_gui::GuiComponent::FileTree,
+                                        crate::event_bus::refresh_gui::GuiComponent::BottomBar,
+                                        crate::event_bus::refresh_gui::GuiComponent::WindowBar,
+                                    ]);
                                 } else {
                                     if let Some(snapshot) = DATA_CONTEXT.documents.snapshot(&path) {
                                         let file = ProjectFile::for_path(&path);
@@ -193,7 +208,7 @@ impl Editor {
                                     tracing::warn!(file = %path.display(), elapsed_us, "document snapshot commit exceeded frame budget");
                                 }
                             }
-                         } });
+                        });
                         this.state.editor_subscriptions.insert(file.clone(), subscription);
                         this.state.editor_revisions.insert(file.clone(), opened.snapshot.revision);
                         if this.state.selected_file == file && this.state.open_files.contains(&file) {
@@ -205,15 +220,23 @@ impl Editor {
                         let initialize_us = initialization.elapsed().as_micros();
                         tracing::info!(file = %file.relative_path().display(), initialize_us, elapsed_ms = started.elapsed().as_millis(), "document editor ready");
                         crate::infrastructure::logging::log_memory("document_editor_ready");
-                        if initialize_us > 16_000 { tracing::warn!(file = %file.relative_path().display(), initialize_us, "editor initialization exceeded frame budget"); }
+                        if initialize_us > 16_000 {
+                            tracing::warn!(file = %file.relative_path().display(), initialize_us, "editor initialization exceeded frame budget");
+                        }
                     }
                     Err(error) => {
                         tracing::error!(file = %file.relative_path().display(), error = %error, "document open failed");
                         this.state.load_errors.insert(file, format!("{error:#}"));
                     }
                 }
-                crate::event_bus::EVENT_BUS.refresh_gui.notify(&[crate::event_bus::refresh_gui::GuiComponent::Editor, crate::event_bus::refresh_gui::GuiComponent::FileTree, crate::event_bus::refresh_gui::GuiComponent::BottomBar, crate::event_bus::refresh_gui::GuiComponent::WindowBar]);
-             } });
-        }).detach();
+                crate::event_bus::EVENT_BUS.refresh_gui.notify(&[
+                    crate::event_bus::refresh_gui::GuiComponent::Editor,
+                    crate::event_bus::refresh_gui::GuiComponent::FileTree,
+                    crate::event_bus::refresh_gui::GuiComponent::BottomBar,
+                    crate::event_bus::refresh_gui::GuiComponent::WindowBar,
+                ]);
+            });
+        })
+        .detach();
     }
 }

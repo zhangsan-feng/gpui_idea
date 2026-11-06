@@ -1,8 +1,8 @@
 pub(crate) mod completion;
 pub(crate) mod definition;
-pub(crate) mod highlights;
 mod document;
 mod file_watch;
+pub(crate) mod highlights;
 mod history;
 pub mod lifecycle;
 mod project;

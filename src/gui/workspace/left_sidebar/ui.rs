@@ -19,24 +19,20 @@ impl LeftSidebar {
                 IconName::Folder,
                 "project-tool",
                 "项目",
-                self.state.project_panel_open,
+                self.state.project_panel_open
+                    && !(self.state.run_panel_open
+                        && self.peer_bottom_panel(cx).read(cx).state.active_tool
+                            == ToolWindow::Git),
                 None,
                 cx,
             ))
             .child(self.activity_button(
-                IconName::SlidersHorizontal,
-                "structure-tool",
-                "结构",
-                false,
-                None,
-                cx,
-            ))
-            .child(self.activity_button(
-                IconName::LayoutPanelLeft,
-                "services-tool",
-                "服务",
-                false,
-                None,
+                IconName::GitBranch,
+                "git-tool",
+                "Git",
+                self.state.run_panel_open
+                    && self.peer_bottom_panel(cx).read(cx).state.active_tool == ToolWindow::Git,
+                Some(ToolWindow::Git),
                 cx,
             ))
             .child(div().flex_1())
@@ -48,7 +44,6 @@ impl LeftSidebar {
                         "statistics-tool",
                         ToolWindow::Statistics,
                     ),
-                    (IconName::GitBranch, "git-tool", ToolWindow::Git),
                     (IconName::Terminal, "terminal-tool", ToolWindow::Terminal),
                 ]
                 .into_iter()
@@ -87,7 +82,7 @@ impl LeftSidebar {
                     snapshot.generation > 0 && !snapshot.exited
                 });
         crate::gui::component::activity_button::render(name, id, label, selected, accented, running)
-            .on_click(cx.listener(move |this, _, _, _cx| {
+            .on_click(cx.listener(move |this, _, _, cx| {
                 if let Some(tool) = tool {
                     crate::event_bus::EVENT_BUS.gui_event.send(
                         this.workspace.entity_id(),
@@ -96,6 +91,16 @@ impl LeftSidebar {
                         ),
                     );
                 } else if id == "project-tool" {
+                    if this.state.run_panel_open
+                        && this.peer_bottom_panel(cx).read(cx).state.active_tool == ToolWindow::Git
+                    {
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomPanel(
+                            crate::gui::workspace::bottom_panel::Event::ToggleTool(ToolWindow::Git),
+                        ));
+                        if this.state.project_panel_open {
+                            return;
+                        }
+                    }
                     crate::event_bus::EVENT_BUS.gui_event.send(
                         this.workspace.entity_id(),
                         crate::event_bus::gui_event::GuiEvent::LeftSidebar(

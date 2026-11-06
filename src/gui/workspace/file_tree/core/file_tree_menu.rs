@@ -196,50 +196,85 @@ impl FileTree {
         ]);
         cx.spawn_in(window, async move |this, cx| {
             let result = run_application(async move { crate::application::APPLICATION.project.file_tree_operation(operation).await }).await;
-            let _ = this.update_in(cx, |this, window, cx| { {
+            let _ = this.update_in(cx, |this, window, cx| {
                 this.state.file_operation_running = false;
                 match result {
                     Ok(FileTreeOutcome::DirectoryCreated(path)) => {
-                        if inline_operation { this.complete_inline_file_edit(); }
+                        if inline_operation {
+                            this.complete_inline_file_edit();
+                        }
                         this.state.expanded_directories.insert(path.parent().unwrap_or(Path::new("")).to_owned());
                         this.state.expanded_directories.insert(path);
-                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some("文件夹已新建".into()))));
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(
+                            "文件夹已新建".into(),
+                        ))));
                     }
                     Ok(FileTreeOutcome::Created(path)) => {
-                        if inline_operation { this.complete_inline_file_edit(); }
+                        if inline_operation {
+                            this.complete_inline_file_edit();
+                        }
                         this.state.expanded_directories.insert(path.parent().unwrap_or(Path::new("")).to_owned());
                         this.send(crate::event_bus::gui_event::GuiEvent::Editor(crate::gui::workspace::editor::Event::SelectFile(ProjectFile(path))));
-                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some("文件已新建".into()))));
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(
+                            "文件已新建".into(),
+                        ))));
                     }
                     Ok(FileTreeOutcome::Renamed { source, destination }) => {
-                        if inline_operation { this.complete_inline_file_edit(); }
+                        if inline_operation {
+                            this.complete_inline_file_edit();
+                        }
                         this.apply_project_move(&source, &destination, window, cx);
-                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some("重命名完成".into()))));
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(
+                            "重命名完成".into(),
+                        ))));
                     }
                     Ok(FileTreeOutcome::Deleted(source)) => {
                         this.remove_deleted_entries(&source, window, cx);
-                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some("删除完成".into()))));
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(
+                            "删除完成".into(),
+                        ))));
                     }
-                    Ok(FileTreeOutcome::Revealed) => { this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some("已打开文件所在目录".into())))); }
+                    Ok(FileTreeOutcome::Revealed) => {
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(
+                            "已打开文件所在目录".into(),
+                        ))));
+                    }
                     Ok(FileTreeOutcome::Copied(clipboard)) => {
-                        cx.write_to_clipboard(ClipboardItem::new_string_with_json_metadata(DATA_CONTEXT.project_root().join(&clipboard.source).to_string_lossy().into_owned(), clipboard));
-                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some("已复制，可在目标目录粘贴".into()))));
+                        cx.write_to_clipboard(ClipboardItem::new_string_with_json_metadata(
+                            DATA_CONTEXT.project_root().join(&clipboard.source).to_string_lossy().into_owned(),
+                            clipboard,
+                        ));
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(
+                            "已复制，可在目标目录粘贴".into(),
+                        ))));
                     }
                     Ok(FileTreeOutcome::Pasted(path)) => {
                         this.state.expanded_directories.insert(path.parent().unwrap_or(Path::new("")).to_owned());
-                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!("已粘贴 {}", path.display())))));
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!(
+                            "已粘贴 {}",
+                            path.display()
+                        )))));
                     }
                     Err(error) => {
-                        if inline_operation { this.inline_file_edit_failed(format!("{error:#}"), window, cx); }
+                        if inline_operation {
+                            this.inline_file_edit_failed(format!("{error:#}"), window, cx);
+                        }
                         tracing::warn!(error = %format!("{error:#}"), "project context menu operation failed");
-                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!("文件操作失败：{error:#}")))));
+                        this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(crate::gui::workspace::bottom_bar::Event::Notice(Some(format!(
+                            "文件操作失败：{error:#}"
+                        )))));
                     }
                 }
                 this.rebuild_tree();
                 this.send(crate::event_bus::gui_event::GuiEvent::WindowBar(crate::gui::workspace::window_bar::Event::ScheduleSave));
-                crate::event_bus::EVENT_BUS.refresh_gui.notify(&[crate::event_bus::refresh_gui::GuiComponent::FileTree, crate::event_bus::refresh_gui::GuiComponent::Editor, crate::event_bus::refresh_gui::GuiComponent::BottomBar]);
-             } });
-        }).detach();
+                crate::event_bus::EVENT_BUS.refresh_gui.notify(&[
+                    crate::event_bus::refresh_gui::GuiComponent::FileTree,
+                    crate::event_bus::refresh_gui::GuiComponent::Editor,
+                    crate::event_bus::refresh_gui::GuiComponent::BottomBar,
+                ]);
+            });
+        })
+        .detach();
     }
 }
 

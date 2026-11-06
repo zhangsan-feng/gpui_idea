@@ -39,7 +39,9 @@ impl CompletionDropdown {
                     .gap(px(6.))
                     .rounded(px(3.))
                     .text_color(crate::component::appearance::foreground(0x202124))
-                    .when(index == self.selected, |row| row.bg(crate::component::appearance::background(0xdfe1e5)))
+                    .when(index == self.selected, |row| {
+                        row.bg(crate::component::appearance::background(0xdfe1e5))
+                    })
                     .hover(|row| row.bg(crate::component::appearance::background(0xf0f1f3)))
                     .child(
                         Icon::new(if keyword {
@@ -50,11 +52,13 @@ impl CompletionDropdown {
                             IconName::FileBox
                         })
                         .size(px(13.))
-                        .text_color(crate::component::appearance::foreground(if keyword {
-                            0x6b7280
-                        } else {
-                            0x9b51e0
-                        })),
+                        .text_color(
+                            crate::component::appearance::foreground(if keyword {
+                                0x6b7280
+                            } else {
+                                0x9b51e0
+                            }),
+                        ),
                     )
                     .child(div().max_w(px(320.)).truncate().flex_shrink_0().child(
                         StyledText::new(item.label.clone()).with_highlights([(
@@ -115,9 +119,21 @@ impl CompletionDropdown {
                                 .mode(ScrollbarMode::Always)
                                 .styles(|styles| {
                                     styles
-                                        .thumb(|thumb| thumb.bg(crate::component::appearance::background(0xb8bdc9)))
-                                        .thumb_hover(|thumb| thumb.bg(crate::component::appearance::background(0x8c95a6)))
-                                        .thumb_active(|thumb| thumb.bg(crate::component::appearance::background(0x6b7280)))
+                                        .thumb(|thumb| {
+                                            thumb.bg(crate::component::appearance::background(
+                                                0xb8bdc9,
+                                            ))
+                                        })
+                                        .thumb_hover(|thumb| {
+                                            thumb.bg(crate::component::appearance::background(
+                                                0x8c95a6,
+                                            ))
+                                        })
+                                        .thumb_active(|thumb| {
+                                            thumb.bg(crate::component::appearance::background(
+                                                0x6b7280,
+                                            ))
+                                        })
                                 }),
                         )
                     }),

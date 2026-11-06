@@ -24,7 +24,7 @@ impl BottomPanel {
         let parent = self.workspace.clone();
         let parent_window = window.window_handle();
         let result = crate::gui::external::open_tool_window(
-            "运行 / 调试配置",
+            "运行配置",
             gpui_kit::size(gpui_kit::px(840.), gpui_kit::px(520.)),
             window,
             cx,

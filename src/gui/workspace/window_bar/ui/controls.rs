@@ -26,11 +26,7 @@ impl WindowBar {
             }
         };
         crate::gui::component::controls::toolbar_button(id, cx)
-            .w(px(if matches!(id, "back" | "forward") {
-                40.
-            } else {
-                30.
-            }))
+            .w(px(30.))
             .disabled(!enabled)
             .tooltip(hint)
             .child(icon(name, 16., if enabled { tint } else { 0x60656d }))
