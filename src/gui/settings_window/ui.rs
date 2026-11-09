@@ -37,6 +37,7 @@ impl SettingsWindow {
                         SettingsPage::LanguageServers => self.render_servers(cx),
                         SettingsPage::System => self.render_system(cx),
                         SettingsPage::General => self.content(cx),
+                        SettingsPage::Editor => self.editor_content(cx),
                         SettingsPage::Appearance => self.render_appearance(cx),
                     }),
             )
@@ -54,14 +55,14 @@ impl SettingsWindow {
 
     fn matches_search(&self, cx: &Context<Self>) -> bool {
         let query = self.search.read(cx).value().trim().to_lowercase();
-        query.is_empty() || "常规配置 代码格式化 自动格式化代码 自动化格式化代码 保存时自动格式化代码 format formatting 代理 proxy 网络 下载".contains(&query)
+        query.is_empty() || GENERAL_SEARCH_TERMS.contains(&query)
     }
 
     fn sidebar(&self, cx: &mut Context<Self>) -> Div {
         let matches = self.matches_search(cx);
         let query = self.search.read(cx).value().trim().to_lowercase();
-        let matches_appearance = query.is_empty()
-            || "外观 字体 字号 主题 浅色 深色 font theme appearance".contains(&query);
+        let matches_editor = query.is_empty() || EDITOR_SEARCH_TERMS.contains(&query);
+        let matches_appearance = query.is_empty() || APPEARANCE_SEARCH_TERMS.contains(&query);
         let matches_system = query.is_empty()
             || "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query);
         let matches_lsp = query.is_empty()
@@ -109,7 +110,7 @@ impl SettingsWindow {
                                     row.bg(crate::component::appearance::background(0xeef2f7))
                                 })
                                 .on_click(cx.listener(|this, _, _, cx| {
-                                    this.page = SettingsPage::Appearance;
+                                    this.select_page(SettingsPage::Appearance, cx);
                                     cx.notify();
                                 }))
                                 .child(settings_icon(IconName::Palette, 15.))
@@ -138,11 +139,40 @@ impl SettingsWindow {
                                     row.bg(crate::component::appearance::background(0xeef2f7))
                                 })
                                 .on_click(cx.listener(|this, _, _, cx| {
-                                    this.page = SettingsPage::General;
+                                    this.select_page(SettingsPage::General, cx);
                                     cx.notify();
                                 }))
                                 .child(settings_icon(IconName::SlidersHorizontal, 15.))
                                 .child("常规配置"),
+                        )
+                    })
+                    .when(matches_editor, |list| {
+                        list.child(
+                            h_flex()
+                                .id("editor-settings-category")
+                                .h(px(36.))
+                                .items_center()
+                                .gap_2()
+                                .px_3()
+                                .rounded_md()
+                                .text_color(crate::component::appearance::foreground(0x4b5563))
+                                .when(self.page == SettingsPage::Editor, |row| {
+                                    row.bg(crate::component::appearance::background(0xe8efff))
+                                        .text_color(crate::component::appearance::foreground(
+                                            0x1d4ed8,
+                                        ))
+                                        .font_weight(FontWeight::SEMIBOLD)
+                                })
+                                .cursor_pointer()
+                                .hover(|row| {
+                                    row.bg(crate::component::appearance::background(0xeef2f7))
+                                })
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.select_page(SettingsPage::Editor, cx);
+                                    cx.notify();
+                                }))
+                                .child(settings_icon(IconName::Code, 15.))
+                                .child("编辑器配置"),
                         )
                     })
                     .when(matches_lsp, |list| {
@@ -167,7 +197,7 @@ impl SettingsWindow {
                                     row.bg(crate::component::appearance::background(0xeef2f7))
                                 })
                                 .on_click(cx.listener(|this, _, _, cx| {
-                                    this.page = SettingsPage::LanguageServers;
+                                    this.select_page(SettingsPage::LanguageServers, cx);
                                     cx.notify();
                                 }))
                                 .child(settings_icon(IconName::Code, 15.))
@@ -196,7 +226,7 @@ impl SettingsWindow {
                                     row.bg(crate::component::appearance::background(0xeef2f7))
                                 })
                                 .on_click(cx.listener(|this, _, _, cx| {
-                                    this.page = SettingsPage::System;
+                                    this.select_page(SettingsPage::System, cx);
                                     this.manage_context_menu(
                                         crate::domain::settings::ContextMenuAction::Refresh,
                                         cx,
@@ -208,7 +238,11 @@ impl SettingsWindow {
                         )
                     })
                     .when(
-                        !matches && !matches_lsp && !matches_system && !matches_appearance,
+                        !matches
+                            && !matches_editor
+                            && !matches_lsp
+                            && !matches_system
+                            && !matches_appearance,
                         |list| {
                             list.child(
                                 div()
@@ -242,42 +276,8 @@ impl SettingsWindow {
                     .id("general-settings-content")
                     .overflow_y_scroll()
                     .when(self.matches_search(cx), |content| {
-                        content
-                            .child(self.formatting_settings(cx))
-                            .child(self.proxy_settings(cx))
+                        content.child(self.proxy_settings(cx))
                     }),
-            )
-    }
-
-    fn formatting_settings(&self, cx: &mut Context<Self>) -> Div {
-        v_flex()
-            .p_4()
-            .gap_3()
-            .rounded_lg()
-            .bg(crate::component::appearance::background(0xffffff))
-            .border_1()
-            .border_color(crate::component::appearance::border(BORDER))
-            .child(div().font_weight(FontWeight::SEMIBOLD).child("代码格式化"))
-            .child(
-                Checkbox::new("auto-format-on-save")
-                    .checked(self.draft.auto_format)
-                    .disabled(self.saving || self.system_busy)
-                    .label("保存时自动格式化代码")
-                    .on_click(cx.listener(|this, checked: &bool, _, cx| {
-                        this.draft.auto_format = *checked;
-                        this.error = None;
-                        cx.notify();
-                    })),
-            )
-            .child(
-                v_flex()
-                    .pl_6()
-                    .gap_2()
-                    .text_size(px(12.))
-                    .text_color(crate::component::appearance::foreground(MUTED))
-                    .child("开启后，手动保存和自动保存都会格式化代码。")
-                    .child("需要当前语言服务支持格式化；格式化失败时仍会保存原内容。")
-                    .child("点击“应用”或“确定”后生效；关闭此项仍可使用主菜单“格式化代码”或 Ctrl+Alt+L。"),
             )
     }
 
@@ -294,7 +294,7 @@ impl SettingsWindow {
             .child(
                 Checkbox::new("lsp-download-proxy")
                     .checked(self.draft.lsp_proxy.enabled)
-                    .disabled(self.saving || self.system_busy)
+                    .disabled(self.saving || self.system_busy || self.themes.busy())
                     .label("为 LSP 下载使用代理")
                     .on_click(cx.listener(|this, checked: &bool, _, cx| {
                         this.draft.lsp_proxy.enabled = *checked;
@@ -361,21 +361,26 @@ impl SettingsWindow {
                     .primary()
                     .w(px(76.))
                     .label("确定")
-                    .disabled(self.saving || self.system_busy)
+                    .disabled(self.saving || self.system_busy || self.themes.busy())
                     .on_click(cx.listener(|this, _, window, cx| this.apply(true, window, cx))),
             )
             .child(
                 Button::new("settings-cancel")
                     .w(px(76.))
                     .label("取消")
-                    .disabled(self.saving || self.system_busy)
+                    .disabled(self.saving || self.system_busy || self.themes.busy())
                     .on_click(|_, window, _| window.remove_window()),
             )
             .child(
                 Button::new("settings-apply")
                     .w(px(76.))
                     .label("应用")
-                    .disabled(self.saving || self.system_busy || self.draft == self.saved)
+                    .disabled(
+                        self.saving
+                            || self.system_busy
+                            || self.themes.busy()
+                            || self.draft == self.saved,
+                    )
                     .on_click(cx.listener(|this, _, window, cx| this.apply(false, window, cx))),
             )
     }

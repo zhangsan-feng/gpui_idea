@@ -4,6 +4,21 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 impl HistoryStore {
+    pub(crate) async fn save_settings_page(
+        &self,
+        page: crate::domain::history::SettingsPage,
+    ) -> Result<HistoryDataContextSnapshot> {
+        let path = self.path.clone();
+        let lock = self.io_lock.clone();
+        tokio::task::spawn_blocking(move || {
+            let _guard = lock.lock().unwrap_or_else(|error| error.into_inner());
+            let _process_guard = core::lock_history(&path)?;
+            core::save_settings_page(&path, page)
+        })
+        .await
+        .context("配置窗口历史保存任务中止")?
+    }
+
     pub(crate) async fn prune_expanded_directories(
         &self,
         session: WorkspaceSession,

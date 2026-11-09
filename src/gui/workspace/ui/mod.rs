@@ -3,7 +3,7 @@ pub(super) mod diagnostics;
 mod main_window;
 
 pub(super) use gpui_kit::assets::IconName;
-pub(super) use gpui_kit::component::{Icon, Sizable, h_flex, v_flex};
+pub(super) use gpui_kit::component::{Sizable, h_flex, v_flex};
 pub(super) use gpui_kit::prelude::FluentBuilder;
 pub(super) use gpui_kit::*;
 

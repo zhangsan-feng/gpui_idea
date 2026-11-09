@@ -28,9 +28,26 @@ impl SettingsService {
             "编辑器字号须在 9–36 之间"
         );
         INFRASTRUCTURE.proxy.validate(&value.lsp_proxy)?;
+        if let Some(id) = &value.appearance.selected_theme {
+            let theme = value
+                .appearance
+                .imported_themes
+                .iter()
+                .find(|theme| &theme.id == id)
+                .ok_or_else(|| anyhow::anyhow!("选择的主题不存在，请重新选择"))?;
+            value.appearance.theme = if theme.dark {
+                crate::domain::settings::ColorTheme::Dark
+            } else {
+                crate::domain::settings::ColorTheme::Light
+            };
+        }
         INFRASTRUCTURE.settings.save(value.clone()).await?;
         INFRASTRUCTURE.proxy.set_lsp(value.lsp_proxy.clone());
-        tracing::info!(auto_format = value.auto_format, "general settings saved");
+        tracing::info!(
+            auto_format = value.auto_format,
+            soft_wrap = value.soft_wrap,
+            "general settings saved"
+        );
         tracing::info!(ui_font = %value.appearance.ui_font, editor_font = %value.appearance.editor_font,
             editor_size = value.appearance.editor_size, dark = value.appearance.theme == crate::domain::settings::ColorTheme::Dark,
             "appearance settings saved");

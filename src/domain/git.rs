@@ -13,6 +13,7 @@ pub struct GitDataContextSnapshot {
     pub root: PathBuf,
     pub changes: Vec<GitWorkingChange>,
     pub branches: Vec<String>,
+    pub remotes: Vec<String>,
     pub is_repository: bool,
     pub is_detached: bool,
     pub branch: String,
@@ -30,6 +31,11 @@ pub struct GitWorkingChange {
 
 #[derive(Clone)]
 pub enum GitAction {
+    Ignore {
+        repository: PathBuf,
+        path: PathBuf,
+        directory: bool,
+    },
     Commit {
         summary: String,
         description: String,
@@ -37,6 +43,21 @@ pub enum GitAction {
     },
     UpdateFromRemote,
     Switch(String),
+}
+
+pub(crate) enum GitCreateRequest {
+    Branch {
+        name: String,
+        remote: Option<String>,
+    },
+    Repository {
+        name: String,
+        organization: String,
+        description: String,
+        private: bool,
+        remote: String,
+        token: String,
+    },
 }
 
 #[derive(Clone, Default)]

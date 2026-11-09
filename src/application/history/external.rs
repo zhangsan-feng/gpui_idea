@@ -4,6 +4,14 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 impl HistoryService {
+    pub(crate) fn remember_settings_page(&self, page: crate::domain::history::SettingsPage) {
+        self.remember_settings_page_core(page);
+    }
+
+    pub(crate) async fn persist_settings_page(&self) -> Result<()> {
+        self.persist_settings_page_core().await
+    }
+
     pub(crate) async fn forget_project(&self, root: PathBuf) -> Result<()> {
         self.forget_project_core(root).await
     }

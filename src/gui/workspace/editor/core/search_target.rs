@@ -76,10 +76,14 @@ impl Editor {
                     return;
                 }
                 let line = state.cursor_position().line;
+                let display_row = state
+                    .display_map()
+                    .buffer_line_to_display_row(line as usize);
                 let mut offset = state.scroll_offset();
-                offset.y = (viewport_height / 3. - line_height * line as f32).min(px(0.));
+                offset.y = (viewport_height / 3. - line_height * display_row as f32).min(px(0.));
                 tracing::debug!(
                     line = line + 1,
+                    display_row,
                     viewport_height_px = f32::from(viewport_height),
                     offset_y_px = f32::from(offset.y),
                     "positioning source jump in upper third of editor"

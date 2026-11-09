@@ -268,49 +268,59 @@ impl SettingsWindow {
                             .font_family(crate::component::appearance::editor_font())
                             .child(version.version.clone()),
                     )
-                    .child(
-                        div()
-                            .text_size(px(11.))
-                            .px_2()
-                            .py_1()
-                            .rounded_md()
-                            .bg(crate::component::appearance::background(if selected {
-                                0xeff6ff
-                            } else {
-                                0xf1f5f9
-                            }))
-                            .text_color(crate::component::appearance::foreground(if selected {
-                                0x2563eb
-                            } else {
-                                0x64748b
-                            }))
-                            .child(if version.in_use {
-                                "使用中"
-                            } else if selected {
-                                "已固定"
-                            } else {
-                                "已安装"
-                            }),
-                    )
-                    .child(
-                        Button::new(SharedString::from(format!("select-{directory}")))
-                            .small()
-                            .label(if selected {
-                                "当前固定版本"
-                            } else {
-                                "使用此版本"
-                            })
-                            .disabled(disabled || selected)
-                            .on_click(cx.listener(move |this, _, _, cx| {
-                                this.manage_servers(
-                                    ServerManagementAction::Select {
-                                        key: key.clone(),
-                                        directory: Some(directory.clone()),
-                                    },
-                                    cx,
-                                )
-                            })),
-                    )
+                    .when(!version.in_use, |row| {
+                        row.child(
+                            div()
+                                .text_size(px(11.))
+                                .px_2()
+                                .py_1()
+                                .rounded_md()
+                                .bg(crate::component::appearance::background(if selected {
+                                    0xeff6ff
+                                } else {
+                                    0xf1f5f9
+                                }))
+                                .text_color(crate::component::appearance::foreground(if selected {
+                                    0x2563eb
+                                } else {
+                                    0x64748b
+                                }))
+                                .child(if selected { "已固定" } else { "已安装" }),
+                        )
+                    })
+                    .when(version.in_use, |row| {
+                        row.child(
+                            div()
+                                .text_size(px(11.))
+                                .px_2()
+                                .py_1()
+                                .rounded_md()
+                                .bg(crate::component::appearance::background(0xeff6ff))
+                                .text_color(crate::component::appearance::foreground(0x2563eb))
+                                .child("使用中"),
+                        )
+                    })
+                    .when(!version.in_use, |row| {
+                        row.child(
+                            Button::new(SharedString::from(format!("select-{directory}")))
+                                .small()
+                                .label(if selected {
+                                    "当前固定版本"
+                                } else {
+                                    "使用此版本"
+                                })
+                                .disabled(disabled || selected)
+                                .on_click(cx.listener(move |this, _, _, cx| {
+                                    this.manage_servers(
+                                        ServerManagementAction::Select {
+                                            key: key.clone(),
+                                            directory: Some(directory.clone()),
+                                        },
+                                        cx,
+                                    )
+                                })),
+                        )
+                    })
                     .child(
                         Button::new(SharedString::from(format!("delete-{delete_directory}")))
                             .small()

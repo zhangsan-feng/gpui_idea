@@ -11,6 +11,7 @@ pub(super) fn project_menu(
     is_link: bool,
     cx: &mut Context<PopupMenu>,
 ) -> PopupMenu {
+    let menu = crate::gui::component::menu::context_menu(menu);
     let multiple = view.upgrade().is_some_and(|view| {
         let state = &view.read(cx).state;
         state.project_selection.contains(&path) && state.project_selection.len() > 1
@@ -113,6 +114,15 @@ pub(super) fn project_menu(
         is_directory,
     ))
     .item(menu_item(
+        "复制名称",
+        IconName::Copy,
+        FileTreeMenuAction::CopyName,
+        enabled,
+        &view,
+        &path,
+        is_directory,
+    ))
+    .item(menu_item(
         "复制项目路径",
         IconName::Copy,
         FileTreeMenuAction::CopyProjectPath,
@@ -161,8 +171,14 @@ fn menu_item(
     is_directory: bool,
 ) -> PopupMenuItem {
     let path = path.to_owned();
-    crate::gui::component::menu::item(label, enabled, false, view, move |this, window, cx| {
-        this.file_tree_menu_action(action, path.clone(), is_directory, window, cx)
-    })
-    .icon(Icon::new(icon))
+    crate::gui::component::menu::context_view_item(
+        label,
+        icon,
+        "",
+        enabled,
+        view,
+        move |this, window, cx| {
+            this.file_tree_menu_action(action, path.clone(), is_directory, window, cx)
+        },
+    )
 }

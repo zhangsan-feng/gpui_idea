@@ -5,6 +5,20 @@ use anyhow::{Result, bail};
 use std::path::{Component, PathBuf};
 
 impl HistoryService {
+    pub(super) fn remember_settings_page_core(&self, page: crate::domain::history::SettingsPage) {
+        DATA_CONTEXT.history.remember_settings_page(page);
+    }
+
+    pub(super) async fn persist_settings_page_core(&self) -> Result<()> {
+        let _guard = self.operations.lock().await;
+        // Read after acquiring the lock so queued navigation always writes the latest page.
+        let page = DATA_CONTEXT.history.snapshot().settings_page;
+        let history = INFRASTRUCTURE.history.save_settings_page(page).await?;
+        DATA_CONTEXT.history.set_history(history);
+        tracing::debug!(?page, "settings window page persisted in history");
+        Ok(())
+    }
+
     pub(super) async fn forget_project_core(&self, project: PathBuf) -> Result<()> {
         let _guard = self.operations.lock().await;
         let history = INFRASTRUCTURE.history.forget_project(project).await?;

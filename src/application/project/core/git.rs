@@ -2,6 +2,32 @@ use super::*;
 use crate::domain::git::{GitAction, GitDiffSnapshot};
 
 impl ProjectService {
+    pub(in crate::application::project) async fn git_create_core(
+        &self,
+        project_root: PathBuf,
+        request: crate::domain::git::GitCreateRequest,
+    ) -> Result<String> {
+        let _guard = self.git_operations.lock().await;
+        anyhow::ensure!(
+            DATA_CONTEXT.require_project_root()? == project_root,
+            "项目已切换，请重新打开创建窗口"
+        );
+        let snapshot = DATA_CONTEXT.project.git();
+        let root = if snapshot.is_repository {
+            snapshot.root.clone()
+        } else {
+            project_root
+        };
+        tracing::info!(root = %root.display(), "Git creation started");
+        let result = INFRASTRUCTURE.git.create(root, request).await;
+        if let Err(error) = &result {
+            tracing::warn!(%error, "Git creation failed");
+        }
+        if let Err(error) = self.git_status_core().await {
+            tracing::warn!(%error, "Git refresh after creation failed");
+        }
+        result
+    }
     pub(in crate::application::project) async fn git_action_core(
         &self,
         action: GitAction,
@@ -9,6 +35,12 @@ impl ProjectService {
         let _guard = self.git_operations.lock().await;
         let snapshot = DATA_CONTEXT.project.git();
         anyhow::ensure!(snapshot.is_repository, "当前项目不是 Git 仓库");
+        if let GitAction::Ignore { repository, .. } = &action {
+            anyhow::ensure!(
+                &snapshot.root == repository,
+                "项目已切换，请重新打开忽略菜单"
+            );
+        }
         tracing::info!(root = %snapshot.root.display(), "Git operation started");
         let result = INFRASTRUCTURE
             .git

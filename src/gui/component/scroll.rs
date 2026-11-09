@@ -1,7 +1,7 @@
-use gpui_kit::{ScrollDelta, ScrollWheelEvent};
+use gpui_kit::{ScrollDelta, ScrollEvent};
 
 /// Normalize discrete vertical wheels; leave touchpad and horizontal gestures native.
-pub(crate) fn vertical_wheel_lines(event: &ScrollWheelEvent) -> Option<f32> {
+pub(crate) fn vertical_wheel_lines(event: &ScrollEvent) -> Option<f32> {
     let ScrollDelta::Lines(delta) = event.delta else {
         return None;
     };

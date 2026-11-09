@@ -22,6 +22,7 @@ use std::{
     path::PathBuf,
 };
 pub(in crate::gui::workspace) struct State {
+    pub(in crate::gui::workspace) soft_wrap: bool,
     pub(in crate::gui::workspace) pending_search_positions:
         HashMap<PathBuf, gpui_kit::component::input::Position>,
 
@@ -60,6 +61,7 @@ pub(in crate::gui::workspace) fn init_component_data(
     session: &Option<crate::domain::history::WorkspaceSession>,
 ) -> State {
     State {
+        soft_wrap: DATA_CONTEXT.settings.snapshot().general.soft_wrap,
         pending_search_positions: HashMap::new(),
 
         navigation: Vec::new(),

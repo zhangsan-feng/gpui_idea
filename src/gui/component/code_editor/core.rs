@@ -9,29 +9,14 @@ use gpui_kit::{
 };
 use std::{path::Path, sync::Arc};
 
-pub(super) fn block_tab(
-    editor: &gpui_kit::Entity<gpui_kit::component::input::EditorState>,
-    outdent: bool,
-    window: &mut gpui_kit::Window,
-    cx: &mut App,
-) -> bool {
-    let state = editor.read(cx);
-    let selection = state.selected_range();
-    if !state.is_editable() || selection.is_empty() {
-        return false;
-    }
-    tracing::debug!(
-        outdent,
-        start = selection.start,
-        end = selection.end,
-        "editor block indentation requested"
-    );
-    if outdent {
-        window.dispatch_action(Box::new(gpui_kit::component::input::Outdent), cx);
-    } else {
-        window.dispatch_action(Box::new(gpui_kit::component::input::Indent), cx);
-    }
-    true
+pub(super) fn configure_gutter(
+    state: &mut gpui_kit::component::input::EditorState,
+    cx: &mut gpui_kit::Context<gpui_kit::component::input::EditorState>,
+) {
+    // Retained by the editor, even when the collection handle is dropped.
+    // The component adds a 4px separator after the 12px decoration strip.
+    state.set_gutter_decorations_width(gpui_kit::px(12.), cx);
+    state.create_gutter_decorations_collection(vec![], cx);
 }
 
 pub(super) fn select_line_for_cut(

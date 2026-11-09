@@ -20,7 +20,10 @@ impl Editor {
             .items_start()
             .border_b_1()
             .border_color(crate::component::appearance::border(0xeeeef2))
-            .bg(crate::component::appearance::background(EDITOR_BG))
+            .bg(crate::component::appearance::themed(
+                "editorGroupHeader.tabsBackground",
+                crate::component::appearance::background(EDITOR_BG),
+            ))
             .child(
                 v_flex()
                     .h_full()
@@ -142,9 +145,9 @@ impl Editor {
             .pr(px(6.))
             .gap(px(6.))
             .items_center()
-            .bg(crate::component::appearance::background(if external_source { SOURCE_TAB_BG } else { EDITOR_BG }))
+            .bg(crate::component::appearance::themed(if active { "tab.activeBackground" } else { "tab.inactiveBackground" }, crate::component::appearance::background(if external_source { SOURCE_TAB_BG } else { EDITOR_BG })))
             .text_size(px(12.))
-            .text_color(crate::component::appearance::foreground(text_color))
+            .text_color(crate::component::appearance::themed(if active { "tab.activeForeground" } else { "tab.inactiveForeground" }, crate::component::appearance::foreground(text_color)))
             .cursor_pointer()
             .hover(|style| style.bg(crate::component::appearance::background(if external_source { SOURCE_TAB_HOVER } else { TAB_HOVER })))
             .tooltip(move |window, cx| Tooltip::new(tooltip_path.clone()).build(window, cx))
@@ -201,7 +204,9 @@ impl Editor {
                 cx.stop_propagation();
                 this.move_editor_tab(&drag.file, &target_file, window, cx);
             }))
-            .context_menu(move |menu, _, _| menu.menu_with_disabled("关闭所有", Box::new(CloseAllDocuments), close_all_disabled))
+            .context_menu(move |menu, _, _| crate::gui::component::menu::context_menu(menu).item(
+                crate::gui::component::menu::context_action("关闭所有", IconName::X, "", Box::new(CloseAllDocuments), !close_all_disabled)
+            ))
             .into_any_element()
     }
 }

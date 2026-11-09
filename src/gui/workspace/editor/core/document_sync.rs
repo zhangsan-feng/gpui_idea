@@ -12,6 +12,18 @@ impl Editor {
         if self.peer_window_bar(cx).read(cx).state.closing {
             return;
         }
+        let soft_wrap = DATA_CONTEXT.settings.snapshot().general.soft_wrap;
+        if self.state.soft_wrap != soft_wrap {
+            self.state.soft_wrap = soft_wrap;
+            for editor in self.state.editors.values() {
+                editor.update(cx, |state, cx| state.set_soft_wrap(soft_wrap, window, cx));
+            }
+            tracing::debug!(
+                soft_wrap,
+                editors = self.state.editors.len(),
+                "editor soft wrap setting applied"
+            );
+        }
         // Autosave also publishes document refreshes. Release a closed dirty tab
         // only after its save completes, without waiting for another tab action.
         self.prune_editors();

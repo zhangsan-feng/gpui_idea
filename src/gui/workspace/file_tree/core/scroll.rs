@@ -1,10 +1,10 @@
 use crate::gui::workspace::file_tree::FileTree;
-use gpui_kit::{Context, ScrollWheelEvent, px};
+use gpui_kit::{Context, ScrollEvent, px};
 
 impl FileTree {
     pub(in crate::gui::workspace) fn scroll_project_lines(
         &self,
-        event: &ScrollWheelEvent,
+        event: &ScrollEvent,
         cx: &mut Context<FileTree>,
     ) {
         let Some(lines) = crate::gui::component::scroll::vertical_wheel_lines(event) else {

@@ -39,11 +39,10 @@ impl BottomPanel {
                                 style.bg(crate::component::appearance::background(0xedf0f5))
                             })
                             .child(label)
-                            .on_click(
-                                cx.listener(move |this, _, _, cx| {
-                                    this.set_git_history(history, cx)
-                                }),
-                            )
+                            .on_click(cx.listener(move |this, _, _, cx| {
+                                this.state.git_show_commit_result = false;
+                                this.set_git_history(history, cx)
+                            }))
                     }),
             )
     }
@@ -109,6 +108,7 @@ impl BottomPanel {
                                     .child(format!("{} · {}", commit.author, commit.date)),
                             )
                             .on_click(cx.listener(move |this, _, _, cx| {
+                                this.state.git_show_commit_result = false;
                                 this.select_git_commit(hash.clone(), cx)
                             }))
                     })
@@ -297,6 +297,7 @@ impl BottomPanel {
                                                 ),
                                         )
                                         .on_click(cx.listener(move |this, _, _, cx| {
+                                            this.state.git_show_commit_result = false;
                                             this.select_git_diff(
                                                 path.clone(),
                                                 false,

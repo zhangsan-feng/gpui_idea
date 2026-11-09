@@ -1,16 +1,19 @@
 mod appearance;
 mod core;
+mod editor;
 mod language_servers;
 mod system;
+mod themes;
 mod ui;
 
-use crate::domain::settings::GeneralSettings;
+use crate::domain::{history::SettingsPage, settings::GeneralSettings};
 use gpui_kit::component::input::InputState;
 use gpui_kit::{AppContext as _, Context, Entity, IntoElement, Render, Subscription, Window};
 
 pub(in crate::gui) struct SettingsWindow {
     page: SettingsPage,
     fonts: Vec<String>,
+    themes: themes::ThemeBrowser,
     system_status: Option<crate::domain::settings::ContextMenuStatus>,
     system_busy: bool,
     system_message: Option<String>,
@@ -31,13 +34,11 @@ pub(in crate::gui) struct SettingsWindow {
     _search_subscription: Subscription,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq)]
-enum SettingsPage {
-    Appearance,
-    General,
-    LanguageServers,
-    System,
-}
+const EDITOR_SEARCH_TERMS: &str = "编辑器配置 编辑器显示 文本换行 文本超出 自动换行 折行 soft wrap word wrap editor 编辑器字体 编辑器字号 字体 字号 font size 代码格式化 自动格式化代码 自动化格式化代码 保存时自动格式化代码 format formatting";
+
+const GENERAL_SEARCH_TERMS: &str = "常规配置 代理 proxy 网络 下载";
+const APPEARANCE_SEARCH_TERMS: &str =
+    "外观 界面字体 主题 浅色 深色 theme appearance vscode vsix open vsx 在线 已安装 导入";
 
 impl SettingsWindow {
     pub(in crate::gui) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -47,17 +48,23 @@ impl SettingsWindow {
         let subscription = cx.observe(&search, |this, search, cx| {
             let query = search.read(cx).value().trim().to_lowercase();
             if !query.is_empty() {
-                if "外观 字体 字号 主题 浅色 深色 font theme appearance".contains(&query) {
-                    this.page = SettingsPage::Appearance;
-                } else if "常规配置 代码格式化 自动格式化代码 自动化格式化代码 保存时自动格式化代码 format formatting 代理 proxy 网络 下载".contains(&query) {
-                    this.page = SettingsPage::General;
-                } else if "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query) {
-                    this.page = SettingsPage::System;
+                if APPEARANCE_SEARCH_TERMS.contains(&query) {
+                    this.select_page(SettingsPage::Appearance, cx);
+                } else if GENERAL_SEARCH_TERMS.contains(&query) {
+                    this.select_page(SettingsPage::General, cx);
+                } else if EDITOR_SEARCH_TERMS.contains(&query) {
+                    this.select_page(SettingsPage::Editor, cx);
+                } else if "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query)
+                {
+                    this.select_page(SettingsPage::System, cx);
                     if this.system_status.is_none() && !this.system_busy {
-                        this.manage_context_menu(crate::domain::settings::ContextMenuAction::Refresh, cx);
+                        this.manage_context_menu(
+                            crate::domain::settings::ContextMenuAction::Refresh,
+                            cx,
+                        );
                     }
                 } else {
-                    this.page = SettingsPage::LanguageServers;
+                    this.select_page(SettingsPage::LanguageServers, cx);
                 }
             }
             cx.notify();
@@ -83,9 +90,14 @@ impl SettingsWindow {
             });
         })
         .detach();
+        let theme_browser = themes::ThemeBrowser::new(window, cx);
         let mut this = Self {
+            themes: theme_browser,
             fonts: cx.text_system().all_font_names(),
-            page: SettingsPage::General,
+            page: crate::data_context::DATA_CONTEXT
+                .history
+                .snapshot()
+                .settings_page,
             system_status: snapshot.context_menu.clone(),
             system_busy: false,
             system_message: None,
@@ -105,7 +117,11 @@ impl SettingsWindow {
             _proxy_subscription: proxy_subscription,
             _search_subscription: subscription,
         };
+        tracing::debug!(page = ?this.page, "settings window page restored from history");
         this.start_subscribe(window, cx);
+        if this.page == SettingsPage::System && this.system_status.is_none() && !this.system_busy {
+            this.manage_context_menu(crate::domain::settings::ContextMenuAction::Refresh, cx);
+        }
         this
     }
 
@@ -145,7 +161,7 @@ impl Render for SettingsWindow {
             .font_family(crate::component::appearance::ui_font())
             .child(crate::component::operation_title_bar::render(
                 "设置",
-                !self.saving && !self.system_busy,
+                !self.saving && !self.system_busy && !self.themes.busy(),
                 cx,
             ))
             .child(self.render_view(cx))

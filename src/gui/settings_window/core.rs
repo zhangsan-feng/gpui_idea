@@ -1,13 +1,41 @@
 use super::*;
 
 impl SettingsWindow {
+    pub(super) fn select_page(&mut self, page: SettingsPage, cx: &mut Context<Self>) {
+        if self.page == page {
+            return;
+        }
+        self.page = page;
+        crate::application::APPLICATION
+            .history
+            .remember_settings_page(page);
+        cx.notify();
+        cx.spawn(async move |this, cx| {
+            if let Err(error) = crate::application::lifecycle::run_application(async {
+                crate::application::APPLICATION
+                    .history
+                    .persist_settings_page()
+                    .await
+            })
+            .await
+            {
+                tracing::warn!(%error, "settings window page history save failed");
+                let _ = this.update(cx, |this, cx| {
+                    this.error = Some(format!("无法保存配置窗口历史：{error:#}"));
+                    cx.notify();
+                });
+            }
+        })
+        .detach();
+    }
+
     pub(in crate::gui) fn apply(
         &mut self,
         close: bool,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.saving || self.system_busy {
+        if self.saving || self.system_busy || self.themes.busy() {
             return;
         }
         if self.draft == self.saved {

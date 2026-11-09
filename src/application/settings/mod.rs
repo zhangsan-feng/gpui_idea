@@ -1,4 +1,5 @@
 mod core;
+mod themes;
 mod external;
 mod language_servers;
 mod system_integration;

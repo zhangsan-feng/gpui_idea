@@ -25,6 +25,15 @@ impl BottomPanel {
             .child(icon(IconName::GitBranch, 16., ACCENT))
             .child(self.git_branch_selector(unavailable, cx))
             .child(
+                Button::new("git-create-window")
+                    .small()
+                    .label("创建…")
+                    .disabled(busy || !DATA_CONTEXT.has_project())
+                    .on_click(
+                        cx.listener(|this, _, window, cx| this.show_git_create_branch(window, cx)),
+                    ),
+            )
+            .child(
                 Button::new("git-checkout-remote")
                     .small()
                     .icon(IconName::RefreshCw)
@@ -65,6 +74,24 @@ impl BottomPanel {
         } else {
             self.git_diff_view(cx)
         };
+        let detail = v_flex()
+            .size_full()
+            .min_w_0()
+            .min_h_0()
+            .overflow_hidden()
+            .child(self.git_content_tabs(cx))
+            .child(
+                v_flex()
+                    .flex_1()
+                    .min_w_0()
+                    .min_h_0()
+                    .overflow_hidden()
+                    .child(if self.state.git_show_commit_result {
+                        self.git_commit_result_view(cx)
+                    } else {
+                        detail
+                    }),
+            );
         let upper = v_flex()
             .size_full()
             .min_h_0()
@@ -85,6 +112,7 @@ impl BottomPanel {
                         div()
                             .id("git-operation-result")
                             .max_h(px(70.))
+                            .flex_shrink_0()
                             .overflow_y_scroll()
                             .px_3()
                             .py_1()
@@ -129,7 +157,7 @@ impl BottomPanel {
             .icon(IconName::ChevronDown)
             .disabled(disabled)
             .dropdown_menu(move |menu, _, _| {
-                snapshot.branches.iter().fold(
+                let menu = snapshot.branches.iter().fold(
                     menu.label("选择提交分支（切换当前分支）"),
                     |menu, branch| {
                         let branch = branch.clone();
@@ -144,7 +172,14 @@ impl BottomPanel {
                             },
                         ))
                     },
-                )
+                );
+                menu.separator().item(crate::gui::component::menu::item(
+                    "创建分支 / GitHub 仓库…",
+                    !disabled,
+                    false,
+                    &view,
+                    |this, window, cx| this.show_git_create_branch(window, cx),
+                ))
             })
     }
 
@@ -221,7 +256,7 @@ impl BottomPanel {
                             .flex_1()
                             .truncate()
                             .child(if self.state.git_diff_key.is_empty() {
-                                "差异预览".into()
+                                "未选择文件".into()
                             } else {
                                 self.state.git_diff_title.clone()
                             }),

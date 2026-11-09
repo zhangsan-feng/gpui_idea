@@ -23,6 +23,7 @@ pub(crate) fn attach_completions(
     window: &mut gpui_kit::Window,
     cx: &mut App,
 ) {
+    editor.update(cx, core::configure_gutter);
     super::highlights::attach(editor, path.to_owned(), window, cx);
     super::completion::attach(
         editor,
@@ -41,27 +42,12 @@ pub(crate) fn completion_dropdown(
     use gpui_kit::InteractiveElement as _;
 
     let cut_editor = editor.clone();
-    let indent_editor = editor.clone();
-    let outdent_editor = editor.clone();
-    super::completion::wrap(editor, content, cx)
-        .capture_action(
-            move |_: &gpui_kit::component::input::IndentInline, window, cx| {
-                if core::block_tab(&indent_editor, false, window, cx) {
-                    cx.stop_propagation();
-                }
-            },
-        )
-        .capture_action(
-            move |_: &gpui_kit::component::input::OutdentInline, window, cx| {
-                if core::block_tab(&outdent_editor, true, window, cx) {
-                    cx.stop_propagation();
-                }
-            },
-        )
-        .capture_action(move |_: &gpui_kit::component::input::Cut, _, cx| {
+    super::completion::wrap(editor, content, cx).capture_action(
+        move |_: &gpui_kit::component::input::Cut, _, cx| {
             cut_editor.update(cx, core::select_line_for_cut);
             // Continue dispatching Cut to the component for clipboard and undo handling.
-        })
+        },
+    )
 }
 
 pub(crate) fn dismiss_completions(

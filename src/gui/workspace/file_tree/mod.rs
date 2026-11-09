@@ -90,6 +90,7 @@ pub(in crate::gui) enum FileTreeMenuAction {
     Rename,
     Reveal,
     CopyProjectPath,
+    CopyName,
     CopyAbsolutePath,
     Copy,
     Paste,

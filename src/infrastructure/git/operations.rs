@@ -18,6 +18,11 @@ fn file_argument(path: &Path) -> Result<&str> {
 pub(super) async fn operate(root: PathBuf, action: GitAction) -> Result<String> {
     // Literal pathspecs keep filenames containing glob characters from affecting other files.
     let bytes = match action {
+        GitAction::Ignore {
+            path, directory, ..
+        } => {
+            return super::ignore::add(root, path, directory).await;
+        }
         GitAction::Commit {
             summary,
             description,

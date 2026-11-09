@@ -6,6 +6,7 @@ use gpui_kit::component::{
     button::{Button, ButtonVariants},
     checkbox::Checkbox,
     input::{Input, Textarea},
+    menu::ContextMenuExt,
     scroll::{Scrollbar, ScrollbarMode},
 };
 
@@ -90,6 +91,8 @@ impl BottomPanel {
                             .children(snapshot.changes.iter().map(|file| {
                                 let path = file.path.clone();
                                 let toggle_path = path.clone();
+                                let ignore_menu =
+                                    self.git_ignore_menu(path.clone(), unavailable, cx);
                                 let checked = !self.state.git_excluded.contains(&path);
                                 let active = self.state.git_diff_key
                                     == format!("worktree:false:{}", path.display());
@@ -160,8 +163,10 @@ impl BottomPanel {
                                             .child(icon(symbol, 10., color)),
                                     )
                                     .on_click(cx.listener(move |this, _, _, cx| {
+                                        this.state.git_show_commit_result = false;
                                         this.select_git_diff(path.clone(), false, None, cx)
                                     }))
+                                    .context_menu(ignore_menu)
                             })),
                     )
                     .child(

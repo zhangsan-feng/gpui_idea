@@ -1,5 +1,8 @@
 use super::{HighlightRegistry, Highlights};
-use gpui_kit::{App, AppContext as _, Entity, Window, component::input::EditorState};
+use gpui_kit::{
+    App, AppContext as _, Entity, Window,
+    component::input::{EditorState, InputEvent},
+};
 use std::path::PathBuf;
 
 pub(in crate::gui::component::code_editor) fn attach(
@@ -18,9 +21,13 @@ pub(in crate::gui::component::code_editor) fn attach(
         let observer = cx.observe_in(editor, window, |this: &mut Highlights, _, window, cx| {
             this.refresh(window, cx);
         });
-        let events = cx.subscribe_in(editor, window, |this: &mut Highlights, _, _, window, cx| {
-            this.refresh(window, cx);
-        });
+        let events = cx.subscribe_in(
+            editor,
+            window,
+            |this: &mut Highlights, _, _: &InputEvent, window, cx| {
+                this.refresh(window, cx);
+            },
+        );
         Highlights {
             editor: editor.downgrade(),
             path,

@@ -19,6 +19,7 @@ pub(crate) struct ContextMenuStatus {
 pub(crate) struct GeneralSettings {
     pub(crate) appearance: AppearanceSettings,
     pub(crate) auto_format: bool,
+    pub(crate) soft_wrap: bool,
     pub(crate) lsp_proxy: ProxySettings,
 }
 
@@ -42,6 +43,8 @@ pub(crate) enum ColorTheme {
 #[serde(default)]
 pub(crate) struct AppearanceSettings {
     pub(crate) theme: ColorTheme,
+    pub(crate) selected_theme: Option<String>,
+    pub(crate) imported_themes: Vec<crate::domain::theme::ImportedTheme>,
     pub(crate) ui_font: String,
     pub(crate) editor_font: String,
     pub(crate) editor_size: u16,
@@ -51,6 +54,8 @@ impl Default for AppearanceSettings {
     fn default() -> Self {
         Self {
             theme: ColorTheme::Light,
+            selected_theme: None,
+            imported_themes: Vec::new(),
             ui_font: "Microsoft YaHei UI".into(),
             editor_font: "Cascadia Mono".into(),
             editor_size: 13,

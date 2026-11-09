@@ -12,6 +12,8 @@ pub(super) struct WorkspaceReference {
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
 pub(super) struct HistoryIndex {
+    #[serde(default)]
+    pub(super) settings_page: crate::domain::history::SettingsPage,
     pub(super) version: u32,
     pub(super) entries: Vec<OpenHistoryEntry>,
     pub(super) last_project: Option<PathBuf>,
@@ -21,6 +23,7 @@ pub(super) struct HistoryIndex {
 impl Default for HistoryIndex {
     fn default() -> Self {
         Self {
+            settings_page: Default::default(),
             version: 2,
             entries: Vec::new(),
             last_project: None,
@@ -89,6 +92,7 @@ pub(super) fn hydrate(path: &Path, index: HistoryIndex) -> Result<HistoryDataCon
         }
     }
     Ok(HistoryDataContextSnapshot {
+        settings_page: index.settings_page,
         version: 2,
         entries: index.entries,
         last_project: index.last_project,

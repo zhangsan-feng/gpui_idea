@@ -55,7 +55,10 @@ struct ProjectTreePalette {
 impl ProjectTreePalette {
     fn from_theme(theme: &Theme) -> Self {
         Self {
-            panel: crate::component::appearance::background(PANEL_BG),
+            panel: crate::component::appearance::themed(
+                "sideBar.background",
+                crate::component::appearance::background(PANEL_BG),
+            ),
             foreground: crate::component::appearance::foreground(TEXT),
             muted: theme.muted_foreground,
             hover: theme.list_hover,
@@ -184,7 +187,7 @@ impl FileTree {
         canvas(
             |bounds, window, _| window.insert_hitbox(bounds, HitboxBehavior::Normal),
             move |_, hitbox, window, _| {
-                window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
+                window.on_mouse_event(move |event: &ScrollEvent, phase, window, cx| {
                     if phase == DispatchPhase::Capture && hitbox.should_handle_scroll(window) {
                         if let Some(workspace) = workspace.upgrade() {
                             workspace.update(cx, |this, cx| this.scroll_project_lines(event, cx));

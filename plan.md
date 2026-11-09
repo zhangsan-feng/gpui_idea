@@ -1,180 +1,36 @@
 ## 当前完成的进度
-- 在现有本地 gpui-base 补丁中将行号栏右侧留白从 6px 增至 22px，其中 8px 用于加宽行号区域，另 8px 用于分隔线与正文之间的 gap_2；保持原行号位数规则和折叠图标布局。组件布局统一更新文字/光标/滚动几何，补丁位于被忽略的 vendor/gpui-base/src/input/base/element.rs；cargo build、cargo fmt --all -- --check 和 git diff --check 通过，已更新 Debug 程序。未新增测试用例、未操作 GUI。
-- 编辑器行号栏与代码正文之间新增 1px 主题适配竖线；通过现有公开布局边界计算行号栏宽度，适配编辑器字体/字号、行号位数和横向滚动，纯绘制层不增加鼠标命中区域。未修改组件库；cargo build、cargo fmt --all -- --check 和 git diff --check 通过，已更新 Debug 程序。未新增测试用例、未操作 GUI。
-- 对项目 Rust 源码执行全量格式化；对默认 rustfmt 跳过的长闭包先以宽行格式化，再恢复默认格式化，使嵌套块及回调缩进正确，未修改 rustfmt 配置。cargo fmt --all -- --check、git diff --check 通过，源码均不超过 800 行；cargo build 通过，已更新 Debug 程序，仅有增量缓存硬链接回退复制警告。未新增测试用例、未操作 GUI。
-- 根据最新要求修正统计口径：仅列出项目根目录的一级文件夹，各文件夹按类型递归汇总所有后代文件的行数；根目录直属文件不进入此目录列表和汇总。深层目录不再单独展示，保留文件类型明细、刷新与复制，空一级目录仍显示；cargo build、定向格式检查和 git diff --check 通过，已更新 Debug 程序。未新增测试用例、未操作 GUI。
-- 统计页移除 11 列表格、列排序与选中状态，改为按相对目录分组的可折叠列表；每个目录展示直属文件的类型、文件数和总行数，子目录独立统计，包含空目录和项目根目录。infrastructure 后台扫描聚合目录数据，GUI 只读取快照并虚拟化渲染；二进制文件明确标注且不计行数，复制输出改为目录列表。cargo check、cargo build、定向格式检查和 git diff --check 通过，已更新 Debug 程序；目录虚拟列表显式占满可用宽度，仅有增量缓存硬链接回退复制警告。未新增测试用例、未操作 GUI。
-- 设置 → 常规配置将现有自动格式化开关整理为独立“代码格式化”卡片，明确命名“保存时自动格式化代码”；说明手动/自动保存的触发方式、语言服务条件、应用/确定生效及手动格式化入口，新增代码/自动化格式化与英文搜索关键词。复用既有 auto_format 持久化和保存前格式化链路，默认关闭；cargo build、定向格式检查和差异检查通过，已更新 Debug 程序。未新增测试用例、未操作 GUI。
-- 主菜单按参考图调整为 264px 宽、26px 紧凑行高，统一图标槽、12px 文本和右侧快捷键列；新增“格式化代码”及 Ctrl+Alt+L，复用 LSP 在 application 后台格式化，通过原生单次编辑支持撤销。只读/无编辑器/忙碌时禁用，应用前校验文档版本与缓冲区，丢弃过期结果；cargo check、cargo build、定向格式检查和差异检查通过，已更新 target/debug/gpui_idea.exe；仅有增量缓存硬链接回退复制警告。未新增测试用例、未操作 GUI。
-- 移除工具栏调试按钮、Debug 执行动作、运行配置调试字段和各语言自动调试命令；配置窗口统一改为“运行配置”，保留运行、构建及程序自身 Debug 日志。cargo check、cargo build、定向格式检查和 git diff --check 通过，已更新 target/debug/gpui_idea.exe；仅有增量缓存硬链接回退复制警告。未新增测试用例、未操作 GUI。
-- 状态栏按追加要求从 30px 加高至 40px，渲染和工作区缓存容器继续共用高度常量；移除右侧 GPUI Kit 文字及其分隔线。定向格式检查、git diff --check、cargo build 通过；状态栏及工作区缓存容器均为 40px，GPUI Kit 文案与分隔线已移除；程序关闭后重建通过，已重新打开并实际确认高度和文案。
-- 布局样式按参考图对齐：顶部采用 #27282e，项目面板/空编辑区/状态栏采用 #f7f8fa，分隔线减淡；项目标题与标签区域统一 42px，状态栏统一 30px。项目菜单前移至主菜单旁，保留前进/后退操作；空编辑区移除占位标签横栏并改为居中、左对齐的操作提示。侧边栏按钮渲染及事件代码未修改。cargo build、定向 rustfmt --check、git diff --check 通过；computer-use 实际检查文件页、空编辑区、项目栏展开/收起及文件双击打开，最后恢复 Cargo.toml 文件页。仅有增量缓存硬链接回退复制警告，未新增测试用例。
-- 编辑器选区 Tab/Shift+Tab 明确转发到组件整行缩进/减少缩进操作，无选区时保留原按键行为；复用原生批量编辑、选区及撤销。修正选区末尾恰在下一行行首时误包含下一行、减少缩进不处理不足一级空格/混合 Tab，以及不同删除长度的选区映射；增加不含正文的缩进诊断日志。本地组件修正位于被 .gitignore 忽略的 vendor/gpui-base/src/input/editor/indent.rs，项目层按键接入位于 code_editor/core.rs 与 external.rs；cargo build、定向 rustfmt --check、git diff --check 通过，Debug 程序已更新，未新增测试用例、未操作 GUI。
-- 默认启动恢复代码页：上次保存的活动工具为 Git 时，不再自动展开占满工作区的 Git 页面，保留手动进入 Git 的功能；其他工具原有恢复逻辑保留。cargo build、定向 rustfmt --check、git diff --check 通过，未新增测试用例、未操作 GUI。
-- 历史提交列表行及标题/作者日期改为占满可用宽度，选中背景与分隔线随左栏拖动自适应，长文字在可用宽度内省略；显式采用 FitList 水平布局。cargo build、定向 rustfmt --check、git diff --check 通过，未新增测试用例、未操作 GUI。
-- Git 历史页：左侧新增变更/历史标签切换，删除底部旧 Log/Console 面板及对应渲染状态；历史页显示当前分支最近 100 条提交，支持搜索、选择提交、完整提交说明/作者/日期/哈希、复制哈希，自动读取文件列表及首个文件差异。历史文件和差异左右可拖动并有滚动条，重命名显示旧/新路径且预览同时包含两条路径；首次提交、合并提交按 Git 数据读取。cargo build、定向 rustfmt --check、git diff --check 通过，已更新 Debug 程序，未新增测试用例、未操作 GUI。
-- Git 提交区按客户端样式改为单一改动文件列表，支持全选/逐文件勾选，移除暂存分组和操作按钮；底部摘要必填、描述可选，直接提交勾选文件到当前分支，未勾选的已暂存文件不会进入提交。差异统一显示 HEAD 到工作区的完整文件改动。顶部移除获取/拉取/推送与独立刷新，保留一键从远程拉取当前分支（快进更新）和分支选择。cargo build、定向 rustfmt --check、git diff --check 通过，Debug 程序已更新；未新增测试用例、未操作 GUI。
-- Git 细节：变更列表与统一差异预览接入常显滚动条，差异支持横纵滚动；变更/差异区域改用带独立状态的左右 ResizablePanel。顶部 main 分支菜单与 Git 面板增加本地分支选择，切换成功后后续提交落到当前分支；切换失败在状态栏与 Git 面板显示原因。cargo check、定向 rustfmt --check、git diff --check 通过；cargo build 首次替换 exe 被占用阻止，重试后通过，已更新 Debug 程序。未新增测试用例、未操作 GUI。
-- 移除最右侧栏的通知、工作流、数据库、代码四个占位图标，保留空侧栏；左右侧栏及布局容器宽度均为 40px。cargo build、定向 rustfmt --check、git diff --check 通过，未新增测试用例、未操作 GUI。
-- 保存状态改为比较当前 Rope 与最近成功保存/加载的 Rope 基准，撤销或手动还原到已保存内容后恢复为未修改；重复相同编辑不增加 revision。GUI 与 application 对未修改内容跳过手动保存、自动保存及保存前格式化，格式化回到基准时不写盘；保存完成使用该次写入快照更新基准，保留 IO 期间的新修改。添加内容恢复与跳过保存日志。
-- 保存去重修改的 cargo build --offline、定向 rustfmt --check 与差异检查通过，已更新 Debug 程序；仅有增量缓存硬链接回退复制警告。未新增测试用例、未操作 GUI，待实际验证。
-- 代码编辑器 Ctrl+X 在无选区时剪切当前光标所在逻辑行，包含换行符；支持空行、末行、CRLF。现已撤回本次 gpui-base 剪切补丁，改为项目 code_editor 层捕获 Cut，通过公开接口选中整行后交给组件原生剪切，复用剪贴板与撤销；已有选区保持原行为，空文档保留剪贴板。公开接口只读取当前光标，无选区整行扩展仅针对当前光标。
-- 项目层剪切实现的 cargo build --offline、定向 rustfmt --check 和差异检查通过，已更新 target/debug/gpui_idea.exe；哈希确认 gpui-base 的 state.rs 与原版 0.8.0 一致。未新增测试用例，未操作 GUI，待实际验证。
-- 文件树右键新增“打开终端”，复用 Lucide 终端图标和内置终端标签：目录打开自身、文件打开父目录、根目录打开项目根；自动展开并切换终端面板。application 编排目录解析与启动，infrastructure 后台校验工作目录，GUI 仅传递目标和更新界面；重连保留指定目录。目录诊断确认根目录/子目录通过，文件/缺失目录/越界路径被拒绝。
-- Python TikTokDownloader 进度条排查：同链路 ConPTY/Alacritty 诊断采集到正确 U+2501，问题集中于后续逐格字体字形绘制。改为按终端网格直接绘制 Rich BarColumn 的粗/细横线和半格端点，保留颜色、背景、选区及下划线；增加每会话限量码点日志，不记录输出正文。
-- 上述两项改动的 cargo build --offline、cargo check --offline、定向 rustfmt --check 与 git diff --check 通过，target/debug/gpui_idea.exe 已更新；仅有增量缓存硬链接回退复制警告，未新增测试用例，待实际 GUI 验证。
-- 源码及搜索结果跳转在布局完成后将目标行定位至编辑区上方约三分之一处，兼顾已打开和首次加载的文件；增加定位滚动诊断日志。cargo build --offline、定向 rustfmt --check 和 git diff --check 通过，已更新 target/debug/gpui_idea.exe，待实际 GUI 检查。
-- 按最新要求移除鼠标悬浮功能：删除 GUI 自绘/命中/请求、application 悬浮编排、infrastructure hover 请求及能力声明、诊断日志；保留 Ctrl＋点击跳转、补全和现有高亮。gpui-base 的悬浮相关文件已恢复原版，仅保留 Tab 修复。
-- 移除悬浮后的 cargo build --offline、定向 rustfmt --check、git diff --check 通过，已更新 target/debug/gpui_idea.exe；逐文件对比原版 gpui-base 确认仅保留 Tab 补丁，未新增测试用例，待实际 GUI 验证。
-- 按要求恢复 gpui-base 的原版悬浮源码（注册接口、诊断字段、过期结果检查及编辑取消补丁全部撤回）；逐文件对比原版 0.8.0，现仅 element.rs、input/mod.rs 与新增 tab_layout.rs 存在 Tab 排版修复差异。
-- 悬浮由项目 GUI 层接收鼠标事件并防抖请求 application，自绘卡片保持 IDEA 样式；使用固定 input_bounds 与 visible_row_range、字形位置二分查找命中，规避原组件滚动后使用已偏移 last_bounds 判定鼠标范围的问题。滚动、编辑、失焦和移出取消请求，回调校验光标、选区、文本和滚动状态；日志记录命中偏移、可见行和滚动量。
-- 悬浮提示按 IDEA 参考图改为项目 GUI 自绘：紧凑卡片、代码块分区、语言标签、语法高亮、细边框与浅阴影，并适配深色主题。复用现有 HoverProvider 请求入口，将结果交给项目视图，原生弹窗保持空，避免重复；本次尝试新增的组件库自定义渲染开关已撤回。
-- 自绘悬浮的 cargo check --offline、cargo build --offline、定向 rustfmt --check 与 git diff --check 通过，已更新 target/debug/gpui_idea.exe；未新增测试用例，未实际操作 GUI，待用户验证视觉效果。
-- 悬浮功能现已启用；同一符号悬浮复用结果，离开触发区与弹窗、编辑、移动光标或失焦后清理，窗口边缘自动调整弹窗位置。
-- 为对比 rust-analyzer 内存使用，临时将 LSP_HOVER_ENABLED 设为 false，停止注册悬浮 provider，从源头停止 textDocument/hover 请求；保留实现以便恢复。选词/语义高亮、补全及跳转保持现有行为。
-- 停用悬浮版本 cargo build --offline、定向格式检查和 plan.md 差异检查通过，已更新 target/debug/gpui_idea.exe，待用户重启并对比内存。
-- LSP 悬浮修复已接通：为支持语言注册 HoverProvider，后台 application 换算 UTF-16 位置并请求基础设施的 textDocument/hover；复用组件 Markdown 提示弹窗，支持能力协商、超时/取消、编辑后清理及过期文本校验。增加默认可见的 provider 注册、触发、请求、结果日志。
-- 本次悬浮修复的 cargo check --offline、cargo build --offline、定向 rustfmt --check 与 git diff --check 已通过，已生成更新的 target/debug/gpui_idea.exe；仅有增量缓存硬链接回退复制提示，未新增测试用例，待用户实际 GUI 验证。
-- LSP 悬浮根因已由日志确认：2026-10-30 10:20:32、10:22:00 均收到鼠标悬浮事件，但 HoverProvider 未注册；组件本身支持悬浮，原先缺失应用注册与 textDocument/hover 请求链路。
-- 编辑器新增选中完整标识符的同名词高亮，以及无选区时光标所在符号的 LSP documentHighlight 语义高亮；独立装饰层适配浅色/深色，后台匹配与 UTF-16 位置换算、防抖、取消及过期结果校验已接入。语义请求复用已有会话，不抢占补全/跳转。
-- 本次高亮改动的 cargo check --offline、cargo build --offline、定向 rustfmt --check 和 git diff --check 通过，已更新 target/debug/gpui_idea.exe；仅有增量缓存硬链接回退复制的环境提示，未新增测试用例，未实际操作 GUI。
-- 编辑区右键菜单“运行”移至第一项，并与复制/粘贴分组显示；保持原有显示条件与禁用状态。
-- 按要求回退 error 模块及 error_event 事件总线，移除 LSP/终端异常报告、输出尾部采集和退出 flush，恢复 logging 中原有 panic 日志钩子与 LSP Child 生命周期；保留数据目录、DataContextSnapshot 及 project/file_tree 拆分。
-- error 回退后的 cargo check --offline、cargo build --offline、定向格式检查与 git diff --check 通过，已更新 Debug 程序，未新增测试用例。
-- 文件树内存状态从 ProjectState 拆分至 data_context/project/file_tree/，独立维护目录快照、revision 与锁；按 mod.rs/core.rs/external.rs 分责，通过 DATA_CONTEXT.project.file_tree 访问，文件监听、运行能力刷新、GUI 与批量刷新调用均已迁移。
-- project/file_tree 拆分的 cargo check --offline、cargo build --offline、定向格式检查与 git diff --check 通过，已更新 Debug 程序；未新增测试用例，实际 GUI 操作待验证。
-- data_context 对外发布的数据快照统一命名为 <业务名称>DataContextSnapshot，覆盖文档、目录、搜索、Git/提交详情、统计、图片、终端、历史、运行配置及运行会话，并同步 infrastructure/application/GUI 调用。
-- 设置新增 SettingsDataContextSnapshot，LSP 新增独立 LanguageServerContext 与 LanguageServerDataContextSnapshot；读取返回 Arc，字段更新在锁内合并到最新快照，无变化不替换，释放锁后通知对应 GUI。
-- 设置窗口订阅快照刷新服务器列表和系统集成状态，保留未保存的配置草稿；LSP 状态栏及详情使用同一快照，保留文档 revision、终端 generation、搜索 request 和文件批量刷新机制。
-- 自查修正设置窗口首次读取与订阅之间可能漏掉后台发布的空隙，改为建立订阅后立即重读状态；核对快照替换均不修改已发布 Arc，设置/LSP 独立字段写入在锁内合并，持久化字段格式保持兼容。
-- 快照统一及自查修正后的 cargo check --offline、cargo build --offline、定向 rustfmt --check 与 git diff --check 通过，已更新默认 Debug 程序；未新增测试用例、未进行界面自动操作。
-- 项目数据统一写入 data/projects/<项目名>-<稳定路径标识>/：workspace.json 保存工作区状态，lsp/ 保存 PHP、Java 的项目缓存；同名项目隔离，Windows 大小写及内部路径前缀使用相同目录。
-- 兼容原 workspace-sessions 哈希文件，读取时校验项目归属、原子写入新目录后清理旧文件并记录迁移日志；全局历史索引和设置保留原位置，旧共享 LSP 缓存保留，新缓存按项目重新生成。
-- 本次目录调整的 cargo check --offline、cargo build --offline、定向格式检查和 git diff --check 通过，已更新 Debug 程序；未新增测试用例，实际迁移及 GUI 恢复待验证。
-- LSP 管理的每个已安装版本新增独立删除按钮，运行中版本标记“使用中”并禁用删除；后台锁定会话、安装槽后重新校验占用和目录边界。
-- 删除固定版本后清除固定选择；失效安装缓存并刷新版本列表，支持删除最后一个未运行版本；操作复用后台任务及按服务器反馈。cargo check --offline、cargo build --offline、格式和差异检查通过，默认 Debug 程序已更新；未新增测试用例，实际设置页交互待验证。
-- 文件运行能力增加由各语言模块提供的具体文件准入判断；Rust 仅允许 main.rs，仍要求有效 main 入口与 Cargo 可执行目标。菜单能力、点击执行及 LSP 查询都经过同一准入判断，避免服务端结果扩大可运行文件范围；cargo check --offline、cargo build --offline、格式及差异检查通过，已更新默认 Debug 程序，未新增测试用例。
-- 文件树运行改为所有语言模块共用的能力接口：Rust、Go、Python、JS/TS/JSX/TSX、PHP、Java 各自识别入口和生成配置；无执行语义的语言明确不提供运行目标。移除 application 的文件扩展名白名单。
-- 接入服务端可运行目标查询与后台菜单能力刷新，优先使用 LSP 目标，无对应接口时使用语言工具链规则；保留保存修改、运行配置复用和运行面板。
-- 使用已安装 rust-analyzer 对已有 test/rust 项目进行协议检查，确认返回 cargo 运行目标及参数；cargo check --offline、变更文件格式与差异检查通过，未新增测试用例。
-- 新代码已编译链接；默认 Debug 程序无法覆盖（系统拒绝访问），将新的链接产物另存为 target/debug/gpui_idea-file-run.exe，并核对 SHA-256 一致。实际 GUI 交互待验证。
-- LSP 项目识别与文件匹配下放各语言，会话管理统一按规范化工作区路径和语言族复用；预热、补全、跳转、格式化共用会话，初始化目录固定为工作区根目录，保留并发去重与失败重试。
-- 多语言项目启动所有匹配服务；Markdown 不再仅凭 package.json 预启动。默认记录 LSP 会话注册、启动及初始化日志。
-- cargo build --offline、变更文件格式检查和 git diff --check 通过，已更新 Debug 程序；未新增测试用例，实际 GUI 与多子项目的语言功能待验证。
-- 检查会话文件确认项目面板宽度已持久化；定位恢复后宽度变化来自 ResizablePanel 默认在容器尺寸变化时按比例缩放。
-- 项目面板宽度和底部面板高度改为 fixed，保持已保存的像素尺寸，将窗口尺寸差额分配给编辑区；保留手动拖动调整。补充恢复与保存的面板尺寸诊断日志。
-- 修复“打开新项目”目录输入框显示 Windows 内部路径前缀的问题，初始目录和浏览结果回填统一复用 component/path::display_path；创建项目的默认目录同步处理，兼容本地路径及 UNC 网络路径。
-- 定位项目切换面板列表消失：overflow_y_scrollbar 包装器使用百分比高度，在自动高度弹层中仅设置 max_h 无法建立视口，导致列表高度归零。
-- 按项目行数和行间距计算明确的列表视口高度，再按可用窗口高度截断；保留固定标题/底栏及滚动条，并补充项目数量与视口高度诊断日志。
-- 列表高度修复的 cargo build --offline 已通过，Debug 程序已更新；实际弹层显示待运行确认。
-- 项目切换面板从通用菜单实现中独立至 window_bar/ui/project_menu.rs，拆分标题、项目列表及项目管理按钮。
-- 项目列表单独滚动并显示滚动条，标题和底部管理入口保持固定；面板根据窗口高度限制列表高度，保留当前项目标记、项目数量、空列表提示和键盘导航。
-- cargo build --offline、格式与差异检查通过，已更新 Debug 可执行程序；未新增测试用例，实际界面交互待验证。
-- 从 2026-10-26 11:20:24 的 panic 日志定位项目管理窗口异常：移除记录按钮直接调用 hover，与 gpui-component Button 渲染内部注册的 hover 冲突，触发 hover style already set 并在窗口回调中异常退出。
-- 移除按钮改用 ButtonCustomVariant 配置前景色、悬停和按下背景；检查整个 GUI 的 Button 调用，未发现其他相同冲突；补充项目管理窗口打开前后耗时日志。
-- cargo build --offline 构建成功，已生成修复后的 target/debug/gpui_idea.exe；格式与差异检查通过，未新增测试用例，实际窗口交互待验证。
-- 独立窗口模块统一命名为 project_manager_window、settings_window、run_configuration_window，窗口类型同步为 ProjectManagerWindow、SettingsWindow、RunConfigurationWindow；更新调用、可见性路径及项目管理刷新事件。
-- 已检查整个 src/gui，将跨页面的图标与按钮、活动栏按钮、面板标题栏/卡片/分隔线、表单行、菜单绑定、拖拽预览、图片预览及提示文字抽取到 gui/component，并接入原有页面。
-- 公共样式常量、路径显示及离散滚轮归一化集中维护；项目管理、设置、编辑器、文件树、运行/Git/终端面板复用公共实现。
-- 终端组件从 gui/terminal 迁移至 gui/component/terminal，更新初始化、运行控制台和本地终端引用；公共组件不依赖 workspace 模块。
-- 通用渲染计时组件抽取至 gui/component/measured_element，按类型、外部接口和渲染实现拆分；通过回调提供 CPU 各阶段耗时，脱离工作区依赖。
-- 工作区、编辑器、文件树已接入公共组件，窗口采样统计及日志保持原逻辑；cargo check --offline 通过，未新增测试用例。
-- 语言服务器按 languages/<语言>/ 拆分为 Rust、Go、Python、PHP、JavaScript/TypeScript、Java、TOML、Markdown、YAML、HTML、CSS、JSON 共 12 个目录。
-- 各语言集中维护启动、配置、项目标记及安装规则；Go/Java 兼容版本选择和 TypeScript 配套版本选择分别归入对应语言，Java 单独拆分启动、安装及运行环境检查。
-- 公共启动器、服务器清单、版本管理/清理和后台更新通过注册表分发，保留原有管理列表顺序及共享缓存键；cargo check --offline 通过，未新增测试用例。
-- 统计扫描迁移至 infrastructure/filesystem/statistics，使用 Tokio 协程并发调度目录和文件扫描，限制并发为 4–32 个任务；阻塞 IO 与文本计算在线程池执行。
-- 保留统计口径、排除目录及现有 application/data_context/GUI 调用链，补充扫描耗时、并发数及读取失败日志；cargo check --offline 通过，未新增测试用例。
-- 设置新增“外观”：本机界面字体、编辑器字体、9–36 px 字号、浅色/深色主题及编辑器预览。
-- 外观设置随 settings.json 持久化，应用/确定后刷新所有窗口，重启恢复；取消不会应用草稿。
-- 适配现有页面背景、文字和边框的深色配色，组件主题和代码高亮随主题切换；终端保留原有字体及网格度量。
-- 编译检查通过，未新增测试用例。
-- 字体和主题设置的 Release 构建成功。
-- 文件树右键运行范围收敛为 Python、Go、JS、Rust，覆盖此前按扩展名放开多语言的行为。
-- Go 读取包声明（跳过注释/BOM），仅 package main 非测试文件；Rust 仅 Cargo metadata 确认为可执行入口的 main.rs；Python、JS 单文件运行。
-- 目录后台加载时计算能力并存入 ProjectEntry，菜单只读快照；点击执行重新校验，Go 包声明和 Cargo.toml 改动会刷新能力。
-- JS 文件树运行固定执行所选文件，不使用 package.json 的 start/dev；工具栏的项目运行保持原有识别方式。
-- 最新 cargo check --offline 和 git diff --check 通过，未增加测试用例。
-- 按四种语言规则收敛后的 Release 已编译成功。
-- 文件树顶部路径去除 Windows 内部前缀，长项目名和路径分别截断，悬停显示完整路径；编译检查通过。
-- 包含文件树顶部显示修复的 Release 已编译完成，待实际界面验证。
-- 文件树支持的源码右键新增“运行”，复用运行面板、运行实例及配置；运行前保存修改。
-- 支持 Go 包、Cargo 可执行目标、Rust 单文件、Python、JS/TS、C/C++、Ruby、PHP、PowerShell、Shell、Lua、Perl，增加 Java 单源码运行。
-- application 负责识别、配置复用和执行编排，GUI 通过后台任务调用；指定配置 ID 执行，避免切换选中项时运行错误目标。
-- 最新 cargo check --offline 通过，未添加测试用例。
-- 文件树右键运行的 Release 编译成功。
-- 所有语言启用 LSP snippet 补全，TypeScript/JavaScript 开启 snippet 候选。
-- 保留上下文模板的首个占位符/函数体光标位置，支持默认值、选择项及多行缩进；保留原有括号去重逻辑。
-- 最新 cargo check --offline 通过。
-- 包含上下文代码片段补全的 Release 编译成功。
-- 通用函数、方法及构造函数补全自动添加括号，光标进入参数位置；复用已有括号，保留服务端参数文本。
-- 插入内容处理位于 application/completion，界面仅应用补全与光标位置；cargo check --offline 通过。
-- 更新后的 Release 版本编译成功。
-- 定位 Go 文件缩进显示异常：读取保留了 Tab，但编辑器依赖直接按字体宽度绘制 Tab。
-- 使用本地 gpui-base 0.8.0 补丁，按 Tab 停靠位调整字形位置；保留原始文本和 UTF-8 偏移。
-- 同步调整水平滚动宽度计算，添加不包含源码内容的 Tab 诊断日志。
-- cargo check --offline 已通过；仅有增量缓存硬链接回退为复制的环境提示。
+- 用户已人工验证编辑器搜索栏遮挡问题解决；搜索视口诊断日志已调整为 debug 级别，本次 cargo build --locked、定向 rustfmt --check 和 git diff --check 通过。
+- 修复编辑器搜索栏被行号覆盖层遮挡的问题：行号背景和分隔线只绘制在上游正文 input_bounds 内；鼠标/五行滚轮覆盖层在原生编辑器 prepaint 后读取当前帧视口，排除搜索和替换栏。增加搜索开启时的视口 debug 日志；cargo build --locked、定向 rustfmt --check 与 git diff --check 通过，未新增测试、未操作 GUI。
+- 项目文件树右键菜单新增“复制名称”，置于复制路径入口上方；文件保留扩展名、文件夹复制目录名，项目根节点复制项目目录名，多选按路径排序后逐行复制。复用既有剪贴板与状态提示逻辑，cargo build --locked、定向 rustfmt --check 和 git diff --check 通过，未新增测试、未操作 GUI。
+- Git 改动列表新增右键“忽略文件”和“忽略目录”菜单，目录可选择当前文件的任意一级父目录；通过 application 串行编排，在 infrastructure 后台追加仓库根目录 .gitignore 并刷新 Git 状态，GUI 不执行文件 IO。
+- 忽略规则锚定仓库相对路径并转义空格及通配符，保留原文件内容和换行风格，已有有效规则不重复追加；禁止仓库根目录和越界路径。操作绑定原仓库，避免项目切换后写错；反馈提示已跟踪文件不会因 .gitignore 自动取消跟踪，补充写入日志。cargo build --locked、定向 rustfmt --check 和 git diff --check 均通过，未新增测试、未操作 GUI。
+- 恢复编辑器普通垂直滚轮每次滚动 5 行，连续事件累加，滚动边界交由上游公开接口处理；触控板和水平滚动继续使用原生逻辑。cargo build --locked、定向 rustfmt --check 与 git diff --check 通过，未新增测试、未操作 GUI。
+- gpui-kit 已从 0.8.0 升级至 0.9.0；移除 gpui-base 的本地 patch，锁文件使用 crates.io 官方 0.9.0，并清理 vendor 中的依赖副本和旧备份。已适配 InputEvent 订阅与 ScrollEvent/on_scroll 接口。
+- 根据用户选择，缩进、多光标与撤销使用上游原生实现，移除项目 Tab 拦截及专用 unicode-width 依赖；Go Tab 显示使用上游实现。行号间距通过公开 gutter decoration 接口预留空间，由项目渲染层绘制行号和分隔线；文本布局、折叠控件与命中区域仍由上游提供。
+- 编辑器上游能力检查：保留普通垂直鼠标滚轮每次 5 行的交互，使用上游 set_scroll_offset 和布局边界限制，移除旧版按源码行数手算滚动边界的逻辑；触控板和水平滚动沿用上游原生处理。源码跳转的上方三分之一定位使用上游 display_map 显示行，兼容折行和折叠。剪贴板、撤销重做、折叠、自动换行、格式化文本替换和补全实际插入均已调用上游接口。
+- 保留上游未等价覆盖的项目行为：空选区剪切整行、补全片段展开及插入后的光标定位、LSP 请求/取消/降级与跨文件源码导航、标识符引用高亮、主题和语法规则适配。上游补全菜单目前直接插入文本，无法等价保留现有片段光标与函数括号处理，暂保留项目补全菜单。
+- 已执行 cargo clean（清理 19.9 GiB）并完成首次新版构建；移除 vendor 后最终 cargo build --locked 通过且无警告，本次修改的定向 rustfmt --check 与 git diff --check 通过。未新增测试、未操作 GUI。
+- LSP 已安装版本列表中，正在使用的版本改为在操作位置仅显示“使用中”状态，移除重复的版本切换按钮与状态标签；其他版本保留“使用此版本/当前固定版本”入口。
+- 本次 LSP 状态显示调整的 cargo build、定向 rustfmt --check 和 git diff --check 已通过；未操作 GUI、未新增测试用例。
+- 在线主题搜索改为有关键词时按相关度排序、空查询按下载量排序；补充名称/扩展 ID 的大小写不敏感多词匹配，只对匹配项检查颜色主题清单，避免宽泛远端结果混入列表或无关清单请求影响搜索；增加查询与结果日志。
+- 已使用实际搜索代码查询“Dracula Theme Official”，返回 1 个匹配颜色主题包 dracula-theme.theme-dracula；cargo build、定向 rustfmt --check、git diff --check 通过，只读审查未发现重要问题，临时诊断已移除，未操作 GUI、未新增测试用例。
+- 配置窗口分类已接入现有 open-history 历史索引：侧栏与搜索切换后立即更新内存历史，后台复用历史锁与原子写入保存，下次打开/重启恢复最后分类；“取消”不撤销导航历史。旧索引缺省或未知分类回退常规配置，后台工作区保存不会覆盖更新的配置分类；新增保存/恢复日志。
+- 配置分类历史的 cargo build、定向 rustfmt --check、git diff --check 已通过，只读审查未发现重要问题；未操作 GUI、未新增测试用例。
+- 默认主题作为不可卸载的内置卡片显示在“已安装”。同来源主题包的配色合并到一个下拉框，显示主题包名称与配色数量；支持按包卸载全部配色，卸载当前主题时回退默认主题。选择与卸载沿用“应用/确定”保存、“取消”放弃草稿；新增包名称字段兼容旧配置。
+- 默认主题、分组下拉和卸载功能的 cargo build、定向 rustfmt --check、git diff --check 已通过，只读审查未发现重要问题；未操作 GUI、未新增测试用例。
+- 已移除外观“浅色 / 深色”按钮。在线主题改为检查实际 package.json，只保留纯主题分类且声明 contributes.themes 的颜色主题包，并排除带语言、语法、调试器、代码片段功能的扩展；清单检查增加日志，筛选后按游标补足列表并支持前后翻页。
+- 已通过真实 Open VSX 前两页检查，每页 20 个颜色主题包且无重复，图标主题、PowerShell 已排除。规避上游非整页 offset 处理异常，改为整页获取后本地消耗游标；C/C++ Themes 经清单确认是纯配色包，保留显示。
+- 本轮筛选修正的 cargo build、定向 rustfmt --check、git diff --check 均通过；临时命令行诊断已移除，未操作 GUI、未新增测试用例。
+- 外观设置新增“已安装 / 在线主题”列表，支持 Open VSX 搜索分页、下载主题包、展开多套配色、JSON/JSONC/VSIX 本地导入；配色随设置保存，取消可放弃未保存的导入和选择。界面、组件与编辑器高亮通过主题适配层应用，导入/网络操作在后台运行。
+- 已通过真实 One Dark Pro VSIX（5 套配色）与 VS Code Dark Modern JSON（含 include 继承）的命令行解析、配色转换和序列化往返检查；只读代码审查未发现阻断问题。暂不支持外置 .tmTheme 与语义配色，复杂 TextMate 上下文规则近似适配。未新增测试用例、未操作 GUI。
+- 设置窗口新增独立的“编辑器配置”菜单，集中管理编辑器字体、字号与预览、文本换行、保存时自动格式化；从外观和常规配置移除对应重复入口，并同步搜索分类。复用现有保存及编辑器同步逻辑，未新增测试、未操作 GUI。
+- 文本换行复用既有 soft_wrap 配置，已打开、缓存及新建编辑器沿用现有同步机制；cargo build、定向 rustfmt --check 和 git diff --check 已通过。构建仅有增量缓存硬链接失败后改为复制的警告。
 
-- 代码内容搜索改为独立自绘普通窗口，移除 Dialog 及文件树中的搜索状态/输入订阅；窗口独立刷新输入、加载状态和结果。
-- 搜索请求使用跨窗口唯一编号，防抖及完成回调丢弃过期请求；application 直接返回对应请求的结果，仍将快照写入 data_context。
-- 新增输入变化、搜索开始/完成及结果应用日志（不记录搜索文本）；支持清空、连续输入、点击/Enter 定位、Esc 关闭及再次打开激活已有窗口。
-- 本次搜索窗口改动的 cargo build --offline、定向 rustfmt --check 和 git diff --check 通过，已生成 target/debug/gpui_idea.exe；仅有增量缓存硬链接回退复制的环境提示。未新增测试用例，未进行界面自动操作。
-
-- 编辑区右键菜单已收敛为复制、粘贴和运行；运行显示读取 data_context 文件树的 runnable，复用现有后台保存与运行流程；复制按选区启用，粘贴遵循只读状态，运行遵循关闭/文件操作/启动中的禁用状态。cargo check --offline、定向 rustfmt --check 和 git diff --check 通过，未新增测试用例。
-
-- 代码包目录识别已接入各 LSP 语言模块：Python 的 __init__.py/__init__.pyi、Go/Java 包声明、Rust 包根与模块目录、JS/TS 的 package.json、PHP 的 composer.json/namespace。后台目录扫描写入 data_context，图标复用现有 package.svg；移除 src 子目录一律视为包的规则，包标记及源文件变化刷新父目录图标，GUI 不执行 IO。
-- 本次代码包目录改动的 cargo build --offline、定向 rustfmt --check 和 git diff --check 通过，已更新 target/debug/gpui_idea.exe；未新增测试用例，未实际操作 GUI 验证。
-
-- 文件树收起目录时同步清除全部后代目录的展开状态，重新打开只展开当前层；项目根目录使用同样行为，并沿用现有工作区保存流程。cargo check --offline 通过，未新增测试用例。
-
-- 编辑区右键新增打开文件所在目录、复制项目路径、复制全盘路径；复用现有 Lucide 图标与文件定位基础能力，application 依据文档 scope_root 编排后台定位。保留复制/粘贴/运行，项目外文件禁用项目路径复制，完整路径移除 Windows 内部前缀。cargo check --offline、定向 rustfmt --check、git diff --check 通过，改动源码未混用换行符；未新增测试用例，未实际操作 GUI。
-
-- 图片预览新增放大/缩小按钮、Ctrl＋滚轮缩放及适应窗口复位，缩放范围为适应窗口尺寸的 0.1～8 倍；显示相对窗口倍率，放大后支持双向滚动条。缩放/滚动状态按图片标签保留，图片重新加载保留状态，关闭标签释放；GUI 状态在主线程创建，IO 仍走现有后台流程。cargo check --offline 通过，未新增测试用例，未实际操作 GUI。
-
-- 工作区文档打开成功后触发后台 runnable 刷新；对支持运行的已打开项目文件补载未缓存的父目录，复用本地识别与 LSP 能力，文件树无需展开；增加加载成功/失败诊断日志。cargo check、定向格式与差异检查通过；cargo build 在替换 target/debug/gpui_idea.exe 时被文件占用阻止（拒绝访问），待关闭运行中的 Debug 程序后重新构建。
-
-- 已定位运行终端选中文字残缺的绘制顺序问题：宽字符绘制后被后一单元格的选区背景覆盖。改为先绘制全部背景，再绘制文本、装饰和光标，保留原字体与 ANSI 样式，并补充选择结束诊断日志。cargo check、定向 rustfmt --check 和差异检查通过；cargo build 在替换被占用的 target/debug/gpui_idea.exe 时失败（拒绝访问），未操作 GUI，待关闭 Debug 程序后重新构建并验证。
-
-- Git 简版：入口移动到项目文件夹下方，移除结构/服务占位按钮；新增独立 Git 工作视图，包含变更分组、暂存/取消暂存、统一差异、提交、分支创建/切换、获取/快进拉取/推送，复用原提交日志和详情。Git IO 经 application / infrastructure 在 Tokio 后台执行，数据保存在 data_context；cargo build、定向 rustfmt --check、git diff --check 均通过；仅有增量缓存无法硬链接而改用复制的环境警告，未新增测试用例、未操作 GUI。
+- 本次主题功能最终 cargo build、定向 rustfmt --check 与 git diff --check 已通过；构建仅出现增量缓存硬链接失败后使用复制的警告。
 
 ## 当前的计划
-- 实际验证编辑器行号分隔线在浅色/深色主题、空文件、长文档、字号调整、折叠与横纵滚动时的位置及鼠标交互。
-- 实际验证统计仅列根目录一级文件夹、行数与类型包含全部后代、根目录直属文件不计入，以及文件类型展开/折叠、空目录、二进制与排除目录、滚动和复制结果。
-- 实际验证主菜单图标/文字/快捷键对齐、浅色和深色禁用状态，以及格式化菜单与 Ctrl+Alt+L、撤销、请求期间继续编辑、语言服务未就绪的提示。
-- 使用新构建程序实际验证 Git 视图布局、分割条、长行/大差异滚动、暂存/取消暂存、提交和分支/远端操作；左右并排差异、提交拓扑图、冲突解决器及 Stash 留待后续。
-- 实际验证运行终端中文/英文混排、跨行拖选、彩色背景及粗体/斜体文字，确认选中与取消选中时字形完整。
-- 验证未展开父目录时，通过恢复标签页或搜索打开可运行文件后，编辑区右键显示运行；不可运行文件保持隐藏，项目切换不写入旧项目缓存。
-- 实际验证编辑后在自动保存前撤销/还原、无修改 Ctrl+S、自动保存后撤销产生真实改动、格式化还原，以及慢保存期间继续编辑或撤销的状态与落盘内容。
-- 实际 GUI 验证项目层 Ctrl+X 无选区整行剪切、选区剪切、空行/末行、中文，以及 Ctrl+Z 恢复。
-- 使用新版程序确认文件树根目录、子目录及文件右键“打开终端”的工作目录、面板展开、输入焦点和重连行为。
-- 重新运行原 TikTokDownloader Python 命令，核对动态进度条横线、半格端点及颜色；通过 terminal progress glyph parsed 日志确认实际码点。
-- 验证源码跳转在同文件、跨文件及首次打开文件时的落点，以及文件开头/末尾边界。
-- 实际验证鼠标悬浮不再弹出提示，以及 Ctrl＋点击跳转、补全与高亮保持正常。
-- 实际验证双击/拖选完整变量的同名词高亮、同名不同作用域的 LSP 语义高亮、中文/非 BMP 字符定位、快速移动/编辑/切换标签清理，以及无 LSP 支持时的选词高亮。
-- 实际验证编辑区右键菜单中“运行”位于第一项，以及不可运行文件的菜单顺序。
-- 实际验证图片按钮与 Ctrl＋滚轮缩放、上下限禁用、适应窗口、双向滚动、切换标签/刷新图片保留倍率及加载失败状态。
-- 实际验证编辑区右键打开文件所在目录、复制项目相对路径/全盘路径，以及项目外源码的项目路径禁用状态。
-- 实际检查多层目录展开后收起/重开父目录、根目录，以及相邻目录展开状态保持。
-- 实际检查上述语言包目录、普通/缓存目录及拖拽图标；检查新增/删除/重命名包标记和修改包声明后的自动刷新。
-- 实际验证编辑区右键复制/粘贴、可运行文件显示运行、不可运行文件隐藏运行，以及只读/忙碌状态与运行输出。
-- 实际验证 project/file_tree 拆分后的文件树展开、文件操作、监听刷新和运行菜单状态。
-- 实际检查快照统一后的文档编辑/保存、文件树刷新、终端输出、设置草稿及后台 LSP 状态更新。
-- 重启应用后实际核对旧工作区迁移、项目切换恢复，以及 PHP/Java 缓存隔离。
-- 实际验证单版本删除、使用中版本禁用、固定版本删除后恢复自动选择，以及删除最后一个版本后的安装入口。
-- 验证 Rust 仅 main.rs 显示运行，lib.rs、build.rs、自定义名称的二进制入口与普通模块均不显示；检查 LSP 就绪前后规则一致。
-- 实际检查各语言文件右键运行、不可执行文件隐藏、TS/JSX 的 tsx 运行器、Rust 服务就绪前后菜单刷新及运行配置复用。
-- 验证 AiSOC 根目录与 apps/mobile 文件同时触发时仅有一个 JS/TS LSP；检查多语言项目启动、补全、跳转、格式化及关闭。
-- 实际验证拖动项目面板宽度后关闭重开，以及启动最大化、切换最大化和底部面板显隐时尺寸保持。
-- 使用更新后的程序检查长项目列表滚动时“管理项目”按钮始终可见，以及项目选择、底部按钮和键盘关闭交互。
-- 使用新构建的程序重新打开“管理项目”，检查移除按钮悬停/按下、忙碌禁用状态及关闭窗口交互。
-- 实际检查公共组件拆分后的项目创建/管理、设置、编辑器标签、图片预览、文件树菜单/拖拽、运行与终端面板交互。
-- 实际拖动和缩放窗口，核对公共计时组件接入后的性能诊断日志。
-- 在实际项目中验证拆分后各语言服务器的启动、补全、跳转及版本管理交互。
-- 在实际大项目中对比统计刷新耗时及新日志中的扫描数量、并发数。
-- 实际验证字体、主题切换和重启恢复。
-- 在实际项目中验证四种语言的菜单和运行行为。
-- 在实际项目中验证文件树右键运行及输出交互。
-- 在实际项目中验证各语言服务提供的回调模板；暂未实现 Tab 连续跳转及占位符联动编辑。
-- 实际验证 Go 及其他语言的函数补全交互。
-- 在重新构建的应用中打开原 Go 文件，确认缩进、光标、选择和水平滚动表现。
-
-- 验证新搜索窗口连续更换关键词、快速输入/清空、关闭重开、点击及 Enter 定位、Esc 关闭和窗口缩放。
+- 人工核对 Ctrl+F 搜索、替换栏切换、关闭后恢复、搜索框点击与滚动，以及正文行号分隔线和五行滚轮区域。
+- 人工核对 Git 改动列表右键忽略文件、各级父目录选择、重复规则、已跟踪文件反馈和写入后的列表刷新。
+- 人工核对 Go Tab 显示、原生多光标缩进与撤销、行号/分隔线/折叠按钮、快速滚轮与触控板、长行折行及折叠后的源码跳转定位。
+- 人工核对主题列表、搜索分页、下载失败重试、多配色选择、应用/取消与重启恢复。
+- 人工核对应用/确定/取消、重启配置恢复、已打开/新打开/缓存文本标签、长行横向滚动与宽度变化折行，以及只读源码和未保存内容保持。

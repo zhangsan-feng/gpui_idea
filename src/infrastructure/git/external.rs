@@ -4,6 +4,13 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 impl Git {
+    pub(crate) async fn create(
+        &self,
+        root: PathBuf,
+        request: crate::domain::git::GitCreateRequest,
+    ) -> Result<String> {
+        super::create::create(root, request).await
+    }
     pub(crate) async fn operate(
         &self,
         root: PathBuf,

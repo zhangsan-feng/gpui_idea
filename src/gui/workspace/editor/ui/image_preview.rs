@@ -63,7 +63,7 @@ impl Editor {
             &scroll,
             controls.into_any_element(),
         )
-        .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| {
+        .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| {
             if !event.modifiers.control {
                 return;
             }

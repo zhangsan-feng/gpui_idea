@@ -11,5 +11,8 @@ mod tools;
 mod git_workbench;
 
 mod git_changes;
+mod git_ignore;
 
 mod git_history;
+
+mod git_result;

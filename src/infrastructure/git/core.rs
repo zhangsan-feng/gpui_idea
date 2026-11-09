@@ -112,6 +112,10 @@ pub(super) async fn snapshot(root: PathBuf) -> Result<GitDataContextSnapshot> {
     };
     // A log/status failure must not erase a successfully read repository/branch.
     let history = async {
+        snapshot.remotes = String::from_utf8_lossy(&run(&root, &["remote"]).await?)
+            .lines()
+            .map(str::to_owned)
+            .collect();
         let changes = run(
             &root,
             &[

@@ -32,6 +32,18 @@ pub(super) fn read(path: &Path) -> Result<HistoryDataContextSnapshot> {
     storage::hydrate(path, storage::load_index(path)?)
 }
 
+pub(super) fn save_settings_page(
+    path: &Path,
+    page: crate::domain::history::SettingsPage,
+) -> Result<HistoryDataContextSnapshot> {
+    let mut index = storage::load_index(path)?;
+    if index.settings_page != page {
+        index.settings_page = page;
+        storage::write_index(path, &index)?;
+    }
+    storage::hydrate(path, index)
+}
+
 pub(super) fn prune_expanded_directories(mut session: WorkspaceSession) -> WorkspaceSession {
     session.expanded_directories.retain(|relative| {
         // Only inspect project-relative paths, even if a caller bypasses session validation.

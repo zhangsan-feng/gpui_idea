@@ -97,9 +97,15 @@ impl BottomBar {
             .px_2()
             .border_t_1()
             .border_color(crate::component::appearance::border(BORDER))
-            .bg(crate::component::appearance::background(PANEL_BG))
+            .bg(crate::component::appearance::themed(
+                "statusBar.background",
+                crate::component::appearance::background(PANEL_BG),
+            ))
             .text_size(px(11.))
-            .text_color(crate::component::appearance::foreground(0x626a76))
+            .text_color(crate::component::appearance::themed(
+                "statusBar.foreground",
+                crate::component::appearance::foreground(0x626a76),
+            ))
             .child(icon(IconName::Folder, 13., ACCENT))
             .child(div().child(if DATA_CONTEXT.has_project() {
                 DATA_CONTEXT

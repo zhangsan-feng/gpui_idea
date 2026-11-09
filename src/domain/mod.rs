@@ -11,3 +11,4 @@ pub mod run;
 pub(crate) mod settings;
 pub mod statistics;
 pub mod terminal;
+pub(crate) mod theme;

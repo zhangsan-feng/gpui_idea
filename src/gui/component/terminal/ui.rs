@@ -28,7 +28,7 @@ impl TerminalView {
             .on_action(cx.listener(|this, _: &SendTab, _, cx| this.send_tab(cx)))
             .on_action(cx.listener(|this, _: &CopyTerminal, _, cx| this.copy(cx)))
             .on_action(cx.listener(|this, _: &PasteTerminal, _, cx| this.paste_clipboard(cx)))
-            .on_scroll_wheel(cx.listener(|this, event: &ScrollWheelEvent, _, cx| this.scroll(event, cx)))
+            .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| this.scroll(event, cx)))
             .on_mouse_down(
                 MouseButton::Left,
                 cx.listener(|this, event: &MouseDownEvent, window, cx| {

@@ -1,7 +1,7 @@
 use super::*;
 use crate::gui::workspace::editor::Editor;
 use crate::gui::workspace::ui::*;
-use gpui_kit::component::input::Editor as CodeEditor;
+use gpui_kit::component::{input::Editor as CodeEditor, menu::ContextMenuExt};
 use std::cell::Cell;
 
 mod empty;
@@ -75,7 +75,8 @@ impl Editor {
         if let Some(state) = self.state.editors.get(&self.state.selected_file) {
             let started = std::time::Instant::now();
             let input = CodeEditor::new(state)
-                .context_menu(self.editor_context_menu(state, cx))
+                // Keep the input's caret/selection handling, render the shared popup below.
+                .context_menu(|_, _, _| gpui_kit::component::native_menu::NativeMenu::new())
                 .aria_label(
                     self.state
                         .selected_file
@@ -109,6 +110,10 @@ impl Editor {
                 .h(relative(1.))
                 .w_full()
                 .font_family(crate::component::appearance::editor_font())
+                .text_color(crate::component::appearance::themed(
+                    "editor.foreground",
+                    crate::component::appearance::foreground(TEXT),
+                ))
                 .text_size(px(DATA_CONTEXT
                     .settings
                     .snapshot()
@@ -141,7 +146,8 @@ impl Editor {
                         ),
                     )
                     .child(self.gutter_separator(state))
-                    .child(self.editor_wheel_handler(state, cx)),
+                    .child(self.editor_pointer_handler(state, cx))
+                    .context_menu(self.editor_context_menu(state, cx)),
             )
         } else {
             editor.child(
@@ -161,7 +167,7 @@ impl Editor {
         }
     }
 
-    fn editor_wheel_handler(
+    fn editor_pointer_handler(
         &self,
         state: &Entity<gpui_kit::component::input::EditorState>,
         cx: &Context<Editor>,
@@ -169,8 +175,18 @@ impl Editor {
         let state = state.clone();
         let view = cx.weak_entity();
         let file = self.state.selected_file.clone();
+        let hitbox_state = state.clone();
         canvas(
-            |bounds, window, _| window.insert_hitbox(bounds, HitboxBehavior::Normal),
+            move |bounds, window, cx| {
+                let state = hitbox_state.read(cx);
+                // Resolve after the native editor's prepaint so opening/closing
+                // search uses this frame's text viewport, not last frame's bounds.
+                let viewport = state
+                    .prepaint_caret_geometry()
+                    .map(|geometry| geometry.input_bounds())
+                    .unwrap_or_else(|| state.input_bounds());
+                window.insert_hitbox(viewport.intersect(&bounds), HitboxBehavior::Normal)
+            },
             move |_, hitbox, window, cx| {
                 let supports_lsp =
                     crate::domain::language_server::language_for_path(file.relative_path())
@@ -213,7 +229,7 @@ impl Editor {
                     });
                 });
                 let pending_offset = Cell::new(state.read(cx).scroll_offset());
-                window.on_mouse_event(move |event: &ScrollWheelEvent, phase, window, cx| {
+                window.on_mouse_event(move |event: &ScrollEvent, phase, window, cx| {
                     if phase == DispatchPhase::Capture && hitbox.should_handle_scroll(window) {
                         Self::scroll_editor_lines(&state, event, &pending_offset, cx);
                     }

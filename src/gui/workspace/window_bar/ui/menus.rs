@@ -67,42 +67,14 @@ impl WindowBar {
         enabled: bool,
         view: &WeakEntity<WindowBar>,
     ) -> PopupMenuItem {
-        let view = view.clone();
-        PopupMenuItem::element(move |_, _| {
-            h_flex()
-                .w_full()
-                .min_w_0()
-                .h(px(26.))
-                .items_center()
-                .justify_between()
-                .gap(px(24.))
-                .font_family(crate::component::appearance::ui_font())
-                .text_size(px(12.))
-                .child(div().flex_1().child(label))
-                .child(
-                    div()
-                        .flex_shrink_0()
-                        .text_color(crate::component::appearance::foreground(if enabled {
-                            0x858b98
-                        } else {
-                            0xa8adb8
-                        }))
-                        .child(shortcut),
-                )
-        })
-        .icon(icon(
+        crate::gui::component::menu::context_view_item(
+            label,
             icon_name,
-            14.,
-            if enabled { 0x737987 } else { 0xa8adb8 },
-        ))
-        .disabled(!enabled)
-        .on_click(move |_, window, cx| {
-            if enabled {
-                let _ = view.update(cx, |this, cx| {
-                    this.toolbar_action(action.clone(), window, cx)
-                });
-            }
-        })
+            shortcut,
+            enabled,
+            view,
+            move |this, window, cx| this.toolbar_action(action.clone(), window, cx),
+        )
     }
 
     pub(super) fn branch_menu(&self, cx: &Context<WindowBar>) -> impl IntoElement {

@@ -154,7 +154,7 @@ impl Editor {
                         let editor = cx.new(|cx| {
                             EditorState::new(window, cx)
                                 .language(crate::component::code_editor::language_for_path(file.relative_path()))
-                                .soft_wrap(false)
+                                .soft_wrap(DATA_CONTEXT.settings.snapshot().general.soft_wrap)
                                 .tab_size(TabSize { tab_size: 4, hard_tabs: false })
                                 .default_value(opened.initial_text)
                         });

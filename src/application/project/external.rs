@@ -3,6 +3,13 @@ use anyhow::Result;
 use std::path::PathBuf;
 
 impl ProjectService {
+    pub(crate) async fn git_create(
+        &self,
+        project_root: PathBuf,
+        request: crate::domain::git::GitCreateRequest,
+    ) -> Result<String> {
+        self.git_create_core(project_root, request).await
+    }
     pub(crate) async fn git_action(&self, action: crate::domain::git::GitAction) -> Result<String> {
         crate::data_context::DATA_CONTEXT.require_project_root()?;
         self.git_action_core(action).await

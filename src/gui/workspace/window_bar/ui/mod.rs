@@ -23,7 +23,10 @@ impl WindowBar {
             .items_center()
             .gap(px(2.))
             .pl(px(8.))
-            .bg(crate::component::appearance::background(TOOLBAR))
+            .bg(crate::component::appearance::themed(
+                "titleBar.activeBackground",
+                crate::component::appearance::background(TOOLBAR),
+            ))
             .text_color(crate::component::appearance::foreground(0xdfe1e5))
             .child(
                 img(crate::component::assets::APP_ICON)

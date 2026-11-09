@@ -1,6 +1,18 @@
 use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub(crate) enum SettingsPage {
+    Appearance,
+    Editor,
+    LanguageServers,
+    System,
+    #[default]
+    #[serde(other)]
+    General,
+}
+
 pub(crate) fn project_identity(path: &std::path::Path) -> String {
     let path = path.to_string_lossy();
     #[cfg(windows)]
@@ -95,6 +107,8 @@ pub struct FileViewState {
 
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct HistoryDataContextSnapshot {
+    #[serde(default)]
+    pub(crate) settings_page: SettingsPage,
     pub version: u32,
     pub entries: Vec<OpenHistoryEntry>,
     pub last_project: Option<PathBuf>,
@@ -105,6 +119,7 @@ pub struct HistoryDataContextSnapshot {
 impl Default for HistoryDataContextSnapshot {
     fn default() -> Self {
         Self {
+            settings_page: SettingsPage::default(),
             version: 2,
             entries: Vec::new(),
             last_project: None,

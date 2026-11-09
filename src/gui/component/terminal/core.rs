@@ -125,7 +125,7 @@ impl TerminalView {
             });
         }
     }
-    pub(super) fn scroll(&mut self, event: &ScrollWheelEvent, cx: &mut Context<Self>) {
+    pub(super) fn scroll(&mut self, event: &ScrollEvent, cx: &mut Context<Self>) {
         if DATA_CONTEXT.terminal.snapshot(self.id).generation == 0 {
             cx.stop_propagation();
             return;

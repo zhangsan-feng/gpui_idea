@@ -56,7 +56,9 @@ impl FileTree {
             FileTreeMenuAction::Reveal => {
                 self.run_file_tree_operation(FileTreeOperation::Reveal { source: path }, window, cx)
             }
-            FileTreeMenuAction::CopyProjectPath | FileTreeMenuAction::CopyAbsolutePath => {
+            FileTreeMenuAction::CopyName
+            | FileTreeMenuAction::CopyProjectPath
+            | FileTreeMenuAction::CopyAbsolutePath => {
                 let mut paths: Vec<_> = if self.state.project_selection.contains(&path) {
                     self.state.project_selection.iter().cloned().collect()
                 } else {
@@ -64,10 +66,22 @@ impl FileTree {
                 };
                 paths.sort();
                 let absolute = matches!(action, FileTreeMenuAction::CopyAbsolutePath);
+                let name = matches!(action, FileTreeMenuAction::CopyName);
                 let text = paths
                     .iter()
                     .map(|path| {
-                        if absolute {
+                        if name {
+                            let target = if path.as_os_str().is_empty() {
+                                DATA_CONTEXT.project_root()
+                            } else {
+                                path.as_path()
+                            };
+                            target
+                                .file_name()
+                                .unwrap_or(target.as_os_str())
+                                .to_string_lossy()
+                                .into_owned()
+                        } else if absolute {
                             DATA_CONTEXT
                                 .project_root()
                                 .join(path)
@@ -86,7 +100,9 @@ impl FileTree {
                     crate::gui::workspace::bottom_bar::Event::Notice(Some(format!(
                         "已复制 {} 项{}",
                         paths.len(),
-                        if absolute {
+                        if name {
+                            "名称"
+                        } else if absolute {
                             "全盘路径"
                         } else {
                             "项目路径"
