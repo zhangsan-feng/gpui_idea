@@ -74,14 +74,25 @@ pub(super) fn prepare(root: &Path, command: Option<&str>) -> Result<ShellLaunch>
             .ok()
             .filter(|shell| !shell.is_empty())
             .unwrap_or_else(|| "/bin/sh".into());
-        Shell::new(
-            program,
-            vec![
-                "-l".into(),
-                "-c".into(),
-                "exec /bin/sh -c \"$GPUI_TERMINAL_COMMAND\"".into(),
-            ],
-        )
+        let shell_args = vec![
+            "-l".into(),
+            "-c".into(),
+            "exec /bin/sh -c \"$GPUI_TERMINAL_COMMAND\"".into(),
+        ];
+        let cargo_keys = crate::infrastructure::process_environment::cargo_runtime_keys();
+        // Wrap explicit run shells before constructing Alacritty's opaque Shell.
+        // Interactive sessions retain account-shell and macOS login semantics.
+        if cargo_keys.is_empty() {
+            Shell::new(program, shell_args)
+        } else {
+            let mut args = Vec::new();
+            for key in cargo_keys {
+                args.extend(["-u".into(), key]);
+            }
+            args.push(program);
+            args.extend(shell_args);
+            Shell::new("/usr/bin/env".into(), args)
+        }
     });
     let mut options = Options {
         shell,
@@ -95,19 +106,6 @@ pub(super) fn prepare(root: &Path, command: Option<&str>) -> Result<ShellLaunch>
         options
             .env
             .insert("GPUI_TERMINAL_COMMAND".into(), command.into());
-    }
-    let cargo_keys = crate::infrastructure::process_environment::cargo_runtime_keys();
-    // Keep Alacritty's account-shell resolution and macOS login semantics for
-    // default interactive sessions; wrap only explicitly configured run shells.
-    if !cargo_keys.is_empty() && options.shell.is_some() {
-        let shell = options.shell.take().expect("explicit run shell");
-        let mut args = Vec::new();
-        for key in cargo_keys {
-            args.extend(["-u".into(), key]);
-        }
-        args.push(shell.program);
-        args.extend(shell.args);
-        options.shell = Some(Shell::new("/usr/bin/env".into(), args));
     }
     Ok(ShellLaunch {
         options,
