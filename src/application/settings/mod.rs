@@ -1,8 +1,8 @@
 mod core;
-mod themes;
 mod external;
 mod language_servers;
 mod system_integration;
+mod themes;
 
 pub(crate) struct SettingsService {
     io: tokio::sync::Mutex<()>,

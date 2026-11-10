@@ -2,11 +2,25 @@ use crate::{
     application::{APPLICATION, lifecycle::run_application},
     data_context::DATA_CONTEXT,
     event_bus::gui_event::GuiEvent,
-    gui::workspace::{bottom_bar::Event as BottomBarEvent, editor::Editor},
+    gui::workspace::{
+        bottom_bar::Event as BottomBarEvent,
+        editor::{Editor, ProjectFile},
+    },
 };
 use gpui_kit::{ClipboardItem, Context};
 
 impl Editor {
+    pub(in crate::gui::workspace::editor) fn copy_file_name(
+        &self,
+        file: &ProjectFile,
+        cx: &mut Context<Self>,
+    ) {
+        cx.write_to_clipboard(ClipboardItem::new_string(file.name()));
+        self.send(GuiEvent::BottomBar(BottomBarEvent::Notice(Some(
+            "已复制文件名".into(),
+        ))));
+    }
+
     pub(in crate::gui::workspace::editor) fn copy_current_path(
         &self,
         absolute: bool,

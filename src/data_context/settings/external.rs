@@ -7,6 +7,12 @@ use crate::event_bus::refresh_gui::GuiComponent;
 use std::sync::Arc;
 
 impl SettingsContext {
+    pub(crate) fn publish_fonts(&self, fonts: Vec<crate::domain::settings::FontAsset>) {
+        self.replace(
+            |next| next.fonts = fonts.into(),
+            &[GuiComponent::SettingsWindow],
+        );
+    }
     pub(crate) fn snapshot(&self) -> Arc<SettingsDataContextSnapshot> {
         self.snapshot
             .lock()

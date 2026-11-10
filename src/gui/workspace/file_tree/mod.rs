@@ -19,6 +19,7 @@ pub(in crate::gui::workspace) struct State {
     pub(in crate::gui::workspace) inline_file_edit: Option<InlineFileEdit>,
     pub(in crate::gui::workspace) tree_rows: Vec<TreeRow>,
     pub(in crate::gui::workspace) project_revision: u64,
+    pub(in crate::gui::workspace) pending_reveal: Option<PathBuf>,
 }
 
 pub(crate) struct FileTree {
@@ -47,6 +48,7 @@ pub(in crate::gui::workspace) fn init_component_data(
         inline_file_edit: None,
         tree_rows: Vec::new(),
         project_revision: 0,
+        pending_reveal: None,
     }
 }
 
@@ -100,6 +102,7 @@ pub(in crate::gui) enum FileTreeMenuAction {
 pub(crate) enum Event {
     Initialize,
     OpenSearch,
+    RevealFile(ProjectFile),
 }
 
 impl FileTree {
@@ -167,6 +170,7 @@ impl FileTree {
                 Event::OpenSearch => {
                     self.open_file_search(window, cx);
                 }
+                Event::RevealFile(file) => self.reveal_file(file, window, cx),
             }
         }
     }

@@ -46,22 +46,19 @@ impl DocumentContext {
                 return true;
             }
             let mut next = (**current).clone();
-            if current.dirty() {
-                next.save_error = Some("文件在磁盘上已修改，保留未保存的编辑，暂停自动保存".into());
-                if next.save_error == current.save_error {
-                    return false;
-                }
-                tracing::warn!(path = %loaded.path.display(), "external document change conflicts with local edits");
-            } else {
-                next.saved_text = loaded.text.clone();
-                next.text = loaded.text;
-                next.disk_bytes = loaded.disk_bytes;
-                next.format = loaded.format;
-                next.revision += 1;
-                next.saved_revision = next.revision;
-                next.save_error = None;
-                tracing::info!(path = %loaded.path.display(), revision = next.revision, "document refreshed from disk");
-            }
+            // External file changes are authoritative: reload even when the
+            // editor has local edits, instead of leaving a paused-save conflict.
+            let replaced_local_edits = current.dirty();
+            next.saved_text = loaded.text.clone();
+            next.text = loaded.text;
+            next.disk_bytes = loaded.disk_bytes;
+            next.format = loaded.format;
+            next.revision += 1;
+            next.saved_revision = next.revision;
+            next.formatted_revision = None;
+            next.save_error = None;
+            tracing::info!(path = %loaded.path.display(), revision = next.revision,
+                replaced_local_edits, "document automatically reloaded from disk");
             documents.insert(next.path.clone(), Arc::new(next));
         }
         true

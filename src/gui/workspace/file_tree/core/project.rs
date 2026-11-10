@@ -153,6 +153,7 @@ impl FileTree {
         }
         self.state.tree_rows = rows;
         self.state.project_revision = revision;
+        self.scroll_to_revealed_file();
     }
 }
 

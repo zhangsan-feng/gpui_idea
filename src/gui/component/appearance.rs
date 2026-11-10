@@ -5,6 +5,8 @@ mod vscode;
 
 pub(crate) fn apply(cx: &mut App) {
     let appearance = DATA_CONTEXT.settings.snapshot().general.appearance.clone();
+    tracing::info!(ui_font = %appearance.ui_font, ui_size = appearance.ui_size,
+        editor_font = %appearance.editor_font, editor_size = appearance.editor_size, "applying window and editor fonts");
     let dark = appearance.theme == ColorTheme::Dark;
     Theme::change(
         if dark {
@@ -35,10 +37,18 @@ pub(crate) fn apply(cx: &mut App) {
             tracing::info!(name = %imported.name, "VS Code theme applied");
         }
         theme.font_family = appearance.ui_font.into();
+        // GPUI uses this value for rem-based spacing too; retain the existing
+        // 16px rem at the default 13px UI size and scale the whole UI together.
+        theme.font_size = gpui_kit::px(16. * appearance.ui_size as f32 / 13.);
         theme.mono_font_family = appearance.editor_font.into();
         theme.mono_font_size = gpui_kit::px(appearance.editor_size as f32);
     });
     cx.refresh_windows();
+}
+
+/// Scale UI text while preserving the existing heading and caption hierarchy.
+pub(crate) fn ui_text_size(base: f32) -> gpui_kit::Pixels {
+    gpui_kit::px(base * DATA_CONTEXT.settings.snapshot().general.appearance.ui_size as f32 / 13.)
 }
 
 pub(crate) fn ui_font() -> gpui_kit::SharedString {

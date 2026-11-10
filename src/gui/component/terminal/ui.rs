@@ -3,6 +3,7 @@ mod scrollbar;
 use super::*;
 use gpui_kit::prelude::FluentBuilder;
 use gpui_kit::*;
+use gpui_kit::{assets::IconName, component::menu::ContextMenuExt};
 
 impl TerminalView {
     pub(super) fn render_terminal(&self, cx: &mut Context<Self>) -> impl IntoElement {
@@ -27,6 +28,7 @@ impl TerminalView {
             .on_key_down(cx.listener(Self::key_down))
             .on_action(cx.listener(|this, _: &SendTab, _, cx| this.send_tab(cx)))
             .on_action(cx.listener(|this, _: &CopyTerminal, _, cx| this.copy(cx)))
+            .on_action(cx.listener(|this, _: &CopyOrInterruptTerminal, _, cx| this.copy_or_interrupt(cx)))
             .on_action(cx.listener(|this, _: &PasteTerminal, _, cx| this.paste_clipboard(cx)))
             .on_scroll(cx.listener(|this, event: &ScrollEvent, _, cx| this.scroll(event, cx)))
             .on_mouse_down(
@@ -156,5 +158,19 @@ impl TerminalView {
             )
             .when(self.id.is_run(), |view| view.child(self.render_scrollbar(cx)))
             .when_some(error, |view, error| view.child(div().absolute().top_2().left_2().text_color(rgb(0xc42b35)).child(error)))
+            .context_menu({
+                let focus = self.focus.clone();
+                move |menu, _, _| {
+                    crate::gui::component::menu::context_menu(menu)
+                        .action_context(focus.clone())
+                        .item(crate::gui::component::menu::context_action(
+                            "复制",
+                            IconName::Copy,
+                            "Ctrl+Shift+C",
+                            Box::new(CopyTerminal),
+                            true,
+                        ))
+                }
+            })
     }
 }

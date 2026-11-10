@@ -174,8 +174,8 @@ impl BottomPanel {
                     },
                 );
                 menu.separator().item(crate::gui::component::menu::item(
-                    "创建分支 / GitHub 仓库…",
-                    !disabled,
+                    "创建分支…",
+                    !disabled && snapshot.is_repository,
                     false,
                     &view,
                     |this, window, cx| this.show_git_create_branch(window, cx),

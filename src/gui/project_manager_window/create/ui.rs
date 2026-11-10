@@ -261,14 +261,14 @@ impl ProjectManagerWindow {
             .child(templates)
             .child(
                 div()
-                    .text_size(px(12.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                     .text_color(crate::component::appearance::foreground(0x737b87))
                     .child(hint),
             )
             .when_some(self.error.clone(), |view, error| {
                 view.child(
                     div()
-                        .text_size(px(12.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
                         .text_color(crate::component::appearance::foreground(0xc54343))
                         .child(error),
                 )
@@ -277,7 +277,7 @@ impl ProjectManagerWindow {
             .size_full()
             .bg(crate::component::appearance::background(0xf7f8fa))
             .text_color(crate::component::appearance::foreground(0x202124))
-            .text_size(px(13.))
+            .text_size(crate::gui::component::appearance::ui_text_size(13.))
             .child(h_flex().flex_1().min_h_0().child(sidebar).child(fields))
             .child(
                 h_flex()

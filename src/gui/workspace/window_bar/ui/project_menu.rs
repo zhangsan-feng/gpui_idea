@@ -50,7 +50,7 @@ impl WindowBar {
                     .rounded(px(4.))
                     .bg(crate::component::appearance::background(0x159cab))
                     .text_color(crate::component::appearance::foreground(0xffffff))
-                    .text_size(px(11.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(11.))
                     .when(DATA_CONTEXT.has_project(), |tile| tile.child(initials))
                     .when(!DATA_CONTEXT.has_project(), |tile| {
                         tile.child(icon(IconName::FolderOpen, 13., 0xffffff))
@@ -83,7 +83,7 @@ fn project_menu_content(
         .min_h_0()
         .overflow_hidden()
         .font_family(crate::component::appearance::ui_font())
-        .text_size(px(13.))
+        .text_size(crate::gui::component::appearance::ui_text_size(13.))
         .text_color(crate::component::appearance::foreground(TEXT))
         .on_key_down(|event, window, cx| {
             match event.keystroke.key.as_str() {
@@ -122,7 +122,7 @@ fn project_menu_header(total: usize) -> Div {
         .child(
             div()
                 .flex_1()
-                .text_size(px(12.))
+                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                 .font_weight(FontWeight::SEMIBOLD)
                 .text_color(crate::component::appearance::foreground(0x64748b))
                 .child("最近项目"),
@@ -133,7 +133,7 @@ fn project_menu_header(total: usize) -> Div {
                 .py_0p5()
                 .rounded_md()
                 .bg(crate::component::appearance::background(0xf1f5f9))
-                .text_size(px(11.))
+                .text_size(crate::gui::component::appearance::ui_text_size(11.))
                 .text_color(crate::component::appearance::foreground(0x64748b))
                 .child(total.to_string()),
         )
@@ -177,7 +177,7 @@ fn project_list(
                 .child(icon(IconName::FolderOpen, 18., 0x94a3b8))
                 .child(
                     div()
-                        .text_size(px(12.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
                         .text_color(crate::component::appearance::foreground(0x7b8494))
                         .child("暂无最近项目"),
                 ),
@@ -256,7 +256,7 @@ fn project_row(path: &std::path::Path, current: bool) -> Div {
                                     .px_1()
                                     .rounded_sm()
                                     .bg(crate::component::appearance::background(0xeff6ff))
-                                    .text_size(px(10.))
+                                    .text_size(crate::gui::component::appearance::ui_text_size(10.))
                                     .text_color(crate::component::appearance::foreground(0x2563eb))
                                     .child("当前"),
                             )
@@ -265,7 +265,7 @@ fn project_row(path: &std::path::Path, current: bool) -> Div {
                 .child(
                     div()
                         .truncate()
-                        .text_size(px(11.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(11.))
                         .text_color(crate::component::appearance::foreground(0x7b8494))
                         .child(display_path),
                 ),

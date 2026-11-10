@@ -10,6 +10,7 @@ gpui_kit::actions!(
         CopyEditorAbsolutePath
     ]
 );
+use crate::domain::history::MarkdownMode;
 use std::path::Path;
 mod core;
 mod external;
@@ -23,6 +24,10 @@ use std::{
 };
 pub(in crate::gui::workspace) struct State {
     pub(in crate::gui::workspace) soft_wrap: bool,
+    pub(in crate::gui::workspace) markdown_resize: Entity<gpui_kit::component::ResizableState>,
+    pub(in crate::gui::workspace) markdown_extensions:
+        HashMap<ProjectFile, gpui_kit::base::text::MarkdownExtensions>,
+    pub(in crate::gui::workspace) markdown_modes: HashMap<ProjectFile, MarkdownMode>,
     pub(in crate::gui::workspace) pending_search_positions:
         HashMap<PathBuf, gpui_kit::component::input::Position>,
 
@@ -57,11 +62,27 @@ pub(crate) struct Editor {
 
 pub(in crate::gui::workspace) fn init_component_data(
     _window: &mut Window,
-    _cx: &mut App,
+    cx: &mut App,
     session: &Option<crate::domain::history::WorkspaceSession>,
 ) -> State {
     State {
         soft_wrap: DATA_CONTEXT.settings.snapshot().general.soft_wrap,
+        markdown_modes: session
+            .as_ref()
+            .map(|saved| {
+                saved
+                    .file_views
+                    .iter()
+                    .filter(|view| {
+                        crate::gui::component::code_editor::language_for_path(&view.path)
+                            == "markdown"
+                    })
+                    .map(|view| (ProjectFile::for_path(&view.path), view.markdown_mode))
+                    .collect()
+            })
+            .unwrap_or_default(),
+        markdown_extensions: HashMap::new(),
+        markdown_resize: cx.new(|_| gpui_kit::component::ResizableState::default()),
         pending_search_positions: HashMap::new(),
 
         navigation: Vec::new(),
@@ -95,6 +116,10 @@ pub(in crate::gui::workspace) fn init_component_data(
             })
             .unwrap_or_default(),
     }
+}
+
+pub(super) struct MarkdownImages {
+    document: PathBuf,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]
@@ -241,7 +266,7 @@ impl Editor {
     }
 }
 impl Render for Editor {
-    fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.render_editor(cx)
+    fn render(&mut self, window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.render_editor(window, cx)
     }
 }

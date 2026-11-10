@@ -23,7 +23,7 @@ impl ProjectManagerWindow {
             .p_5()
             .gap_4()
             .bg(crate::component::appearance::background(0xf7f8fa))
-            .text_size(px(13.))
+            .text_size(crate::gui::component::appearance::ui_text_size(13.))
             .text_color(crate::component::appearance::foreground(0x20242b));
         if self.mode != ProjectWindowKind::Manage {
             view = view.child(
@@ -108,14 +108,18 @@ impl ProjectManagerWindow {
                                 .child(
                                     div()
                                         .truncate()
-                                        .text_size(px(14.))
+                                        .text_size(crate::gui::component::appearance::ui_text_size(
+                                            14.,
+                                        ))
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .child(name),
                                 )
                                 .child(
                                     div()
                                         .truncate()
-                                        .text_size(px(12.))
+                                        .text_size(crate::gui::component::appearance::ui_text_size(
+                                            12.,
+                                        ))
                                         .text_color(crate::component::appearance::foreground(
                                             0x7b8494,
                                         ))
@@ -192,7 +196,7 @@ impl ProjectManagerWindow {
                         )
                         .child(
                             div()
-                                .text_size(px(12.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                 .text_color(crate::component::appearance::foreground(0x7b8494))
                                 .child("打开项目文件夹后会显示在这里"),
                         ),
@@ -208,7 +212,9 @@ impl ProjectManagerWindow {
                                 .gap_2()
                                 .child(
                                     div()
-                                        .text_size(px(17.))
+                                        .text_size(crate::gui::component::appearance::ui_text_size(
+                                            17.,
+                                        ))
                                         .font_weight(FontWeight::SEMIBOLD)
                                         .child("最近项目"),
                                 )
@@ -218,7 +224,9 @@ impl ProjectManagerWindow {
                                         .py_0p5()
                                         .rounded_md()
                                         .bg(crate::component::appearance::background(0xe9edf3))
-                                        .text_size(px(11.))
+                                        .text_size(crate::gui::component::appearance::ui_text_size(
+                                            11.,
+                                        ))
                                         .text_color(crate::component::appearance::foreground(
                                             0x64748b,
                                         ))
@@ -227,7 +235,7 @@ impl ProjectManagerWindow {
                         )
                         .child(
                             div()
-                                .text_size(px(12.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                 .text_color(crate::component::appearance::foreground(0x7b8494))
                                 .child("快速返回最近使用的项目"),
                         ),
@@ -236,12 +244,17 @@ impl ProjectManagerWindow {
         }
         view = view
             .when_some(self.error.clone(), |view, error| {
-                view.child(div().text_size(px(12.)).text_color(theme.red).child(error))
+                view.child(
+                    div()
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
+                        .text_color(theme.red)
+                        .child(error),
+                )
             })
             .when_some(self.status.clone(), |view, status| {
                 view.child(
                     div()
-                        .text_size(px(12.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
                         .text_color(theme.muted_foreground)
                         .child(status),
                 )

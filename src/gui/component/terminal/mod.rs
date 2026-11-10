@@ -2,10 +2,19 @@ mod core;
 mod ui;
 use crate::{data_context::DATA_CONTEXT, domain::terminal::TerminalId};
 use gpui_kit::{Context, FocusHandle, Focusable, IntoElement, Render, Window};
-gpui_kit::actions!(terminal, [SendTab, CopyTerminal, PasteTerminal]);
+gpui_kit::actions!(
+    terminal,
+    [
+        SendTab,
+        CopyTerminal,
+        CopyOrInterruptTerminal,
+        PasteTerminal
+    ]
+);
 pub(crate) fn init(cx: &mut gpui_kit::App) {
     cx.bind_keys([
         gpui_kit::KeyBinding::new("tab", SendTab, Some("Terminal")),
+        gpui_kit::KeyBinding::new("ctrl-c", CopyOrInterruptTerminal, Some("Terminal")),
         gpui_kit::KeyBinding::new("ctrl-shift-c", CopyTerminal, Some("Terminal")),
         gpui_kit::KeyBinding::new("ctrl-shift-v", PasteTerminal, Some("Terminal")),
     ]);

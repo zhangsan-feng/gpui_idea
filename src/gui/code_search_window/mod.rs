@@ -59,6 +59,8 @@ impl CodeSearchWindow {
 
 impl Render for CodeSearchWindow {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        self.render_view(cx)
+        use gpui_kit::ParentElement as _;
+        crate::gui::component::tool_window::frame("代码内容搜索", true, cx)
+            .child(self.render_view(cx))
     }
 }

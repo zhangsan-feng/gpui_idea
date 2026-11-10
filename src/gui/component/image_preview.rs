@@ -32,7 +32,7 @@ pub(crate) fn render(
                 .items_center()
                 .border_b_1()
                 .border_color(crate::component::appearance::border(BORDER))
-                .text_size(px(12.))
+                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                 .text_color(crate::component::appearance::foreground(MUTED))
                 .child("图片预览")
                 .child(div().flex_1())
@@ -59,10 +59,10 @@ pub(crate) fn render(
                                 view.child(
                                     v_flex()
                                         .gap_2()
-                                        .text_size(px(13.))
+                                        .text_size(crate::gui::component::appearance::ui_text_size(13.))
                                         .text_color(crate::component::appearance::foreground(0xb42318))
                                         .child("图片无法预览")
-                                        .child(div().text_size(px(12.)).child(error.clone())),
+                                        .child(div().text_size(crate::gui::component::appearance::ui_text_size(12.)).child(error.clone())),
                                 )
                             } else if let Some(image) = image {
                                 let extent = zoom.max(1.);

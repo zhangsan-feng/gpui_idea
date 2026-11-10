@@ -7,7 +7,25 @@ use anyhow::Result;
 impl SettingsService {
     pub(super) async fn load_core(&self) -> Result<()> {
         let _guard = self.io.lock().await;
-        let value = INFRASTRUCTURE.settings.load().await?;
+        let mut value = INFRASTRUCTURE.settings.load().await?;
+        let defaults = crate::domain::settings::AppearanceSettings::default();
+        if value.appearance.font_defaults_version < defaults.font_defaults_version {
+            if value.appearance.ui_font == "Inter Variable"
+                || (value.appearance.font_defaults_version == 0
+                    && value.appearance.ui_font == "Microsoft YaHei UI")
+            {
+                value.appearance.ui_font = defaults.ui_font;
+            }
+            if value.appearance.font_defaults_version == 0
+                && value.appearance.editor_font == "Cascadia Mono"
+            {
+                value.appearance.editor_font = defaults.editor_font;
+            }
+            value.appearance.font_defaults_version = defaults.font_defaults_version;
+        }
+
+        let fonts = INFRASTRUCTURE.settings.load_fonts().await?;
+        DATA_CONTEXT.settings.publish_fonts(fonts);
         INFRASTRUCTURE.proxy.validate(&value.lsp_proxy)?;
         INFRASTRUCTURE.proxy.set_lsp(value.lsp_proxy.clone());
         DATA_CONTEXT.settings.publish_general(value);
@@ -26,6 +44,10 @@ impl SettingsService {
         anyhow::ensure!(
             (9..=36).contains(&value.appearance.editor_size),
             "编辑器字号须在 9–36 之间"
+        );
+        anyhow::ensure!(
+            (10..=24).contains(&value.appearance.ui_size),
+            "窗口字号须在 10–24 之间"
         );
         INFRASTRUCTURE.proxy.validate(&value.lsp_proxy)?;
         if let Some(id) = &value.appearance.selected_theme {
@@ -49,7 +71,7 @@ impl SettingsService {
             "general settings saved"
         );
         tracing::info!(ui_font = %value.appearance.ui_font, editor_font = %value.appearance.editor_font,
-            editor_size = value.appearance.editor_size, dark = value.appearance.theme == crate::domain::settings::ColorTheme::Dark,
+            ui_size = value.appearance.ui_size, editor_size = value.appearance.editor_size, dark = value.appearance.theme == crate::domain::settings::ColorTheme::Dark,
             "appearance settings saved");
         DATA_CONTEXT.settings.publish_general(value);
         Ok(())

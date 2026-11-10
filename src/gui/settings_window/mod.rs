@@ -1,6 +1,7 @@
 mod appearance;
 mod core;
 mod editor;
+mod fonts;
 mod language_servers;
 mod system;
 mod themes;
@@ -13,6 +14,7 @@ use gpui_kit::{AppContext as _, Context, Entity, IntoElement, Render, Subscripti
 pub(in crate::gui) struct SettingsWindow {
     page: SettingsPage,
     fonts: Vec<String>,
+
     themes: themes::ThemeBrowser,
     system_status: Option<crate::domain::settings::ContextMenuStatus>,
     system_busy: bool,
@@ -34,11 +36,12 @@ pub(in crate::gui) struct SettingsWindow {
     _search_subscription: Subscription,
 }
 
-const EDITOR_SEARCH_TERMS: &str = "编辑器配置 编辑器显示 文本换行 文本超出 自动换行 折行 soft wrap word wrap editor 编辑器字体 编辑器字号 字体 字号 font size 代码格式化 自动格式化代码 自动化格式化代码 保存时自动格式化代码 format formatting";
+const EDITOR_SEARCH_TERMS: &str = "编辑器配置 编辑器显示 文本换行 文本超出 自动换行 折行 soft wrap word wrap editor 代码格式化 自动格式化代码 自动化格式化代码 保存时自动格式化代码 format formatting";
+const FONT_SEARCH_TERMS: &str = "字体 字号 界面字体 窗口字体 窗口字号 界面字号 编辑器字体 编辑器字号 font size jetbrains mono inter";
 
 const GENERAL_SEARCH_TERMS: &str = "常规配置 代理 proxy 网络 下载";
 const APPEARANCE_SEARCH_TERMS: &str =
-    "外观 界面字体 主题 浅色 深色 theme appearance vscode vsix open vsx 在线 已安装 导入";
+    "外观 主题 浅色 深色 theme appearance vscode vsix open vsx 在线 已安装 导入";
 
 impl SettingsWindow {
     pub(in crate::gui) fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
@@ -48,7 +51,9 @@ impl SettingsWindow {
         let subscription = cx.observe(&search, |this, search, cx| {
             let query = search.read(cx).value().trim().to_lowercase();
             if !query.is_empty() {
-                if APPEARANCE_SEARCH_TERMS.contains(&query) {
+                if FONT_SEARCH_TERMS.contains(&query) {
+                    this.select_page(SettingsPage::Fonts, cx);
+                } else if APPEARANCE_SEARCH_TERMS.contains(&query) {
                     this.select_page(SettingsPage::Appearance, cx);
                 } else if GENERAL_SEARCH_TERMS.contains(&query) {
                     this.select_page(SettingsPage::General, cx);
@@ -94,6 +99,7 @@ impl SettingsWindow {
         let mut this = Self {
             themes: theme_browser,
             fonts: cx.text_system().all_font_names(),
+
             page: crate::data_context::DATA_CONTEXT
                 .history
                 .snapshot()
@@ -155,15 +161,12 @@ impl SettingsWindow {
 
 impl Render for SettingsWindow {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        use gpui_kit::{ParentElement as _, Styled as _};
-        gpui_kit::component::v_flex()
-            .size_full()
-            .font_family(crate::component::appearance::ui_font())
-            .child(crate::component::operation_title_bar::render(
-                "设置",
-                !self.saving && !self.system_busy && !self.themes.busy(),
-                cx,
-            ))
-            .child(self.render_view(cx))
+        use gpui_kit::ParentElement as _;
+        crate::gui::component::tool_window::frame(
+            "设置",
+            !self.saving && !self.system_busy && !self.themes.busy(),
+            cx,
+        )
+        .child(self.render_view(cx))
     }
 }

@@ -211,14 +211,14 @@ impl FileTree {
             .items_center()
             .gap_1()
             .bg(palette.panel)
-            .text_size(px(12.))
+            .text_size(crate::gui::component::appearance::ui_text_size(12.))
             .text_color(palette.foreground)
             .font_weight(FontWeight(600.))
             .child(div().flex_1().child("Project"))
             .when(self.state.project_selection.len() > 1, |header| {
                 header.child(
                     div()
-                        .text_size(px(11.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(11.))
                         .text_color(palette.muted)
                         .child(format!("已选 {} 项", self.state.project_selection.len())),
                 )
@@ -251,7 +251,7 @@ impl FileTree {
             .px_2()
             .gap_1()
             .items_center()
-            .text_size(px(12.))
+            .text_size(crate::gui::component::appearance::ui_text_size(12.))
             .text_color(palette.foreground)
             .hover(|style| style.bg(palette.hover))
             .drag_over::<DraggedProjectEntry>(move |style, drag, _, _| {
@@ -381,7 +381,7 @@ fn project_drop_hint(target: &Path, palette: ProjectTreePalette) -> impl IntoEle
         .gap_1()
         .items_center()
         .bg(palette.panel)
-        .text_size(px(11.))
+        .text_size(crate::gui::component::appearance::ui_text_size(11.))
         .text_color(palette.accent)
         .opacity(0.)
         .group_drag_over::<DraggedProjectEntry>("project-drop-row", |style| style.opacity(1.))

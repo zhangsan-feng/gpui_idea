@@ -163,6 +163,7 @@ impl TerminalView {
     pub(super) fn copy_text(&self, snapshot: &TerminalDataContextSnapshot) -> String {
         let (start, end) = self
             .selection
+            .filter(|(start, end)| start != end)
             .map(|(a, b)| (a.min(b), a.max(b)))
             .unwrap_or((
                 (0, 0),
@@ -190,9 +191,18 @@ impl TerminalView {
             .join("\n")
     }
     pub(crate) fn copy(&self, cx: &mut Context<Self>) {
+        tracing::debug!(terminal = ?self.id, selection = ?self.selection, "copying terminal output");
         cx.write_to_clipboard(ClipboardItem::new_string(
             self.copy_text(&DATA_CONTEXT.terminal.snapshot(self.id)),
         ));
+    }
+    pub(super) fn copy_or_interrupt(&self, cx: &mut Context<Self>) {
+        let snapshot = DATA_CONTEXT.terminal.snapshot(self.id);
+        if self.selection.is_some_and(|(start, end)| start != end) || snapshot.exited {
+            self.copy(cx);
+        } else {
+            self.send(vec![3], cx);
+        }
     }
     pub(super) fn paste_clipboard(&self, cx: &mut Context<Self>) {
         let snapshot = DATA_CONTEXT.terminal.snapshot(self.id);
@@ -217,8 +227,14 @@ impl TerminalView {
     ) {
         let key = &event.keystroke;
         let snapshot = DATA_CONTEXT.terminal.snapshot(self.id);
+        if key.modifiers.control && !key.modifiers.shift && !key.modifiers.alt && key.key == "c" {
+            self.copy_or_interrupt(cx);
+            cx.stop_propagation();
+            window.prevent_default();
+            return;
+        }
         if key.modifiers.control && key.modifiers.shift && key.key == "c" {
-            cx.write_to_clipboard(ClipboardItem::new_string(self.copy_text(&snapshot)));
+            self.copy(cx);
             cx.stop_propagation();
             return;
         }

@@ -3,6 +3,26 @@ use anyhow::Result;
 use gpui_kit::App;
 use std::path::Path;
 
+pub(crate) fn gutter_layout(
+    lines: usize,
+    window: &mut gpui_kit::Window,
+    cx: &App,
+) -> super::GutterLayout {
+    core::gutter_layout(lines, window, cx)
+}
+
+pub(crate) fn update_gutter(
+    editor: &gpui_kit::Entity<gpui_kit::component::input::EditorState>,
+    window: &mut gpui_kit::Window,
+    cx: &mut App,
+) {
+    use gpui_kit::component::input::RopeExt as _;
+    let layout = core::gutter_layout(editor.read(cx).text().lines_len(), window, cx);
+    editor.update(cx, |state, cx| {
+        state.set_gutter_decorations_width(layout.decorations_width, cx)
+    });
+}
+
 pub(crate) fn definition_pointer(
     editor: &gpui_kit::Entity<gpui_kit::component::input::EditorState>,
     hitbox: &gpui_kit::Hitbox,
@@ -23,7 +43,7 @@ pub(crate) fn attach_completions(
     window: &mut gpui_kit::Window,
     cx: &mut App,
 ) {
-    editor.update(cx, core::configure_gutter);
+    editor.update(cx, |state, cx| core::configure_gutter(state, window, cx));
     super::highlights::attach(editor, path.to_owned(), window, cx);
     super::completion::attach(
         editor,

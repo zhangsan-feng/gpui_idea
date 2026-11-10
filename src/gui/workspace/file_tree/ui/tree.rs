@@ -36,7 +36,7 @@ impl FileTree {
                         + PROJECT_TREE_ICON_SIZE
                         + depth as f32 * PROJECT_TREE_INDENT))
                     .pr_2()
-                    .text_size(px(12.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                     .text_color(if retry { palette.error } else { palette.muted })
                     .truncate()
                     .child(text)
@@ -94,7 +94,7 @@ impl FileTree {
             .pr_2()
             .gap_1()
             .items_center()
-            .text_size(px(12.))
+            .text_size(crate::gui::component::appearance::ui_text_size(12.))
             .text_color(palette.foreground)
             .on_mouse_down(
                 MouseButton::Right,

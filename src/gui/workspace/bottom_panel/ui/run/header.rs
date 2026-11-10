@@ -9,7 +9,7 @@ impl BottomPanel {
         crate::gui::component::panel::header(40., RUN_SURFACE, RUN_BORDER)
             .px(px(12.))
             .gap_0()
-            .child(div().w(px(42.)).flex_shrink_0().text_size(px(12.)).font_weight(FontWeight(600.)).child("Run"))
+            .child(div().w(px(42.)).flex_shrink_0().text_size(crate::gui::component::appearance::ui_text_size(12.)).font_weight(FontWeight(600.)).child("Run"))
             .child(
                 h_flex()
                     .id("run-instance-tabs")
@@ -25,7 +25,7 @@ impl BottomPanel {
                                 .flex()
                                 .items_center()
                                 .gap_1()
-                                .text_size(px(12.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                 .child(icon(IconName::CirclePlay, 14., MUTED))
                                 .child("Run"),
                         )
@@ -50,7 +50,7 @@ impl BottomPanel {
                             .px(px(10.))
                             .gap(px(4.))
                             .items_center()
-                            .text_size(px(12.))
+                            .text_size(crate::gui::component::appearance::ui_text_size(12.))
                             .cursor_pointer()
                             .hover(|style| style.bg(crate::component::appearance::background(0xeef0f4)))
                             .tooltip(move |window, cx| Tooltip::new(hint.clone()).build(window, cx))

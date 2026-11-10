@@ -116,7 +116,7 @@ impl BottomPanel {
                         snapshot.title.clone()
                     })
                     .child(div().flex_1())
-                    .child("Ctrl+Shift+C 复制   Ctrl+Shift+V 粘贴"),
+                    .child("Ctrl+C 复制选区 · 右键复制 · Ctrl+Shift+V 粘贴"),
             )
             .into_any_element()
     }

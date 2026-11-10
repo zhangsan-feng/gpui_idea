@@ -77,6 +77,11 @@ impl Editor {
                                             state.set_scroll_offset(scroll, cx);
                                         });
                                         this.state.editor_revisions.insert(file.clone(), revision);
+                                        if this.state.selected_file == file {
+                                            this.send(crate::event_bus::gui_event::GuiEvent::BottomBar(
+                                                crate::gui::workspace::bottom_bar::Event::Notice(None),
+                                            ));
+                                        }
                                         tracing::info!(path = %path.display(), revision, "editor synchronized with document snapshot");
                                     }
                                 }

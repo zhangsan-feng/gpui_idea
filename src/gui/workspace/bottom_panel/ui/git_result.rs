@@ -86,7 +86,7 @@ impl BottomPanel {
                             .px_4()
                             .whitespace_nowrap()
                             .font_family(crate::component::appearance::editor_font())
-                            .text_size(px(12.))
+                            .text_size(crate::gui::component::appearance::ui_text_size(12.))
                             .child(line.clone())
                     })
                     .collect::<Vec<_>>()

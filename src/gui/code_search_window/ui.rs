@@ -65,7 +65,7 @@ impl CodeSearchWindow {
                                 div()
                                     .truncate()
                                     .font_family(crate::component::appearance::editor_font())
-                                    .text_size(px(12.))
+                                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                     .text_color(muted)
                                     .child(result.preview.clone()),
                             ),
@@ -76,21 +76,13 @@ impl CodeSearchWindow {
             );
         }
         v_flex()
-            .size_full()
-            .font_family(crate::component::appearance::ui_font())
-            .bg(theme.background)
-            .text_color(theme.foreground)
-            .text_size(px(13.))
+            .flex_1()
+            .min_h_0()
             .on_key_down(cx.listener(|_, event: &KeyDownEvent, window, _| {
                 if event.keystroke.key == "escape" {
                     window.remove_window();
                 }
             }))
-            .child(crate::component::operation_title_bar::render(
-                "代码内容搜索",
-                true,
-                cx,
-            ))
             .child(
                 v_flex()
                     .flex_1()
@@ -100,7 +92,7 @@ impl CodeSearchWindow {
                     .child(Input::new(&self.input))
                     .child(
                         div()
-                            .text_size(px(12.))
+                            .text_size(crate::gui::component::appearance::ui_text_size(12.))
                             .text_color(if self.error.is_some() {
                                 theme.danger
                             } else {

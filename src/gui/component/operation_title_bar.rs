@@ -33,7 +33,7 @@ pub(crate) fn render(title: &'static str, close_enabled: bool, cx: &App) -> impl
                 .child(
                     div()
                         .truncate()
-                        .text_size(px(13.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(13.))
                         .font_weight(FontWeight(600.))
                         .text_color(foreground)
                         .child(title),

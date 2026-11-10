@@ -100,7 +100,7 @@ impl CompletionDropdown {
             .shadow_md()
             .overflow_hidden()
             .font_family(crate::component::appearance::editor_font())
-            .text_size(px(13.))
+            .text_size(crate::gui::component::appearance::ui_text_size(13.))
             .child(
                 div()
                     .relative()
@@ -148,7 +148,7 @@ impl CompletionDropdown {
                     .border_color(crate::component::appearance::border(0xf0f1f3))
                     .bg(crate::component::appearance::background(0xf7f8fa))
                     .font_family(crate::component::appearance::ui_font())
-                    .text_size(px(11.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(11.))
                     .text_color(crate::component::appearance::foreground(0x818999))
                     .child("↑↓ 选择   Enter 插入   Esc 关闭")
                     .child(div().flex_1())

@@ -18,7 +18,7 @@ impl RunConfigurationWindow {
         v_flex()
             .size_full()
             .gap_3()
-            .text_size(px(13.))
+            .text_size(crate::gui::component::appearance::ui_text_size(13.))
             .child(
                 h_flex()
                     .flex_1()
@@ -108,7 +108,7 @@ impl RunConfigurationWindow {
                             .child(
                                 div()
                                     .pl(px(108.))
-                                    .text_size(px(12.))
+                                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                     .text_color(crate::component::appearance::foreground(0x737b87))
                                     .child("空格分隔参数，带空格的值用引号包裹。"),
                             )
@@ -134,7 +134,7 @@ impl RunConfigurationWindow {
                             .child(
                                 div()
                                     .pl(px(108.))
-                                    .text_size(px(12.))
+                                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                     .text_color(crate::component::appearance::foreground(0x737b87))
                                     .child("每次启动指定数量的独立实例；关闭重复启动时，会先停止此配置的已有实例。"),
                             )

@@ -55,7 +55,7 @@ impl Workspace {
             .min_h_0()
             .overflow_hidden()
             .font_family(crate::component::appearance::ui_font())
-            .text_size(px(12.))
+            .text_size(crate::gui::component::appearance::ui_text_size(12.))
             .bg(crate::component::appearance::background(EDITOR_BG))
             .text_color(crate::component::appearance::foreground(TEXT))
             // GPUI's cached paint replay omits window_control_hitboxes. Keep the

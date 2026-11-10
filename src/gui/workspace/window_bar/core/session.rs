@@ -115,6 +115,14 @@ impl WindowBar {
                         let cursor = state.cursor_position();
                         let scroll = state.scroll_offset();
                         Some(FileViewState {
+                            markdown_mode: self
+                                .peer_editor(cx)
+                                .read(cx)
+                                .state
+                                .markdown_modes
+                                .get(file)
+                                .copied()
+                                .unwrap_or_default(),
                             path,
                             cursor_line: cursor.line,
                             cursor_character: cursor.character,

@@ -41,15 +41,16 @@ impl Editor {
                     underline: None,
                     strikethrough: None,
                 };
-                let number_width = window
-                    .text_system()
-                    .shape_line("+".repeat(digits).into(), font_size, &[run.clone()], None)
-                    .width;
+                let layout = crate::gui::component::code_editor::gutter_layout(
+                    state.text().lines_len(),
+                    window,
+                    cx,
+                );
                 let left = state.input_bounds().left();
                 // Keep native numbers enabled for accessibility and active-line painting.
-                // Repaint the number column and the 16px reserved by our empty gutter
-                // collection. Native fold controls and their hitboxes stay uncovered.
-                let width = number_width + px(16.);
+                // Share the native editor's gutter sizing so fold hitboxes and
+                // the text origin stay aligned with our repainted number column.
+                let width = layout.overlay_width;
                 let gutter = Bounds::new(
                     point(left, viewport.top()),
                     size(width, viewport.size.height),
@@ -86,13 +87,15 @@ impl Editor {
                         ));
                     }
                 }
+                let text_left = left + layout.overlay_width + px(24.);
+                super::guides::paint(state, &rows, viewport, text_left, line_height, window, cx);
                 window.with_content_mask(
                     Some(ContentMask {
                         bounds: gutter.intersect(&viewport),
                     }),
                     |window| {
                         window.paint_quad(fill(gutter, background));
-                        for (row, top, wrapped_rows) in rows {
+                        for &(row, top, wrapped_rows) in &rows {
                             if row == active {
                                 if let Some(color) = style.editor_active_line {
                                     window.paint_quad(fill(
@@ -117,20 +120,23 @@ impl Editor {
                                 &[run],
                                 None,
                             );
-                            let origin = point(left + number_width - line.width, top);
+                            let origin = point(left + layout.number_right - line.width, top);
                             let _ =
                                 line.paint(origin, line_height, TextAlign::Left, None, window, cx);
                         }
-                        // Two 8px gaps separate numbers, divider and native fold controls.
-                        window.paint_quad(fill(
-                            Bounds::new(
-                                point(left + number_width + px(8.), viewport.top()),
-                                size(px(1.), viewport.size.height),
-                            ),
-                            crate::component::appearance::border(0xe0e3e8),
-                        ));
                     },
                 );
+                // A fixed boundary sits 2px before the first code column.
+                // Paint it after row backgrounds so the active line cannot break it.
+                window.with_content_mask(Some(ContentMask { bounds: viewport }), |window| {
+                    window.paint_quad(fill(
+                        Bounds::new(
+                            point(text_left - px(2.), viewport.top()),
+                            size(px(1.), viewport.size.height),
+                        ),
+                        crate::component::appearance::border(0xe9ebef),
+                    ));
+                });
             },
         )
         .absolute()

@@ -73,6 +73,9 @@ impl Editor {
                             ),
                     ),
             )
+            .when(self.markdown_mode().is_some(), |tabs| {
+                tabs.child(self.markdown_toolbar(cx))
+            })
             .when(!image, |tabs| {
                 tabs.child(
                     div()
@@ -124,6 +127,14 @@ impl Editor {
         let selected_file = file.clone();
         let closed_file = file.clone();
         let target_file = file.clone();
+        let tree_file = file.clone();
+        let copy_file = file.clone();
+        let view = cx.weak_entity();
+        let can_reveal = DATA_CONTEXT.has_project()
+            && !external_source
+            && file
+                .path(DATA_CONTEXT.project_root())
+                .starts_with(DATA_CONTEXT.project_root());
         let label = self.editor_tab_label(file);
         let path = file.relative_path().to_string_lossy().into_owned();
         let tooltip_path = if external_source {
@@ -146,7 +157,7 @@ impl Editor {
             .gap(px(6.))
             .items_center()
             .bg(crate::component::appearance::themed(if active { "tab.activeBackground" } else { "tab.inactiveBackground" }, crate::component::appearance::background(if external_source { SOURCE_TAB_BG } else { EDITOR_BG })))
-            .text_size(px(12.))
+            .text_size(crate::gui::component::appearance::ui_text_size(12.))
             .text_color(crate::component::appearance::themed(if active { "tab.activeForeground" } else { "tab.inactiveForeground" }, crate::component::appearance::foreground(text_color)))
             .cursor_pointer()
             .hover(|style| style.bg(crate::component::appearance::background(if external_source { SOURCE_TAB_HOVER } else { TAB_HOVER })))
@@ -204,7 +215,23 @@ impl Editor {
                 cx.stop_propagation();
                 this.move_editor_tab(&drag.file, &target_file, window, cx);
             }))
-            .context_menu(move |menu, _, _| crate::gui::component::menu::context_menu(menu).item(
+            .context_menu(move |menu, _, _| crate::gui::component::menu::context_menu(menu)
+                .item(crate::gui::component::menu::context_view_item(
+                    "打开文件树", IconName::FolderOpen, "", can_reveal, &view, {
+                        let file = tree_file.clone();
+                        move |this, _, _| this.send(crate::event_bus::gui_event::GuiEvent::FileTree(
+                            crate::gui::workspace::file_tree::Event::RevealFile(file.clone()),
+                        ))
+                    },
+                ))
+                .item(crate::gui::component::menu::context_view_item(
+                    "复制文件名", IconName::Copy, "", true, &view, {
+                        let file = copy_file.clone();
+                        move |this, _, cx| this.copy_file_name(&file, cx)
+                    },
+                ))
+                .separator()
+                .item(
                 crate::gui::component::menu::context_action("关闭所有", IconName::X, "", Box::new(CloseAllDocuments), !close_all_disabled)
             ))
             .into_any_element()

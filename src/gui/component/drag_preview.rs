@@ -20,6 +20,6 @@ pub(crate) fn render(
         .bg(background)
         .shadow_md()
         .font_family(super::appearance::ui_font())
-        .text_size(px(12.))
+        .text_size(crate::gui::component::appearance::ui_text_size(12.))
         .text_color(foreground)
 }

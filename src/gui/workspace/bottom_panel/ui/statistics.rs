@@ -67,7 +67,7 @@ impl BottomPanel {
                     .child(
                         div()
                             .flex_shrink_0()
-                            .text_size(px(11.))
+                            .text_size(crate::gui::component::appearance::ui_text_size(11.))
                             .text_color(crate::component::appearance::foreground(MUTED))
                             .child(if self.state.statistics_loading {
                                 "正在扫描…".to_owned()
@@ -107,7 +107,7 @@ impl BottomPanel {
                     .flex_shrink_0()
                     .px_3()
                     .py_2()
-                    .text_size(px(11.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(11.))
                     .text_color(crate::component::appearance::foreground(MUTED))
                     .child(format!(
                         "仅列出根目录下的文件夹，行数包含所有子目录 · 行数包含空行 · 排除版本控制和构建目录 · 二进制文件不计行数 · 跳过 {} 个不可读项",
@@ -171,7 +171,7 @@ impl BottomPanel {
             .child(
                 div()
                     .flex_shrink_0()
-                    .text_size(px(11.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(11.))
                     .text_color(crate::component::appearance::foreground(MUTED))
                     .child(format!(
                         "{} 种类型 · {} 个文件 · {} 行",
@@ -198,7 +198,7 @@ impl BottomPanel {
             .pr_3()
             .gap_2()
             .items_center()
-            .text_size(px(12.))
+            .text_size(crate::gui::component::appearance::ui_text_size(12.))
             .child(icon(IconName::File, 14., MUTED))
             .child(div().min_w_0().truncate().child(type_summary(row)))
             .into_any_element()

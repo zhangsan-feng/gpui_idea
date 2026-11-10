@@ -11,12 +11,56 @@ use std::{path::Path, sync::Arc};
 
 pub(super) fn configure_gutter(
     state: &mut gpui_kit::component::input::EditorState,
+    window: &mut gpui_kit::Window,
     cx: &mut gpui_kit::Context<gpui_kit::component::input::EditorState>,
 ) {
-    // Retained by the editor, even when the collection handle is dropped.
-    // The component adds a 4px separator after the 12px decoration strip.
+    // Draw guides in our overlay so column zero is a continuous gutter
+    // boundary rather than a block-dependent indent guide through the text.
+    state.set_indent_guides(false, window, cx);
+    // Retained even when the handle is dropped. update_gutter sizes this
+    // initial strip from the font metrics before the editor is laid out.
     state.set_gutter_decorations_width(gpui_kit::px(12.), cx);
     state.create_gutter_decorations_collection(vec![], cx);
+    tracing::info!(
+        total_width = 70,
+        "editor gutter configured: compact numbers and fold controls without divider"
+    );
+}
+
+pub(super) fn gutter_layout(
+    lines: usize,
+    window: &mut gpui_kit::Window,
+    cx: &App,
+) -> super::GutterLayout {
+    use gpui_kit::component::ActiveTheme as _;
+    let theme = cx.theme();
+    let digits = (lines.max(1).ilog10() as usize + 1).clamp(3, 7);
+    let number_width = window
+        .text_system()
+        .shape_line(
+            "+".repeat(digits).into(),
+            theme.mono_font_size,
+            &[gpui_kit::TextRun {
+                len: digits,
+                font: gpui_kit::font(theme.mono_font_family.clone()),
+                color: gpui_kit::black(),
+                background_color: None,
+                underline: None,
+                strikethrough: None,
+            }],
+            None,
+        )
+        .width;
+    // IDEA's compact 70px gutter contains both the numbers and fold controls.
+    // GPUI reserves 18px for folding, 6px before text and a 4px decoration gap.
+    let decorations_width =
+        (gpui_kit::px(70. - 18. - 6. - 4.) - number_width).max(gpui_kit::px(12.));
+    let overlay_width = number_width + decorations_width + gpui_kit::px(4.);
+    super::GutterLayout {
+        number_right: overlay_width - gpui_kit::px(16.),
+        overlay_width,
+        decorations_width,
+    }
 }
 
 pub(super) fn select_line_for_cut(

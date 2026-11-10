@@ -15,7 +15,7 @@ impl Editor {
                     .max_w_full()
                     .px_6()
                     .gap(px(20.))
-                    .text_size(px(16.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(16.))
                     .text_color(crate::component::appearance::foreground(MUTED))
                     .child("在左侧项目树中浏览文件")
                     .child("双击文件，开始编辑")
@@ -33,7 +33,7 @@ impl Editor {
             .child(icon(IconName::FolderOpen, 36., MUTED))
             .child(
                 div()
-                    .text_size(px(20.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(20.))
                     .font_weight(FontWeight::SEMIBOLD)
                     .child("尚未打开项目"),
             )

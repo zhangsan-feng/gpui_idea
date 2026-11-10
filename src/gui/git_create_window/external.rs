@@ -3,8 +3,8 @@ use gpui_kit::{AnyWindowHandle, App, AppContext as _, Window, px, size};
 
 pub(in crate::gui) fn open(window: &Window, cx: &mut App) -> anyhow::Result<AnyWindowHandle> {
     let (handle, _) = crate::gui::external::open_tool_window(
-        "创建 Git 分支或仓库",
-        size(px(560.), px(570.)),
+        "创建 Git 分支",
+        size(px(560.), px(320.)),
         window,
         cx,
         |window, cx| {

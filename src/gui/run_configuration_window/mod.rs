@@ -139,19 +139,10 @@ impl RunConfigurationWindow {
 impl Render for RunConfigurationWindow {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
         use gpui_kit::{ParentElement as _, Styled as _};
-        gpui_kit::component::v_flex()
-            .size_full()
-            .child(crate::component::operation_title_bar::render(
-                "运行配置",
-                true,
-                cx,
-            ))
-            .child(
-                gpui_kit::div()
-                    .flex_1()
-                    .min_h_0()
-                    .p_4()
-                    .child(self.render_view(cx)),
-            )
+        crate::gui::component::tool_window::frame("运行配置", true, cx).child(
+            crate::gui::component::tool_window::content()
+                .p_4()
+                .child(self.render_view(cx)),
+        )
     }
 }

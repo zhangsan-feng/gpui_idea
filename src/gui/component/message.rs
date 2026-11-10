@@ -6,7 +6,7 @@ pub(crate) fn centered(message: impl Into<SharedString>) -> AnyElement {
         .flex()
         .items_center()
         .justify_center()
-        .text_size(px(13.))
+        .text_size(crate::gui::component::appearance::ui_text_size(13.))
         .text_color(super::appearance::foreground(super::tokens::MUTED))
         .child(message.into())
         .into_any_element()

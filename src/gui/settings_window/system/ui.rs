@@ -58,7 +58,7 @@ impl SettingsWindow {
                                     .px_2()
                                     .py_1()
                                     .rounded_md()
-                                    .text_size(px(12.))
+                                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                     .bg(crate::component::appearance::background(if installed { 0xecfdf5 } else { 0xf3f4f6 }))
                                     .text_color(crate::component::appearance::foreground(if installed { 0x047857 } else { 0x6b7280 }))
                                     .child(status),
@@ -67,7 +67,7 @@ impl SettingsWindow {
                         .child(div().child("在文件、文件夹和文件夹空白处的右键菜单中添加“使用 GPUI Editor 打开”。"))
                         .child(
                             div()
-                                .text_size(px(12.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                 .text_color(crate::component::appearance::foreground(0x6b7280))
                                 .child("兼容 Windows 10 / 11，仅对当前用户生效，无需管理员权限。Windows 10 直接显示；Windows 11 位于“显示更多选项”。"),
                         )
@@ -96,7 +96,7 @@ impl SettingsWindow {
                         )
                         .child(
                             div()
-                                .text_size(px(12.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                 .text_color(crate::component::appearance::foreground(0x6b7280))
                                 .child("添加或移除后立即生效，不受底部“应用 / 取消”影响。移动程序位置后，可点击修复更新菜单。"),
                         )

@@ -5,6 +5,7 @@ mod document_sync;
 mod drop;
 mod formatting;
 mod image_preview;
+mod markdown;
 mod menu;
 mod navigation;
 mod reconcile;
@@ -13,3 +14,5 @@ mod save;
 mod scroll;
 mod search_target;
 mod tabs;
+
+pub(super) use markdown::parse_image_paragraph;

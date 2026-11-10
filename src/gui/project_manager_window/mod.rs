@@ -111,20 +111,8 @@ impl ProjectManagerWindow {
 }
 impl Render for ProjectManagerWindow {
     fn render(&mut self, _: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
-        use gpui_kit::{ParentElement as _, Styled as _};
-        gpui_kit::component::v_flex()
-            .size_full()
-            .font_family(crate::component::appearance::ui_font())
-            .child(crate::component::operation_title_bar::render(
-                self.mode.title(),
-                !self.busy,
-                cx,
-            ))
-            .child(
-                gpui_kit::div()
-                    .flex_1()
-                    .min_h_0()
-                    .child(self.render_view(cx)),
-            )
+        use gpui_kit::ParentElement as _;
+        crate::gui::component::tool_window::frame(self.mode.title(), !self.busy, cx)
+            .child(crate::gui::component::tool_window::content().child(self.render_view(cx)))
     }
 }

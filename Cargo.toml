@@ -43,6 +43,7 @@ tracing = "0.1"
 tracing-appender = "0.2.5"
 tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt"] }
 alacritty_terminal = "0.26.0"
+ttf-parser = "=0.25.1"
 rust-embed = { version = "8.13.0", features = ["debug-embed", "include-exclude"] }
 
 [build-dependencies]

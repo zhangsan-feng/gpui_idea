@@ -5,6 +5,7 @@ use std::path::PathBuf;
 #[serde(rename_all = "snake_case")]
 pub(crate) enum SettingsPage {
     Appearance,
+    Fonts,
     Editor,
     LanguageServers,
     System,
@@ -96,9 +97,21 @@ fn default_run_automatic() -> bool {
     true
 }
 
+#[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[serde(rename_all = "snake_case")]
+pub enum MarkdownMode {
+    Source,
+    Rendered,
+    #[default]
+    #[serde(other)]
+    Preview,
+}
+
 #[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FileViewState {
     pub path: PathBuf,
+    #[serde(default)]
+    pub markdown_mode: MarkdownMode,
     pub cursor_line: u32,
     pub cursor_character: u32,
     pub scroll_x: f32,

@@ -37,6 +37,7 @@ impl Editor {
             {
                 self.state.editor_subscriptions.remove(&file);
                 self.state.editors.remove(&file);
+                self.state.markdown_extensions.remove(&file);
                 self.state.external_source_files.remove(&file);
                 self.state.editor_revisions.remove(&file);
                 self.state.editor_order.retain(|cached| *cached != file);

@@ -25,6 +25,6 @@ pub(crate) fn toolbar_button(id: impl Into<ElementId>, cx: &App) -> Button {
         .h(px(30.))
         .px(px(6.))
         .rounded(px(4.))
-        .text_size(px(13.))
+        .text_size(crate::gui::component::appearance::ui_text_size(13.))
         .text_color(super::appearance::foreground(0xdfe1e5))
 }

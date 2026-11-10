@@ -19,33 +19,38 @@ impl GitCreateWindow {
         for (id, label, kind) in [
             ("local", "本地分支", CreateKind::LocalBranch),
             ("remote", "远程分支", CreateKind::RemoteBranch),
-            ("repo", "GitHub 仓库", CreateKind::Repository),
         ] {
             tabs = tabs.child(
                 Button::new(id)
                     .label(label)
                     .selected(self.kind == kind)
-                    .disabled(self.busy || (kind != CreateKind::Repository && !self.is_repository))
+                    .disabled(self.busy || !self.is_repository)
                     .on_click(
                         cx.listener(move |this, _, window, cx| this.select_kind(kind, window, cx)),
                     ),
             );
         }
         let help = match self.kind {
-            CreateKind::LocalBranch => format!("从当前分支 {} 的 HEAD 创建，并切换到新本地分支。", self.branch),
-            CreateKind::RemoteBranch => format!("将当前分支 {} 的 HEAD 发布为新的远程分支，保留当前本地分支。", self.branch),
-            CreateKind::Repository => "使用 GitHub API 创建空仓库并关联当前项目的远端，不会自动推送代码；非 Git 项目会初始化本地仓库。".into(),
+            CreateKind::LocalBranch => format!(
+                "从当前分支 {} 的 HEAD 创建，并切换到新本地分支。",
+                self.branch
+            ),
+            CreateKind::RemoteBranch => format!(
+                "将当前分支 {} 的 HEAD 发布为新的远程分支，保留当前本地分支。",
+                self.branch
+            ),
         };
         let mut form = v_flex()
             .gap_4()
             .child(tabs)
-            .child(div().text_size(px(12.)).text_color(muted).child(help))
+            .child(
+                div()
+                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
+                    .text_color(muted)
+                    .child(help),
+            )
             .child(field(
-                if self.kind == CreateKind::Repository {
-                    "仓库名称"
-                } else {
-                    "分支名称"
-                },
+                "分支名称",
                 82.,
                 Input::new(&self.name).disabled(self.busy),
             ));
@@ -81,36 +86,14 @@ impl GitCreateWindow {
                     }),
             ));
         }
-        if self.kind == CreateKind::Repository {
-            form = form
-                .child(field("所属组织", 82., Input::new(&self.organization).disabled(self.busy)))
-                .child(field("描述", 82., Input::new(&self.description).disabled(self.busy)))
-                .child(field("远端名称", 82., Input::new(&self.remote_name).disabled(self.busy)))
-                .child(field("可见性", 82., h_flex().gap_2()
-                    .child(Button::new("private").label("私有").selected(self.private).disabled(self.busy)
-                        .on_click(cx.listener(|this, _, _, cx| { this.private = true; this.feedback = None; cx.notify(); })))
-                    .child(Button::new("public").label("公开").selected(!self.private).disabled(self.busy)
-                        .on_click(cx.listener(|this, _, _, cx| { this.private = false; this.feedback = None; cx.notify(); })))))
-                .child(field("访问令牌", 82., Input::new(&self.token).disabled(self.busy)))
-                .child(div().text_size(px(12.)).text_color(muted)
-                    .child("令牌仅在本窗口内存中使用。Classic PAT 创建私有仓库需 repo 权限，公开仓库需 public_repo 或 repo 权限。"));
-        }
         v_flex()
-            .size_full()
-            .font_family(crate::component::appearance::ui_font())
-            .bg(theme.background)
-            .text_color(theme.foreground)
-            .text_size(px(13.))
+            .flex_1()
+            .min_h_0()
             .on_key_down(cx.listener(|this, event: &KeyDownEvent, window, _| {
                 if event.keystroke.key == "escape" && !this.busy {
                     window.remove_window();
                 }
             }))
-            .child(crate::component::operation_title_bar::render(
-                "创建 Git 分支或仓库",
-                !self.busy,
-                cx,
-            ))
             .child(
                 v_flex()
                     .id("git-create-form")
@@ -158,17 +141,15 @@ impl GitCreateWindow {
                                 match self.kind {
                                     CreateKind::LocalBranch => "创建并切换",
                                     CreateKind::RemoteBranch => "创建远程分支",
-                                    CreateKind::Repository => "创建 GitHub 仓库",
                                 }
                             })
                             .disabled(
                                 self.busy
+                                    || !self.is_repository
                                     || self.name.read(cx).value().trim().is_empty()
                                     || self.feedback.as_ref().is_some_and(|(ok, _)| *ok)
                                     || (self.kind == CreateKind::RemoteBranch
-                                        && self.remotes.is_empty())
-                                    || (self.kind == CreateKind::Repository
-                                        && self.token.read(cx).value().trim().is_empty()),
+                                        && self.remotes.is_empty()),
                             )
                             .on_click(cx.listener(|this, _, window, cx| this.submit(window, cx))),
                     ),

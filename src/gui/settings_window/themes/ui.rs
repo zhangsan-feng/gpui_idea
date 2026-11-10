@@ -93,7 +93,7 @@ impl SettingsWindow {
                 )
                 .child(
                     div()
-                        .text_size(px(12.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
                         .text_color(crate::component::appearance::foreground(0x6b7280))
                         .child("来源：Open VSX。仅显示颜色主题包；下载后在“已安装”中选择配色。"),
                 );
@@ -119,10 +119,18 @@ impl SettingsWindow {
                                                 .font_weight(FontWeight::SEMIBOLD)
                                                 .child(item.name.clone()),
                                         )
-                                        .child(div().text_size(px(12.)).child(format!(
-                                            "{} · v{} · 下载 {}",
-                                            item.id, item.version, item.downloads
-                                        ))),
+                                        .child(
+                                            div()
+                                                .text_size(
+                                                    crate::gui::component::appearance::ui_text_size(
+                                                        12.,
+                                                    ),
+                                                )
+                                                .child(format!(
+                                                    "{} · v{} · 下载 {}",
+                                                    item.id, item.version, item.downloads
+                                                )),
+                                        ),
                                 )
                                 .child(
                                     Button::new(SharedString::from(format!(
@@ -136,7 +144,11 @@ impl SettingsWindow {
                                     })),
                                 ),
                         )
-                        .child(div().text_size(px(12.)).child(item.description.clone())),
+                        .child(
+                            div()
+                                .text_size(crate::gui::component::appearance::ui_text_size(12.))
+                                .child(item.description.clone()),
+                        ),
                 );
             }
             content = content
@@ -181,7 +193,13 @@ impl SettingsWindow {
                                 .min_w_0()
                                 .gap_1()
                                 .child(div().font_weight(FontWeight::SEMIBOLD).child("默认主题"))
-                                .child(div().text_size(px(12.)).child("应用内置 · 始终可用")),
+                                .child(
+                                    div()
+                                        .text_size(crate::gui::component::appearance::ui_text_size(
+                                            12.,
+                                        ))
+                                        .child("应用内置 · 始终可用"),
+                                ),
                         )
                         .child(
                             Button::new("theme-select-default")
@@ -211,7 +229,7 @@ impl SettingsWindow {
         }
         content.child(
             div()
-                .text_size(px(12.))
+                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                 .text_color(crate::component::appearance::foreground(0x6b7280))
                 .child("选择、导入或卸载主题后，点击“应用”或“确定”生效并保存；点击“取消”放弃未保存的主题更改。"),
         )
@@ -260,11 +278,15 @@ impl SettingsWindow {
                                     .font_weight(FontWeight::SEMIBOLD)
                                     .child(package.name.to_owned()),
                             )
-                            .child(div().text_size(px(12.)).child(format!(
-                                "{} · {} 套配色",
-                                package.source,
-                                package.themes.len()
-                            ))),
+                            .child(
+                                div()
+                                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
+                                    .child(format!(
+                                        "{} · {} 套配色",
+                                        package.source,
+                                        package.themes.len()
+                                    )),
+                            ),
                     )
                     .child(
                         Button::new(SharedString::from(format!("theme-variants-{source}")))
@@ -303,7 +325,7 @@ impl SettingsWindow {
             )
             .children(notes.into_iter().map(|note| {
                 div()
-                    .text_size(px(12.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                     .text_color(crate::component::appearance::foreground(0x6b7280))
                     .child(note)
             }))

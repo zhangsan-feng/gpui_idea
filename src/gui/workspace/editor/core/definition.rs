@@ -236,7 +236,7 @@ impl Editor {
                             div()
                                 .truncate()
                                 .font_family(crate::component::appearance::editor_font())
-                                .text_size(px(12.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                 .text_color(crate::component::appearance::foreground(0x737b87))
                                 .child(target.preview.clone()),
                         )

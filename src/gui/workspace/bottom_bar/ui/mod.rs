@@ -101,7 +101,7 @@ impl BottomBar {
                 "statusBar.background",
                 crate::component::appearance::background(PANEL_BG),
             ))
-            .text_size(px(11.))
+            .text_size(crate::gui::component::appearance::ui_text_size(11.))
             .text_color(crate::component::appearance::themed(
                 "statusBar.foreground",
                 crate::component::appearance::foreground(0x626a76),

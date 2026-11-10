@@ -10,13 +10,13 @@ impl Editor {
         cx: &mut App,
     ) {
         // Touchpads and horizontal gestures continue through the native handler.
-        let Some(lines) = crate::gui::component::scroll::vertical_wheel_lines(event) else {
+        let Some(applied_lines) = crate::gui::component::scroll::vertical_wheel_step_lines(event)
+        else {
             return;
         };
         let Some(line_height) = editor.read(cx).line_height() else {
             return;
         };
-        let applied_lines = lines.signum() * 5.;
         let mut offset = pending_offset.get();
         offset.y = (offset.y + line_height * applied_lines).min(px(0.));
         // The public API defers application until layout and clamps against the
@@ -31,5 +31,26 @@ impl Editor {
             requested_y_px = f32::from(offset.y),
             "editor five-line mouse wheel scroll requested"
         );
+    }
+}
+
+impl Editor {
+    pub(in crate::gui::workspace) fn scroll_markdown_lines(
+        preview: &Entity<gpui_kit::base::text::TextViewState>,
+        event: &ScrollEvent,
+        line_height: Pixels,
+        cx: &mut App,
+    ) {
+        let Some(lines) = crate::gui::component::scroll::vertical_wheel_step_lines(event) else {
+            return;
+        };
+        preview
+            .read(cx)
+            .list_state()
+            .scroll_by(-line_height * lines);
+        preview.update(cx, |_, cx| cx.notify());
+        cx.stop_propagation();
+        tracing::debug!(input_delta = ?event.delta, applied_lines = lines,
+            "markdown shared mouse wheel scroll requested");
     }
 }

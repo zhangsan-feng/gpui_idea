@@ -5,8 +5,10 @@ use gpui_kit::component::{input::Editor as CodeEditor, menu::ContextMenuExt};
 use std::cell::Cell;
 
 mod empty;
+mod guides;
 mod gutter;
 mod image_preview;
+mod markdown;
 mod menu;
 mod tabs;
 
@@ -20,7 +22,11 @@ const TAB_INDICATOR: u32 = 0xaaaabb;
 const TAB_HOVER: u32 = 0xf7f7fa;
 
 impl Editor {
-    pub(in crate::gui::workspace) fn render_editor(&self, cx: &mut Context<Editor>) -> Div {
+    pub(in crate::gui::workspace) fn render_editor(
+        &self,
+        window: &mut Window,
+        cx: &mut Context<Editor>,
+    ) -> Div {
         let mut editor = v_flex()
             .size_full()
             .min_w_0()
@@ -65,7 +71,7 @@ impl Editor {
                     div()
                         .px_3()
                         .py_2()
-                        .text_size(px(12.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
                         .text_color(crate::component::appearance::foreground(0xb42318))
                         .bg(crate::component::appearance::background(0xfff0ec))
                         .child(format!("自动保存已暂停：{error}。可按 Ctrl+S 重试。")),
@@ -73,6 +79,18 @@ impl Editor {
             }
         }
         if let Some(state) = self.state.editors.get(&self.state.selected_file) {
+            let mode = self.markdown_mode();
+            if mode == Some(MarkdownMode::Rendered) {
+                return editor.child(
+                    h_flex()
+                        .flex_1()
+                        .min_h_0()
+                        .min_w_0()
+                        .overflow_hidden()
+                        .child(self.render_markdown(state, window, cx)),
+                );
+            }
+            crate::gui::component::code_editor::update_gutter(state, window, cx);
             let started = std::time::Instant::now();
             let input = CodeEditor::new(state)
                 // Keep the input's caret/selection handling, render the shared popup below.
@@ -120,41 +138,60 @@ impl Editor {
                     .general
                     .appearance
                     .editor_size as f32));
-            editor.child(
-                div()
-                    .relative()
-                    .flex_1()
-                    .min_h_0()
-                    .min_w_0()
-                    .overflow_hidden()
-                    .child(
-                        crate::gui::component::measured_element::MeasuredElement::new(
-                            crate::component::code_editor::completion_dropdown(state, input, cx)
-                                .into_any_element(),
-                            started,
-                            {
-                                let diagnostics = self
-                                    .peer_window_bar(cx)
-                                    .read(cx)
-                                    .state
-                                    .window_diagnostics
-                                    .clone();
-                                move |times, window, cx| {
-                                    diagnostics.borrow_mut().record("editor", times, window, cx)
-                                }
-                            },
-                        ),
-                    )
-                    .child(self.gutter_separator(state))
-                    .child(self.editor_pointer_handler(state, cx))
-                    .context_menu(self.editor_context_menu(state, cx)),
-            )
+            let source = div()
+                .h_full()
+                .relative()
+                .flex_1()
+                .min_h_0()
+                .min_w_0()
+                .overflow_hidden()
+                .child(
+                    crate::gui::component::measured_element::MeasuredElement::new(
+                        crate::component::code_editor::completion_dropdown(state, input, cx)
+                            .into_any_element(),
+                        started,
+                        {
+                            let diagnostics = self
+                                .peer_window_bar(cx)
+                                .read(cx)
+                                .state
+                                .window_diagnostics
+                                .clone();
+                            move |times, window, cx| {
+                                diagnostics.borrow_mut().record("editor", times, window, cx)
+                            }
+                        },
+                    ),
+                )
+                .child(self.gutter_separator(state))
+                .child(self.editor_pointer_handler(state, cx))
+                .context_menu(self.editor_context_menu(state, cx));
+            if mode == Some(MarkdownMode::Preview) {
+                editor.child(
+                    div().flex_1().min_h_0().min_w_0().overflow_hidden().child(
+                        gpui_kit::component::resizable::h_resizable("markdown-preview-columns")
+                            .with_state(&self.state.markdown_resize)
+                            .child(
+                                gpui_kit::component::resizable::resizable_panel()
+                                    .size_range(px(160.)..Pixels::MAX)
+                                    .child(source),
+                            )
+                            .child(
+                                gpui_kit::component::resizable::resizable_panel()
+                                    .size_range(px(160.)..Pixels::MAX)
+                                    .child(self.render_markdown(state, window, cx)),
+                            ),
+                    ),
+                )
+            } else {
+                editor.child(source)
+            }
         } else {
             editor.child(
                 div()
                     .px_3()
                     .py_2()
-                    .text_size(px(12.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                     .text_color(crate::component::appearance::foreground(MUTED))
                     .child(
                         self.state

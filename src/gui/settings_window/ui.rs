@@ -25,7 +25,7 @@ impl SettingsWindow {
             .flex_1()
             .min_h_0()
             .bg(crate::component::appearance::background(BACKGROUND))
-            .text_size(px(13.))
+            .text_size(crate::gui::component::appearance::ui_text_size(13.))
             .text_color(crate::component::appearance::foreground(TEXT))
             .child(
                 h_flex()
@@ -39,6 +39,7 @@ impl SettingsWindow {
                         SettingsPage::General => self.content(cx),
                         SettingsPage::Editor => self.editor_content(cx),
                         SettingsPage::Appearance => self.render_appearance(cx),
+                        SettingsPage::Fonts => self.render_fonts(cx),
                     }),
             )
             .when_some(self.error.clone(), |content, error| {
@@ -63,6 +64,7 @@ impl SettingsWindow {
         let query = self.search.read(cx).value().trim().to_lowercase();
         let matches_editor = query.is_empty() || EDITOR_SEARCH_TERMS.contains(&query);
         let matches_appearance = query.is_empty() || APPEARANCE_SEARCH_TERMS.contains(&query);
+        let matches_fonts = query.is_empty() || FONT_SEARCH_TERMS.contains(&query);
         let matches_system = query.is_empty()
             || "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query);
         let matches_lsp = query.is_empty()
@@ -115,6 +117,32 @@ impl SettingsWindow {
                                 }))
                                 .child(settings_icon(IconName::Palette, 15.))
                                 .child("外观"),
+                        )
+                    })
+                    .when(matches_fonts, |list| {
+                        list.child(
+                            h_flex()
+                                .id("font-settings-category")
+                                .h(px(36.))
+                                .items_center()
+                                .gap_2()
+                                .px_3()
+                                .rounded_md()
+                                .cursor_pointer()
+                                .when(self.page == SettingsPage::Fonts, |row| {
+                                    row.bg(crate::component::appearance::background(0xe8efff))
+                                        .text_color(crate::component::appearance::foreground(
+                                            0x1d4ed8,
+                                        ))
+                                })
+                                .hover(|row| {
+                                    row.bg(crate::component::appearance::background(0xeef2f7))
+                                })
+                                .on_click(cx.listener(|this, _, _, cx| {
+                                    this.select_page(SettingsPage::Fonts, cx)
+                                }))
+                                .child(settings_icon(IconName::Type, 15.))
+                                .child("字体"),
                         )
                     })
                     .when(matches, |list| {
@@ -242,7 +270,8 @@ impl SettingsWindow {
                             && !matches_editor
                             && !matches_lsp
                             && !matches_system
-                            && !matches_appearance,
+                            && !matches_appearance
+                            && !matches_fonts,
                         |list| {
                             list.child(
                                 div()
@@ -317,7 +346,7 @@ impl SettingsWindow {
                     )
                     .child(
                         div()
-                            .text_size(px(12.))
+                            .text_size(crate::gui::component::appearance::ui_text_size(12.))
                             .text_color(crate::component::appearance::foreground(MUTED))
                             .child("支持 HTTP / HTTPS 代理，包含协议、主机和端口。"),
                     ),
@@ -325,14 +354,14 @@ impl SettingsWindow {
             .child(
                 div()
                     .pl_6()
-                    .text_size(px(12.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                     .text_color(crate::component::appearance::foreground(MUTED))
                     .child("范围：LSP 版本检查、安装与更新下载，包含 npm 和 Go 安装。"),
             )
             .child(
                 div()
                     .pl_6()
-                    .text_size(px(12.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                     .text_color(crate::component::appearance::foreground(MUTED))
                     .child("应用后对新请求生效；关闭后沿用系统环境代理设置。"),
             )

@@ -215,6 +215,7 @@ impl Editor {
                             editor.update(cx, |state, cx| state.focus(window, cx));
                         }
                         this.state.editors.insert(file.clone(), editor);
+                        this.init_markdown_preview(&file);
                         this.sync_documents(window, cx);
                         this.prune_editors();
                         let initialize_us = initialization.elapsed().as_micros();

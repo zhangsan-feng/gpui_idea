@@ -48,6 +48,7 @@ pub(in crate::gui::workspace) struct State {
 #[derive(Clone)]
 pub(crate) enum Event {
     ToggleProjectPanel,
+    OpenProjectPanel,
     SetRunPanel(bool),
 }
 
@@ -113,6 +114,11 @@ impl LeftSidebar {
             match event {
                 Event::ToggleProjectPanel => {
                     self.toggle_project_panel(cx);
+                }
+                Event::OpenProjectPanel => {
+                    if !self.state.project_panel_open {
+                        self.toggle_project_panel(cx);
+                    }
                 }
                 Event::SetRunPanel(value) => {
                     self.state.run_panel_open = value;

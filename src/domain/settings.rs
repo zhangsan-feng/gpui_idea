@@ -29,6 +29,14 @@ pub(crate) struct SettingsDataContextSnapshot {
     pub(crate) general: std::sync::Arc<GeneralSettings>,
     pub(crate) context_menu: Option<ContextMenuStatus>,
     pub(crate) servers: std::sync::Arc<[crate::domain::language_server::ManagedServer]>,
+    pub(crate) fonts: std::sync::Arc<[FontAsset]>,
+}
+
+#[derive(Clone, PartialEq, Eq)]
+pub(crate) struct FontAsset {
+    pub(crate) id: String,
+    pub(crate) families: Vec<String>,
+    pub(crate) bytes: std::sync::Arc<[u8]>,
 }
 
 #[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
@@ -42,10 +50,13 @@ pub(crate) enum ColorTheme {
 #[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub(crate) struct AppearanceSettings {
+    #[serde(default)]
+    pub(crate) font_defaults_version: u8,
     pub(crate) theme: ColorTheme,
     pub(crate) selected_theme: Option<String>,
     pub(crate) imported_themes: Vec<crate::domain::theme::ImportedTheme>,
     pub(crate) ui_font: String,
+    pub(crate) ui_size: u16,
     pub(crate) editor_font: String,
     pub(crate) editor_size: u16,
 }
@@ -53,11 +64,13 @@ pub(crate) struct AppearanceSettings {
 impl Default for AppearanceSettings {
     fn default() -> Self {
         Self {
+            font_defaults_version: 2,
             theme: ColorTheme::Light,
             selected_theme: None,
             imported_themes: Vec::new(),
-            ui_font: "Microsoft YaHei UI".into(),
-            editor_font: "Cascadia Mono".into(),
+            ui_font: "JetBrains Mono".into(),
+            ui_size: 13,
+            editor_font: "JetBrains Mono".into(),
             editor_size: 13,
         }
     }

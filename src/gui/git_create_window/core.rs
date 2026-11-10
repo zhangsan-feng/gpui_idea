@@ -22,7 +22,7 @@ impl GitCreateWindow {
     }
 
     pub(super) fn submit(&mut self, window: &mut Window, cx: &mut Context<Self>) {
-        if self.busy || self.feedback.as_ref().is_some_and(|(ok, _)| *ok) {
+        if self.busy || !self.is_repository || self.feedback.as_ref().is_some_and(|(ok, _)| *ok) {
             return;
         }
         let name = self.name.read(cx).value().trim().to_owned();
@@ -36,7 +36,7 @@ impl GitCreateWindow {
             CreateKind::LocalBranch => GitCreateRequest::Branch { name, remote: None },
             CreateKind::RemoteBranch => {
                 if self.selected_remote.is_empty() {
-                    self.feedback = Some((false, "尚未配置远端，请先创建或关联远程仓库".into()));
+                    self.feedback = Some((false, "尚未配置远端，请先关联远程仓库".into()));
                     cx.notify();
                     return;
                 }
@@ -45,22 +45,10 @@ impl GitCreateWindow {
                     remote: Some(self.selected_remote.clone()),
                 }
             }
-            CreateKind::Repository => GitCreateRequest::Repository {
-                name,
-                organization: self.organization.read(cx).value().trim().to_owned(),
-                description: self.description.read(cx).value().trim().to_owned(),
-                private: self.private,
-                remote: self.remote_name.read(cx).value().trim().to_owned(),
-                token: self.token.read(cx).value().trim().to_owned(),
-            },
         };
         let root = self.project_root.clone();
         self.busy = true;
         self.feedback = None;
-        if self.kind == CreateKind::Repository {
-            self.token
-                .update(cx, |input, cx| input.set_value("", window, cx));
-        }
         cx.notify();
         cx.spawn_in(window, async move |this, cx| {
             let result =

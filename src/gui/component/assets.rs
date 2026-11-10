@@ -15,6 +15,7 @@ gpui_kit::assets::icon_assets!(
         ChartNoAxesCombined,
         ChevronUp,
         Copy,
+        Columns2,
         ClipboardPaste,
         FilePlus,
         Pencil,
@@ -48,6 +49,7 @@ gpui_kit::assets::icon_assets!(
         SlidersHorizontal,
         Square,
         Terminal,
+        Type,
         Workflow,
         X,
     ]

@@ -32,7 +32,7 @@ pub(super) fn details(detail: &str, snapshot: &LanguageServerDataContextSnapshot
         .border_color(crate::component::appearance::border(BORDER))
         .bg(crate::component::appearance::background(EDITOR_BG))
         .shadow_lg()
-        .text_size(px(12.))
+        .text_size(crate::gui::component::appearance::ui_text_size(12.))
         .line_height(px(18.))
         .text_color(crate::component::appearance::foreground(TEXT))
         .child(
@@ -48,13 +48,13 @@ pub(super) fn details(detail: &str, snapshot: &LanguageServerDataContextSnapshot
                         .justify_between()
                         .child(
                             div()
-                                .text_size(px(13.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(13.))
                                 .font_weight(FontWeight::SEMIBOLD)
                                 .child("语言服务"),
                         )
                         .child(
                             div()
-                                .text_size(px(11.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(11.))
                                 .text_color(crate::component::appearance::foreground(MUTED))
                                 .child(if installing > 0 {
                                     format!("安装中 {installing} · 已启动 {running}")
@@ -65,7 +65,7 @@ pub(super) fn details(detail: &str, snapshot: &LanguageServerDataContextSnapshot
                 )
                 .child(
                     div()
-                        .text_size(px(11.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(11.))
                         .text_color(crate::component::appearance::foreground(MUTED))
                         .child(detail.to_owned()),
                 ),
@@ -137,7 +137,7 @@ fn server_card(server: LanguageServerInfo) -> Div {
                         )
                         .child(
                             div()
-                                .text_size(px(11.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(11.))
                                 .text_color(crate::component::appearance::foreground(MUTED))
                                 .child(server.name),
                         ),
@@ -148,7 +148,7 @@ fn server_card(server: LanguageServerInfo) -> Div {
                         .px_2()
                         .rounded_sm()
                         .bg(crate::component::appearance::background(phase_bg))
-                        .text_size(px(10.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(10.))
                         .text_color(crate::component::appearance::foreground(phase_color))
                         .child(phase),
                 ),
@@ -156,7 +156,7 @@ fn server_card(server: LanguageServerInfo) -> Div {
         .when_some(detail, |card, detail| {
             card.child(
                 div()
-                    .text_size(px(11.))
+                    .text_size(crate::gui::component::appearance::ui_text_size(11.))
                     .text_color(crate::component::appearance::foreground(phase_color))
                     .child(detail),
             )
@@ -179,7 +179,7 @@ fn info_row(label: &'static str, value: String) -> Div {
         .w_full()
         .items_start()
         .gap_2()
-        .text_size(px(11.))
+        .text_size(crate::gui::component::appearance::ui_text_size(11.))
         .line_height(px(17.))
         .child(
             div()

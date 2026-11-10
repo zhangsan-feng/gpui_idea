@@ -36,7 +36,7 @@ impl SettingsWindow {
                     .flex_shrink_0()
                     .child(
                         div()
-                            .text_size(px(15.))
+                            .text_size(crate::gui::component::appearance::ui_text_size(15.))
                             .font_weight(FontWeight::SEMIBOLD)
                             .child("LSP 管理"),
                     )
@@ -144,7 +144,7 @@ impl SettingsWindow {
                             .child(
                                 div()
                                     .flex_shrink_0()
-                                    .text_size(px(12.))
+                                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                     .text_color(crate::component::appearance::foreground(0x6b7280))
                                     .child(server.languages.clone()),
                             ),
@@ -175,7 +175,7 @@ impl SettingsWindow {
                             .child(
                                 div()
                                     .flex_1()
-                                    .text_size(px(12.))
+                                    .text_size(crate::gui::component::appearance::ui_text_size(12.))
                                     .text_color(crate::component::appearance::foreground(0x64748b))
                                     .child(if server.configuration_error.is_some() {
                                         "版本配置异常"
@@ -214,7 +214,7 @@ impl SettingsWindow {
                 };
                 card.child(
                     div()
-                        .text_size(px(12.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
                         .text_color(crate::component::appearance::foreground(color))
                         .child(text),
                 )
@@ -222,7 +222,7 @@ impl SettingsWindow {
             .when_some(server.configuration_error.clone(), |card, error| {
                 card.child(
                     div()
-                        .text_size(px(12.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
                         .text_color(crate::component::appearance::foreground(0xdc2626))
                         .child(error),
                 )
@@ -230,7 +230,7 @@ impl SettingsWindow {
             .when(server.versions.is_empty(), |card| {
                 card.child(
                     div()
-                        .text_size(px(12.))
+                        .text_size(crate::gui::component::appearance::ui_text_size(12.))
                         .text_color(crate::component::appearance::foreground(0x6b7280))
                         .child("尚未安装；将根据本机运行环境选择兼容版本。"),
                 )
@@ -264,14 +264,14 @@ impl SettingsWindow {
                     .child(
                         div()
                             .flex_1()
-                            .text_size(px(12.))
+                            .text_size(crate::gui::component::appearance::ui_text_size(12.))
                             .font_family(crate::component::appearance::editor_font())
                             .child(version.version.clone()),
                     )
                     .when(!version.in_use, |row| {
                         row.child(
                             div()
-                                .text_size(px(11.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(11.))
                                 .px_2()
                                 .py_1()
                                 .rounded_md()
@@ -291,7 +291,7 @@ impl SettingsWindow {
                     .when(version.in_use, |row| {
                         row.child(
                             div()
-                                .text_size(px(11.))
+                                .text_size(crate::gui::component::appearance::ui_text_size(11.))
                                 .px_2()
                                 .py_1()
                                 .rounded_md()

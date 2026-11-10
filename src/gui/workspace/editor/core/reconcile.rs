@@ -14,6 +14,9 @@ impl Editor {
                 .map(|suffix| destination.join(suffix))
                 .unwrap_or_else(|_| path.to_owned())
         };
+        self.state
+            .markdown_extensions
+            .retain(|file, _| !file.relative_path().starts_with(source));
         let root = DATA_CONTEXT.project_root().to_owned();
         let reopened: Vec<_> = self
             .state
@@ -23,6 +26,10 @@ impl Editor {
             .map(|file| ProjectFile(remap(file.relative_path())))
             .collect();
         let old_selected = self.state.selected_file.clone();
+        self.state.markdown_modes = std::mem::take(&mut self.state.markdown_modes)
+            .into_iter()
+            .map(|(file, mode)| (ProjectFile(remap(file.relative_path())), mode))
+            .collect();
         for file in self.state.open_files.clone() {
             if file.relative_path().starts_with(source) {
                 self.release_image_tab(&file);
@@ -43,6 +50,12 @@ impl Editor {
                 self.state.pending_file_views.insert(
                     new_path.clone(),
                     crate::domain::history::FileViewState {
+                        markdown_mode: self
+                            .state
+                            .markdown_modes
+                            .get(&ProjectFile(remap(file.relative_path())))
+                            .copied()
+                            .unwrap_or_default(),
                         path: new_path,
                         cursor_line: cursor.line,
                         cursor_character: cursor.character,
@@ -100,7 +113,13 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Editor>,
     ) {
+        self.state
+            .markdown_extensions
+            .retain(|file, _| !file.relative_path().starts_with(source));
         let selected_removed = self.state.selected_file.relative_path().starts_with(source);
+        self.state
+            .markdown_modes
+            .retain(|file, _| !file.relative_path().starts_with(source));
         for file in self.state.open_files.clone() {
             if file.relative_path().starts_with(source) {
                 self.release_image_tab(&file);

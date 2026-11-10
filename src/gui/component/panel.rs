@@ -20,7 +20,7 @@ pub(crate) fn settings_header(title: &'static str) -> Div {
         .px_5()
         .gap_2()
         .items_center()
-        .text_size(px(15.))
+        .text_size(crate::gui::component::appearance::ui_text_size(15.))
         .font_weight(FontWeight::SEMIBOLD)
         .child(title)
 }

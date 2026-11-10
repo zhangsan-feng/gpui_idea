@@ -7,6 +7,7 @@ use gpui_kit::{
 };
 
 pub fn open_workspace(cx: &mut App) -> Result<()> {
+    crate::gui::component::fonts::register(cx)?;
     crate::component::code_editor::init(cx)?;
     crate::component::appearance::apply(cx);
     crate::infrastructure::logging::log_memory("highlighting_initialized");
@@ -86,33 +87,10 @@ pub(crate) fn open_tool_window<V: gpui_kit::Render>(
     cx: &mut App,
     build: impl FnOnce(&mut gpui_kit::Window, &mut App) -> gpui_kit::Entity<V>,
 ) -> Result<(gpui_kit::AnyWindowHandle, gpui_kit::Entity<V>)> {
-    let dimensions = size(
-        dimensions.width,
-        dimensions.height + px(crate::component::operation_title_bar::HEIGHT),
-    );
-    let parent_bounds = parent.bounds();
-    let origin = gpui_kit::point(
-        parent_bounds.origin.x + (parent_bounds.size.width - dimensions.width) / 2.,
-        parent_bounds.origin.y + (parent_bounds.size.height - dimensions.height) / 2.,
-    );
-    let options = WindowOptions {
-        window_bounds: Some(WindowBounds::Windowed(gpui_kit::Bounds {
-            origin,
-            size: dimensions,
-        })),
-        window_min_size: Some(dimensions),
-        titlebar: Some(TitlebarOptions {
-            title: Some(title.into()),
-            appears_transparent: true,
-            traffic_light_position: None,
-        }),
-        window_decorations: Some(WindowDecorations::Client),
-        kind: gpui_kit::WindowKind::Dialog,
-        is_resizable: false,
-        is_minimizable: false,
-        focus: true,
-        ..WindowOptions::default()
-    };
-    tracing::info!(title, "operation dialog opening with custom title bar");
-    gpui_kit::open_window(options, cx, build)
+    crate::gui::component::tool_window::open(
+        crate::gui::component::tool_window::ToolWindowOptions::new(title, dimensions),
+        parent,
+        cx,
+        build,
+    )
 }

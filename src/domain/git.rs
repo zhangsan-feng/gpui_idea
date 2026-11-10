@@ -50,14 +50,6 @@ pub(crate) enum GitCreateRequest {
         name: String,
         remote: Option<String>,
     },
-    Repository {
-        name: String,
-        organization: String,
-        description: String,
-        private: bool,
-        remote: String,
-        token: String,
-    },
 }
 
 #[derive(Clone, Default)]

@@ -31,7 +31,7 @@ pub(crate) fn context_item(
             .items_center()
             .gap(px(8.))
             .font_family(super::appearance::ui_font())
-            .text_size(px(12.))
+            .text_size(crate::gui::component::appearance::ui_text_size(12.))
             .when(!enabled, |row| row.text_color(muted))
             .child(
                 div()
