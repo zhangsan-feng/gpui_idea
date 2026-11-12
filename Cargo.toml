@@ -34,6 +34,7 @@ gpui-kit = { version = "=0.9.0", features = [
     "tree-sitter-markdown",
 ] }
 ropey = "=2.0.0-beta.1"
+tree-sitter = "=0.26.13"
 lsp-types = "=0.97.0"
 url = "=2.5.8"
 serde = { version = "=1.0.229", features = ["derive"] }

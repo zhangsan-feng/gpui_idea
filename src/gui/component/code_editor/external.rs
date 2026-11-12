@@ -3,6 +3,13 @@ use anyhow::Result;
 use gpui_kit::App;
 use std::path::Path;
 
+pub(crate) fn offset_at_point(
+    editor: &gpui_kit::component::input::EditorState,
+    pointer: gpui_kit::Point<gpui_kit::Pixels>,
+) -> Option<usize> {
+    super::drop_position::offset_at_point(editor, pointer)
+}
+
 pub(crate) fn gutter_layout(
     lines: usize,
     window: &mut gpui_kit::Window,

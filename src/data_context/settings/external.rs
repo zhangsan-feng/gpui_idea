@@ -40,7 +40,7 @@ impl SettingsContext {
             &[
                 GuiComponent::SettingsWindow,
                 GuiComponent::WindowBar,
-                GuiComponent::BottomBar,
+                GuiComponent::BottomSidebar,
                 GuiComponent::Editor,
                 GuiComponent::FileTree,
                 GuiComponent::BottomPanel,

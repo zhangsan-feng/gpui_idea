@@ -1,9 +1,11 @@
 mod completion;
 mod core;
 mod definition_cursor;
+mod drop_position;
 mod external;
 mod highlights;
 
+pub(crate) use external::offset_at_point;
 pub(crate) use external::{
     attach_completions, completion_dropdown, definition_pointer, dismiss_completions,
     gutter_layout, init, language_for_path, language_label, update_gutter,

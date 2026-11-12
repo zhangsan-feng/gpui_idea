@@ -19,6 +19,6 @@ impl LanguageServerContext {
         }
         *current = Arc::new(next);
         drop(current);
-        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::BottomBar]);
+        crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[GuiComponent::BottomSidebar]);
     }
 }

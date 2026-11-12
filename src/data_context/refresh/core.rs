@@ -22,7 +22,7 @@ impl DataContext {
         }
         let mut components = Vec::new();
         if editor_updated {
-            components.extend([GuiComponent::Editor, GuiComponent::BottomBar]);
+            components.extend([GuiComponent::Editor, GuiComponent::BottomSidebar]);
         }
         if tree_updated || editor_updated {
             // Rows also show dirty/error status for open documents.

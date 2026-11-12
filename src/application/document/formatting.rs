@@ -74,11 +74,11 @@ impl DocumentService {
                 language,
             )
             .await?;
-        if edits.is_empty() {
-            return Ok(None);
-        }
         tokio::task::spawn_blocking(move || {
-            apply_edits(text, edits).map(|text| Some((revision, ropey::Rope::from(text.as_str()))))
+            let formatted = apply_edits(text.clone(), edits)?;
+            let formatted =
+                crate::infrastructure::code_formatting::wrap_long_lines(formatted, language);
+            Ok((formatted != text).then(|| (revision, ropey::Rope::from(formatted.as_str()))))
         })
         .await?
     }

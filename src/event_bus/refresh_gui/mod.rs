@@ -8,7 +8,7 @@ pub(crate) enum GuiComponent {
     LeftSidebar,
     RightSidebar,
     WindowBar,
-    BottomBar,
+    BottomSidebar,
     BottomPanel,
     FileTree,
     Editor,

@@ -1,6 +1,6 @@
 use super::CodeSearchWindow;
 use crate::gui::component::tool_window::{self, ToolWindowOptions};
-use crate::gui::workspace::Workspace;
+use crate::gui::main_window::Workspace;
 use gpui_kit::{AnyWindowHandle, App, AppContext as _, WeakEntity, Window, px, size};
 
 pub(in crate::gui) fn open(

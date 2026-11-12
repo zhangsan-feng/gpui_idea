@@ -22,6 +22,10 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
         )
         .level_for("gpui_idea::gui::code_search_window", log::LevelFilter::Info)
         .level_for(
+            "gpui_idea::gui::main_window::content_area::editor::core::markdown_drop",
+            log::LevelFilter::Info,
+        )
+        .level_for(
             "gpui_idea::gui::component::code_editor::core",
             log::LevelFilter::Info,
         )

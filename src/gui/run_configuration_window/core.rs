@@ -106,7 +106,7 @@ impl RunConfigurationWindow {
                     crate::event_bus::EVENT_BUS.gui_event.send(
                         cx.entity().entity_id(),
                         crate::event_bus::gui_event::GuiEvent::BottomPanel(
-                            crate::gui::workspace::bottom_panel::Event::StartExecution(
+                            crate::gui::main_window::content_area::bottom_panel::Event::StartExecution(
                                 RunAction::Run,
                             ),
                         ),

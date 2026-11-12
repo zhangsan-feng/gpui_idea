@@ -1,4 +1,5 @@
 pub(crate) mod assets;
+pub(crate) mod code_formatting;
 mod external;
 mod git;
 mod history;

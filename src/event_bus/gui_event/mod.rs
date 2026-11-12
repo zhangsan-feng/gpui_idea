@@ -6,12 +6,12 @@ use tokio::sync::mpsc;
 /// Commands carry intent; data updates are published through refresh_gui.
 #[derive(Clone)]
 pub(crate) enum GuiEvent {
-    Editor(crate::gui::workspace::editor::Event),
-    FileTree(crate::gui::workspace::file_tree::Event),
-    WindowBar(crate::gui::workspace::window_bar::Event),
-    BottomBar(crate::gui::workspace::bottom_bar::Event),
-    BottomPanel(crate::gui::workspace::bottom_panel::Event),
-    LeftSidebar(crate::gui::workspace::left_sidebar::Event),
+    Editor(crate::gui::main_window::content_area::editor::Event),
+    FileTree(crate::gui::main_window::content_area::file_tree::Event),
+    WindowBar(crate::gui::main_window::window_bar::Event),
+    BottomSidebar(crate::gui::main_window::bottom_sidebar::Event),
+    BottomPanel(crate::gui::main_window::content_area::bottom_panel::Event),
+    LeftSidebar(crate::gui::main_window::left_sidebar::Event),
 }
 
 /// A mailbox per workspace prevents commands leaking into another window.
@@ -42,7 +42,7 @@ impl GuiEvent {
             Self::Editor(..) => GuiComponent::Editor,
             Self::FileTree(..) => GuiComponent::FileTree,
             Self::WindowBar(..) => GuiComponent::WindowBar,
-            Self::BottomBar(..) => GuiComponent::BottomBar,
+            Self::BottomSidebar(..) => GuiComponent::BottomSidebar,
             Self::BottomPanel(..) => GuiComponent::BottomPanel,
             Self::LeftSidebar(..) => GuiComponent::LeftSidebar,
         }

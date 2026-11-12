@@ -88,7 +88,7 @@ impl CodeSearchWindow {
         crate::event_bus::EVENT_BUS.gui_event.send(
             parent.entity_id(),
             crate::event_bus::gui_event::GuiEvent::Editor(
-                crate::gui::workspace::editor::Event::OpenContentMatch(result),
+                crate::gui::main_window::content_area::editor::Event::OpenContentMatch(result),
             ),
         );
         let _ = self

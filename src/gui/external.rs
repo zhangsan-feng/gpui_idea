@@ -50,14 +50,18 @@ pub fn open_workspace(cx: &mut App) -> Result<()> {
     };
     gpui_kit::open_window(options, cx, move |window, cx| {
         cx.bind_keys([
-            gpui_kit::KeyBinding::new("ctrl-s", super::workspace::SaveDocument, Some("Workspace")),
+            gpui_kit::KeyBinding::new(
+                "ctrl-s",
+                super::main_window::SaveDocument,
+                Some("Workspace"),
+            ),
             gpui_kit::KeyBinding::new(
                 "ctrl-alt-l",
-                super::workspace::editor::FormatCode,
+                super::main_window::content_area::editor::FormatCode,
                 Some("Workspace"),
             ),
         ]);
-        let workspace = cx.new(|cx| super::workspace::Workspace::new(window, cx));
+        let workspace = cx.new(|cx| super::main_window::Workspace::new(window, cx));
         let weak = workspace.downgrade();
         window.on_window_should_close(cx, move |_window, cx| {
             tracing::info!("main window native close requested: action=remove_window");
@@ -66,7 +70,7 @@ pub fn open_workspace(cx: &mut App) -> Result<()> {
                     crate::event_bus::EVENT_BUS.gui_event.send(
                         cx.entity().entity_id(),
                         crate::event_bus::gui_event::GuiEvent::WindowBar(
-                            super::workspace::window_bar::Event::RequestClose,
+                            super::main_window::window_bar::Event::RequestClose,
                         ),
                     )
                 });

@@ -3,7 +3,7 @@ mod external;
 mod ui;
 
 use crate::domain::project::ContentMatch;
-use crate::gui::workspace::Workspace;
+use crate::gui::main_window::Workspace;
 pub(in crate::gui) use external::open;
 use gpui_kit::component::input::{InputEvent, InputState};
 use gpui_kit::{

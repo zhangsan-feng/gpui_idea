@@ -29,7 +29,7 @@ impl DocumentContext {
         crate::data_context::DATA_CONTEXT.notify_gui_refresh(&[
             GuiComponent::Editor,
             GuiComponent::FileTree,
-            GuiComponent::BottomBar,
+            GuiComponent::BottomSidebar,
         ]);
     }
 }

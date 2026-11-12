@@ -100,11 +100,11 @@ fn default_run_automatic() -> bool {
 #[derive(Clone, Copy, Debug, Default, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(rename_all = "snake_case")]
 pub enum MarkdownMode {
-    Source,
+    Preview,
     Rendered,
     #[default]
     #[serde(other)]
-    Preview,
+    Source,
 }
 
 #[derive(Clone, Debug, Serialize, Deserialize)]

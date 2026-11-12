@@ -5,6 +5,7 @@ mod file_watch;
 pub(crate) mod highlights;
 mod history;
 pub mod lifecycle;
+pub(crate) mod markdown;
 mod project;
 mod projects;
 mod settings;
