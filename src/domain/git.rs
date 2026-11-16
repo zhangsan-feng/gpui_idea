@@ -14,6 +14,10 @@ pub struct GitDataContextSnapshot {
     pub changes: Vec<GitWorkingChange>,
     pub branches: Vec<String>,
     pub remotes: Vec<String>,
+    pub push_remote: Option<String>,
+    pub ahead: usize,
+    pub behind: usize,
+    pub needs_upstream: bool,
     pub is_repository: bool,
     pub is_detached: bool,
     pub branch: String,
@@ -42,6 +46,7 @@ pub enum GitAction {
         paths: Vec<PathBuf>,
     },
     UpdateFromRemote,
+    Push,
     Switch(String),
 }
 

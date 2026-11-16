@@ -189,6 +189,7 @@ pub(super) async fn snapshot(root: PathBuf) -> Result<GitDataContextSnapshot> {
                 });
             }
         }
+        super::sync::load_status(&root, &mut snapshot).await?;
         Ok(())
     }
     .await;

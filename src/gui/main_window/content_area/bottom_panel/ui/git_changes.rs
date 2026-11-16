@@ -196,10 +196,7 @@ impl BottomPanel {
                             .primary()
                             .small()
                             .w_full()
-                            .label(format!(
-                                "提交并推送 {selected} 个文件到 {}",
-                                snapshot.branch
-                            ))
+                            .label(format!("提交 {selected} 个文件到 {}", snapshot.branch))
                             .disabled(
                                 unavailable
                                     || snapshot.is_detached

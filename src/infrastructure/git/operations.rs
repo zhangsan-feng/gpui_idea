@@ -1,6 +1,6 @@
 use super::core::{output, run, run_input};
 use crate::domain::git::GitAction;
-use anyhow::{Context as _, Result, ensure};
+use anyhow::{Result, ensure};
 use std::path::{Path, PathBuf};
 
 fn file_argument(path: &Path) -> Result<&str> {
@@ -68,30 +68,12 @@ pub(super) async fn operate(root: PathBuf, action: GitAction) -> Result<String> 
             )
             .await?;
             let committed = String::from_utf8_lossy(&committed).trim().to_owned();
-            tracing::info!(root = %root.display(), "Git local commit succeeded; pushing to remote");
-            let pushed = output(&root, &["push"]).await.with_context(|| {
-                format!("本地提交已成功，推送失败；无需重新提交，请重试 git push。\n{committed}")
-            })?;
-            let push_output = [
-                String::from_utf8_lossy(&pushed.stdout),
-                String::from_utf8_lossy(&pushed.stderr),
-            ]
-            .iter()
-            .map(|text| text.trim())
-            .filter(|text| !text.is_empty())
-            .collect::<Vec<_>>()
-            .join("\n");
-            if !pushed.status.success() {
-                tracing::warn!(root = %root.display(), status = %pushed.status, "Git push failed after local commit");
-                anyhow::bail!(
-                    "本地提交已成功，推送失败；无需重新提交，请重试 git push。\n{committed}\n\n{push_output}"
-                );
-            }
-            tracing::info!(root = %root.display(), "Git push succeeded after local commit");
+            tracing::info!(root = %root.display(), "Git local commit succeeded");
             return Ok(format!(
-                "本地提交并推送成功。\n{committed}\n\n{push_output}"
+                "本地提交成功，可通过“推送到远程”发布提交。\n{committed}"
             ));
         }
+        GitAction::Push => return super::sync::push(&root).await,
         GitAction::UpdateFromRemote => run(&root, &["pull", "--ff-only"]).await?,
         GitAction::Switch(branch) => {
             validate_branch(&root, &branch).await?;

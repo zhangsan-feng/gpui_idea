@@ -69,10 +69,13 @@ impl BottomPanel {
             return;
         }
         let committed = matches!(action, GitAction::Commit { .. });
+        let pushed = matches!(action, GitAction::Push);
+        let show_result = committed || pushed;
         self.state.git_busy = true;
-        self.state.git_commit_running = committed;
+        self.state.git_commit_running = show_result;
         self.state.git_feedback = None;
-        if committed {
+        if show_result {
+            self.state.git_result_is_push = pushed;
             self.state.git_commit_result = None;
             self.state.git_show_commit_result = true;
             self.state.git_commit_result_scroll = gpui_kit::UniformListScrollHandle::new();
@@ -122,7 +125,7 @@ impl BottomPanel {
                     output_lines = feedback.1.lines().count(),
                     "Git operation result received for display"
                 );
-                if committed {
+                if show_result {
                     this.state.git_commit_result = Some(feedback);
                     this.state.git_show_commit_result = true;
                 } else {

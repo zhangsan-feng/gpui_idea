@@ -1,4 +1,5 @@
 use super::*;
+use crate::domain::git::GitAction;
 use crate::gui::main_window::content_area::bottom_panel::BottomPanel;
 use gpui_kit::component::{
     Disableable,
@@ -8,61 +9,86 @@ use gpui_kit::component::{
 
 impl BottomPanel {
     pub(super) fn git_content_tabs(&self, cx: &mut Context<Self>) -> Div {
+        let snapshot = DATA_CONTEXT.project.git();
+        let can_push = snapshot.push_remote.is_some()
+            && !snapshot.is_detached
+            && !snapshot.commits.is_empty()
+            && (snapshot.ahead > 0 || snapshot.needs_upstream);
+        let pushing = self.state.git_commit_running && self.state.git_result_is_push;
+        let show_result =
+            can_push || self.state.git_commit_running || self.state.git_commit_result.is_some();
+        let result_label = if pushing {
+            "正在推送…"
+        } else if can_push {
+            "推送到远程"
+        } else {
+            "提交结果"
+        };
         h_flex()
             .h(px(36.))
             .flex_shrink_0()
             .border_b_1()
             .border_color(crate::component::appearance::border(BORDER))
-            .children([(false, "差异预览"), (true, "提交结果")].into_iter().map(
-                |(result, label)| {
-                    let selected = self.state.git_show_commit_result == result;
-                    h_flex()
-                        .id(if result {
-                            "git-result-tab"
-                        } else {
-                            "git-preview-tab"
-                        })
-                        .h_full()
-                        .px_3()
-                        .gap_2()
-                        .items_center()
-                        .border_b_2()
-                        .border_color(if selected {
-                            crate::component::appearance::border(ACCENT)
-                        } else {
-                            transparent_black()
-                        })
-                        .text_color(crate::component::appearance::foreground(if selected {
-                            TEXT
-                        } else {
-                            MUTED
-                        }))
-                        .cursor_pointer()
-                        .hover(|row| row.bg(crate::component::appearance::background(0xedf0f5)))
-                        .child(icon(
-                            if result {
-                                IconName::Terminal
+            .children(
+                [(false, "差异预览"), (true, result_label)]
+                    .into_iter()
+                    .filter(|(result, _)| !*result || show_result)
+                    .map(|(result, label)| {
+                        let selected = self.state.git_show_commit_result == result;
+                        h_flex()
+                            .id(if result {
+                                "git-result-tab"
                             } else {
-                                IconName::File
-                            },
-                            14.,
-                            if selected { ACCENT } else { MUTED },
-                        ))
-                        .child(label)
-                        .on_click(cx.listener(move |this, _, _, cx| {
-                            this.state.git_show_commit_result = result;
-                            cx.notify();
-                        }))
-                },
-            ))
+                                "git-preview-tab"
+                            })
+                            .h_full()
+                            .px_3()
+                            .gap_2()
+                            .items_center()
+                            .border_b_2()
+                            .border_color(if selected {
+                                crate::component::appearance::border(ACCENT)
+                            } else {
+                                transparent_black()
+                            })
+                            .text_color(crate::component::appearance::foreground(if selected {
+                                TEXT
+                            } else {
+                                MUTED
+                            }))
+                            .cursor_pointer()
+                            .hover(|row| row.bg(crate::component::appearance::background(0xedf0f5)))
+                            .child(icon(
+                                if result {
+                                    IconName::Terminal
+                                } else {
+                                    IconName::File
+                                },
+                                14.,
+                                if selected { ACCENT } else { MUTED },
+                            ))
+                            .child(label)
+                            .on_click(cx.listener(move |this, _, window, cx| {
+                                if result && can_push {
+                                    this.git_action(GitAction::Push, window, cx);
+                                    return;
+                                }
+                                this.state.git_show_commit_result = result;
+                                cx.notify();
+                            }))
+                    }),
+            )
     }
 
     pub(super) fn git_commit_result_view(&self, cx: &mut Context<Self>) -> Div {
         let result = self.state.git_commit_result.clone();
         let title = match result.as_ref() {
-            Some((true, _)) => "提交并推送成功",
-            Some((false, _)) => "提交或推送失败",
-            None if self.state.git_commit_running => "正在提交并推送…",
+            Some((true, _)) if self.state.git_result_is_push => "推送成功",
+            Some((false, _)) if self.state.git_result_is_push => "推送失败",
+            Some((true, _)) => "本地提交成功",
+            Some((false, _)) => "提交失败",
+            None if self.state.git_commit_running && self.state.git_result_is_push => "正在推送…",
+            None if self.state.git_commit_running => "正在提交…",
             None => "暂无提交结果",
         };
         let color = match result.as_ref() {
@@ -139,11 +165,15 @@ impl BottomPanel {
                         .px_4()
                         .py_3()
                         .text_color(crate::component::appearance::foreground(MUTED))
-                        .child(if self.state.git_commit_running {
-                            "正在执行 Git 提交并推送到远程，请稍候。"
-                        } else {
-                            "提交后将在这里显示完整结果。"
-                        }),
+                        .child(
+                            if self.state.git_commit_running && self.state.git_result_is_push {
+                                "正在推送到远程，请稍候。"
+                            } else if self.state.git_commit_running {
+                                "正在执行本地 Git 提交，请稍候。"
+                            } else {
+                                "提交后将在这里显示完整结果。"
+                            },
+                        ),
                 )
             })
             .child(
