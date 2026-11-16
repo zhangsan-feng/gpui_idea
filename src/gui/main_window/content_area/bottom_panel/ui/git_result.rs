@@ -60,9 +60,9 @@ impl BottomPanel {
     pub(super) fn git_commit_result_view(&self, cx: &mut Context<Self>) -> Div {
         let result = self.state.git_commit_result.clone();
         let title = match result.as_ref() {
-            Some((true, _)) => "提交成功",
-            Some((false, _)) => "提交失败",
-            None if self.state.git_commit_running => "正在提交…",
+            Some((true, _)) => "提交并推送成功",
+            Some((false, _)) => "提交或推送失败",
+            None if self.state.git_commit_running => "正在提交并推送…",
             None => "暂无提交结果",
         };
         let color = match result.as_ref() {
@@ -140,7 +140,7 @@ impl BottomPanel {
                         .py_3()
                         .text_color(crate::component::appearance::foreground(MUTED))
                         .child(if self.state.git_commit_running {
-                            "正在执行 Git 提交，请稍候。"
+                            "正在执行 Git 提交并推送到远程，请稍候。"
                         } else {
                             "提交后将在这里显示完整结果。"
                         }),
