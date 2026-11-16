@@ -132,5 +132,5 @@
 
 ### 当前的计划
 
-- cargo build 在替换 target/debug/gpui_idea.exe 时因拒绝访问（os error 5）失败，可能被运行中的程序占用；需关闭程序后重跑。
-- 本次修改的 rustfmt 检查及 git diff --check 已通过；正在补充 cargo check。未进行 GUI 实际操作验证。
+- 用户关闭程序后重跑 cargo build 已通过；存在增量缓存硬链接降级复制及既有 CrLf 未使用警告。
+- 本次修改的 rustfmt 检查及 git diff --check 已通过；未进行 GUI 实际操作验证。
