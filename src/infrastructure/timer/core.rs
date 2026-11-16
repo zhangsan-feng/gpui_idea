@@ -67,6 +67,7 @@ pub(super) async fn run(mut events: mpsc::UnboundedReceiver<TimerEvent>) {
                         }
                         ScheduledEvent::WatchFiles { root, pending, period } => {
                             if let Some(changes) = INFRASTRUCTURE.filesystem.take_watch_changes(&pending) {
+                                tracing::info!(root = %root.display(), paths = changes.paths.len(), tree_paths = changes.tree_paths.len(), raw_events = changes.event_count, rescan = changes.rescan, "timer publishing filesystem refresh");
                                 EVENT_BUS.refresh_data_context(root.clone(), changes);
                             }
                             scheduled.insert(id, Scheduled {

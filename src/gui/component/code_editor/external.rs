@@ -40,6 +40,11 @@ pub(crate) fn definition_pointer(
 }
 
 pub(crate) fn init(cx: &mut App) -> Result<()> {
+    cx.bind_keys([gpui_kit::KeyBinding::new(
+        "ctrl-d",
+        super::DuplicateLine,
+        Some("Input && mode == editor"),
+    )]);
     super::completion::install_keys(cx);
     core::install(cx)
 }
@@ -69,12 +74,16 @@ pub(crate) fn completion_dropdown(
     use gpui_kit::InteractiveElement as _;
 
     let cut_editor = editor.clone();
-    super::completion::wrap(editor, content, cx).capture_action(
-        move |_: &gpui_kit::component::input::Cut, _, cx| {
+    let duplicate_editor = editor.clone();
+    super::completion::wrap(editor, content, cx)
+        .capture_action(move |_: &gpui_kit::component::input::Cut, _, cx| {
             cut_editor.update(cx, core::select_line_for_cut);
             // Continue dispatching Cut to the component for clipboard and undo handling.
-        },
-    )
+        })
+        .capture_action(move |_: &super::DuplicateLine, window, cx| {
+            duplicate_editor.update(cx, |state, cx| core::duplicate_line(state, window, cx));
+            cx.stop_propagation();
+        })
 }
 
 pub(crate) fn dismiss_completions(

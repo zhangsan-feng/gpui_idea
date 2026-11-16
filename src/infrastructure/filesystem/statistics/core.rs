@@ -1,8 +1,10 @@
+use super::super::directory_filter::DirectoryFilter;
 use super::{DirectoryGroups, DirectoryScan, ScanResult, ScanTask, measure};
 use crate::domain::statistics::{
     DirectoryStatistics, ExtensionStatistics, StatisticsDataContextSnapshot,
 };
 use anyhow::{Context, Result};
+use std::sync::Arc;
 use std::{
     collections::BTreeMap,
     fs,
@@ -11,7 +13,10 @@ use std::{
 };
 use tokio::task::JoinSet;
 
-pub(super) async fn scan(root: PathBuf) -> Result<StatisticsDataContextSnapshot> {
+pub(super) async fn scan(
+    root: PathBuf,
+    filter: Arc<DirectoryFilter>,
+) -> Result<StatisticsDataContextSnapshot> {
     let started = Instant::now();
     let root = tokio::task::spawn_blocking(move || root.canonicalize())
         .await
@@ -34,9 +39,10 @@ pub(super) async fn scan(root: PathBuf) -> Result<StatisticsDataContextSnapshot>
             let Some(task) = pending.pop() else {
                 break;
             };
+            let filter = filter.clone();
             running.spawn(async move {
                 // Native filesystem calls and text decoding must not block Tokio workers.
-                tokio::task::spawn_blocking(move || execute(task)).await
+                tokio::task::spawn_blocking(move || execute(task, &filter)).await
             });
         }
         let Some(result) = running.join_next().await else {
@@ -127,9 +133,9 @@ fn top_level_directory(root: &Path, directory: &Path) -> Option<PathBuf> {
         .map(|component| PathBuf::from(component.as_os_str()))
 }
 
-fn execute(task: ScanTask) -> ScanResult {
+fn execute(task: ScanTask, filter: &DirectoryFilter) -> ScanResult {
     match task {
-        ScanTask::Directory(path) => ScanResult::Directory(read_directory(path)),
+        ScanTask::Directory(path) => ScanResult::Directory(read_directory(path, filter)),
         ScanTask::File(path) => match measure::file(&path) {
             Ok((bytes, lines, code, binary)) => ScanResult::File {
                 directory: path.parent().unwrap_or(&path).to_owned(),
@@ -151,7 +157,7 @@ fn execute(task: ScanTask) -> ScanResult {
     }
 }
 
-fn read_directory(path: PathBuf) -> DirectoryScan {
+fn read_directory(path: PathBuf, filter: &DirectoryFilter) -> DirectoryScan {
     let mut result = DirectoryScan {
         path: path.clone(),
         ..Default::default()
@@ -185,23 +191,7 @@ fn read_directory(path: PathBuf) -> DirectoryScan {
             continue;
         }
         if kind.is_dir() {
-            if !matches!(
-                entry.file_name().to_str(),
-                Some(
-                    ".git"
-                        | ".idea"
-                        | "target"
-                        | "node_modules"
-                        | "dist"
-                        | "build"
-                        | "artifacts"
-                        | ".codex"
-                        | ".agents"
-                        | ".venv"
-                        | "__pycache__"
-                        | ".gpui-run"
-                )
-            ) {
+            if !filter.matches_name(&entry.file_name()) {
                 result.tasks.push(ScanTask::Directory(entry.path()));
             }
         } else if kind.is_file() {

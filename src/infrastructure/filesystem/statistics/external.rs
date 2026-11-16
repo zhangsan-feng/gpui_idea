@@ -6,7 +6,7 @@ use std::{path::PathBuf, time::Instant};
 impl FileSystem {
     pub async fn statistics(&self, root: PathBuf) -> Result<StatisticsDataContextSnapshot> {
         let started = Instant::now();
-        let result = super::core::scan(root.clone()).await;
+        let result = super::core::scan(root.clone(), self.directory_filter()).await;
         tracing::debug!(
             operation = "project_statistics",
             path = %root.display(),

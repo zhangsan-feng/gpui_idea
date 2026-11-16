@@ -13,17 +13,27 @@ impl CompletionDropdown {
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Self {
-        let changes = cx.subscribe_in(editor, window, |this, _, event, window, cx| match event {
-            InputEvent::Change => {
-                let skip = std::mem::take(&mut this.skip_next_change);
-                this.dismiss(cx);
-                if !skip {
-                    this.request(false, window, cx);
+        let changes = cx.subscribe_in(
+            editor,
+            window,
+            |this, editor, event, window, cx| match event {
+                InputEvent::Change => {
+                    let skip = std::mem::take(&mut this.skip_next_change);
+                    this.dismiss(cx);
+                    // Continue gopls directory candidates after the insertion's
+                    // change event, which would otherwise cancel a new request.
+                    let import_directory = skip && this.language == "go" && {
+                        let state = editor.read(cx);
+                        state.text().chars_at(state.cursor()).reversed().next() == Some('/')
+                    };
+                    if !skip || import_directory {
+                        this.request(false, window, cx);
+                    }
                 }
-            }
-            InputEvent::Blur => this.dismiss(cx),
-            _ => {}
-        });
+                InputEvent::Blur => this.dismiss(cx),
+                _ => {}
+            },
+        );
         let movement = cx.observe(editor, |this, editor, cx| {
             let editor = editor.read(cx);
             if editor.cursor() != this.offset
@@ -82,7 +92,11 @@ impl CompletionDropdown {
                 .chars_at(offset)
                 .reversed()
                 .next()
-                .is_some_and(|ch| ch.is_alphanumeric() || matches!(ch, '_' | ':' | '.'))
+                .is_some_and(|ch| {
+                    ch.is_alphanumeric()
+                        || matches!(ch, '_' | ':' | '.')
+                        || (self.language == "go" && matches!(ch, '"' | '/'))
+                })
         {
             return;
         }
@@ -91,6 +105,7 @@ impl CompletionDropdown {
         let generation = self.generation;
         let language = self.language;
         let path = self.path.clone();
+        tracing::debug!(language, %offset, manual, path = %path.display(), "code completion requested");
         let (cancelled, cancellation) = tokio::sync::watch::channel(false);
         self.cancellation = Some(cancelled);
         let executor = cx.background_executor().clone();

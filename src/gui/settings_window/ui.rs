@@ -7,7 +7,7 @@ use gpui_kit::{
         button::{Button, ButtonVariants as _},
         checkbox::Checkbox,
         h_flex,
-        input::Input,
+        input::{Input, Textarea},
         v_flex,
     },
     prelude::*,
@@ -66,7 +66,7 @@ impl SettingsWindow {
         let matches_appearance = query.is_empty() || APPEARANCE_SEARCH_TERMS.contains(&query);
         let matches_fonts = query.is_empty() || FONT_SEARCH_TERMS.contains(&query);
         let matches_system = query.is_empty()
-            || "系统设置 windows 右键 菜单 文件管理器 集成 explorer".contains(&query);
+            || "系统设置 windows 右键 菜单 文件管理器 集成 explorer 默认应用 文件关联 txt py go js ts".contains(&query);
         let matches_lsp = query.is_empty()
             || "lsp 管理 语言服务器 server 版本 安装 更新 rust go java toml markdown python javascript typescript html css json yaml php intelephense pyright taplo marksman".contains(&query)
             || self.servers.iter().any(|server| format!("{} {}", server.name, server.languages).to_lowercase().contains(&query));
@@ -305,9 +305,29 @@ impl SettingsWindow {
                     .id("general-settings-content")
                     .overflow_y_scroll()
                     .when(self.matches_search(cx), |content| {
-                        content.child(self.proxy_settings(cx))
+                        content
+                            .child(self.directory_filter_settings())
+                            .child(self.proxy_settings(cx))
                     }),
             )
+    }
+
+    fn directory_filter_settings(&self) -> Div {
+        v_flex()
+            .p_4().gap_3().rounded_lg()
+            .bg(crate::component::appearance::background(0xffffff))
+            .border_1().border_color(crate::component::appearance::border(BORDER))
+            .child(div().font_weight(FontWeight::SEMIBOLD).child("忽略目录"))
+            .child(div().text_color(crate::component::appearance::foreground(MUTED))
+                .child("文件监听与项目统计共用此配置。匹配的目录及其子目录不监听、不计入统计。"))
+            .child(Textarea::new(&self.ignored_directories)
+                .disabled(self.saving || self.system_busy || self.themes.busy()))
+            .child(div().text_size(crate::gui::component::appearance::ui_text_size(12.))
+                .text_color(crate::component::appearance::foreground(MUTED))
+                .child("每行填写一个目录名称，也支持 ; 分隔；匹配项目内任意层级。不支持路径和通配符，留空表示不忽略目录。"))
+            .child(div().text_size(crate::gui::component::appearance::ui_text_size(12.))
+                .text_color(crate::component::appearance::foreground(MUTED))
+                .child("点击“应用”后立即生效，并刷新文件树及已加载的统计；不会隐藏文件树中的目录。"))
     }
 
     fn proxy_settings(&self, cx: &mut Context<Self>) -> Div {

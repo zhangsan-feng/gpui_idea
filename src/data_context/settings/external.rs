@@ -7,6 +7,16 @@ use crate::event_bus::refresh_gui::GuiComponent;
 use std::sync::Arc;
 
 impl SettingsContext {
+    pub(crate) fn publish_file_associations(
+        &self,
+        status: Option<crate::domain::settings::FileAssociationStatus>,
+    ) {
+        self.replace(
+            |next| next.file_associations = status,
+            &[GuiComponent::SettingsWindow],
+        );
+    }
+
     pub(crate) fn publish_fonts(&self, fonts: Vec<crate::domain::settings::FontAsset>) {
         self.replace(
             |next| next.fonts = fonts.into(),

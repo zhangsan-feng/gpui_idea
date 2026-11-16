@@ -40,19 +40,23 @@ impl WindowBar {
     pub(super) fn window_control(
         &self,
         id: &'static str,
-        name: IconName,
-        _window: &Window,
+        window: &Window,
         _cx: &Context<WindowBar>,
     ) -> impl IntoElement {
-        let area = if id == "minimize" {
-            WindowControlArea::Min
+        let (area, name, label) = if id == "minimize" {
+            (WindowControlArea::Min, IconName::Minus, "最小化")
+        } else if window.is_maximized() {
+            (WindowControlArea::Max, IconName::Copy, "还原")
         } else {
-            WindowControlArea::Max
+            (WindowControlArea::Max, IconName::Square, "最大化")
         };
         crate::gui::component::controls::icon_button(id, 38., 40.)
             .text_color(crate::component::appearance::foreground(0xd4d7dd))
             .hover(|style| style.bg(crate::component::appearance::background(TOOLBAR_HOVER)))
             .window_control_area(area)
+            .tooltip(move |window, cx| {
+                gpui_kit::component::tooltip::Tooltip::new(label).build(window, cx)
+            })
             .child(icon(name, 12., 0xd4d7dd))
     }
 

@@ -1,6 +1,7 @@
 mod core;
 pub(in crate::infrastructure) use core::run_configuration as run_tools;
 mod directory;
+mod directory_filter;
 mod document;
 mod external;
 mod statistics;
@@ -50,10 +51,14 @@ pub struct FileBlockEdit {
 }
 const MAX_TEXT_LINES: usize = 50_000;
 
-pub(crate) struct FileSystem;
+pub(crate) struct FileSystem {
+    directory_filter: std::sync::RwLock<std::sync::Arc<directory_filter::DirectoryFilter>>,
+}
 
 impl FileSystem {
     pub(super) fn new() -> Self {
-        Self
+        Self {
+            directory_filter: Default::default(),
+        }
     }
 }

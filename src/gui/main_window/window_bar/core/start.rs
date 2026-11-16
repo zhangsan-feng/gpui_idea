@@ -14,6 +14,7 @@ impl WindowBar {
             Some(cx.observe_window_bounds(window, |this, window, cx| {
                 this.record_window_bounds(window, cx);
                 this.update_window_view(window, cx);
+                cx.notify();
             }));
         self.state
             .window_diagnostics

@@ -25,8 +25,8 @@ impl TextDecoder {
             at_start: true,
             bom: false,
             pending_cr: false,
-            saw_lf: false,
-            saw_crlf: false,
+            lf_count: 0,
+            crlf_count: 0,
             line_breaks: 0,
             has_tail: false,
         }
@@ -50,7 +50,7 @@ impl TextDecoder {
                     bail!("当前不支持单独 CR 换行，请先转换为 LF 或 CRLF");
                 }
                 self.pending_cr = false;
-                self.saw_crlf = true;
+                self.crlf_count += 1;
                 normalized.push('\n');
                 self.line_breaks += 1;
                 self.has_tail = false;
@@ -58,7 +58,7 @@ impl TextDecoder {
                 match ch {
                     '\r' => self.pending_cr = true,
                     '\n' => {
-                        self.saw_lf = true;
+                        self.lf_count += 1;
                         normalized.push(ch);
                         self.line_breaks += 1;
                         self.has_tail = false;
@@ -68,9 +68,6 @@ impl TextDecoder {
                         self.has_tail = true;
                     }
                 }
-            }
-            if self.saw_lf && self.saw_crlf {
-                bail!("文件混用了 LF 和 CRLF，请先统一换行格式");
             }
             if self.line_breaks + usize::from(self.has_tail) > MAX_LINES {
                 bail!("编辑器暂支持不超过 50000 行的文件");
@@ -127,12 +124,13 @@ pub(super) fn read(root: &Path, path: &Path) -> Result<LoadedFile> {
     }
     let format = TextFormat {
         bom: decoder.bom,
-        line_ending: if decoder.saw_crlf {
-            LineEnding::CrLf
-        } else {
-            LineEnding::Lf
-        },
+        line_ending: LineEnding::Lf,
     };
+    if decoder.lf_count > 0 && decoder.crlf_count > 0 {
+        tracing::info!(path = %path.display(), lf = decoder.lf_count,
+            crlf = decoder.crlf_count, line_ending = ?format.line_ending,
+            "mixed line endings normalized for editing");
+    }
     tracing::debug!(path = %path.display(), bytes = bytes.len(), chunks,
         buffer_bytes = BUFFER_SIZE, "document loaded with buffered chunks");
     let text = decoder.builder.finish();
@@ -173,27 +171,11 @@ pub(super) fn save(root: &Path, document: &DocumentDataContextSnapshot) -> Resul
         if line_breaks + usize::from(has_tail) > MAX_LINES {
             bail!("编辑内容超过 50000 行，正文仍保留在内存中");
         }
-        let extra = match document.format.line_ending {
-            LineEnding::Lf => 0,
-            LineEnding::CrLf => newlines,
-        };
-        let capacity = chunk.len().checked_add(extra).context("保存内容长度溢出")?;
         bytes
-            .try_reserve(capacity)
+            .try_reserve(chunk.len())
             .context("文档过大，无法分配保存缓冲")?;
-        match document.format.line_ending {
-            LineEnding::Lf => bytes.extend_from_slice(chunk.as_bytes()),
-            LineEnding::CrLf => {
-                for part in chunk.split_inclusive('\n') {
-                    if let Some(line) = part.strip_suffix('\n') {
-                        bytes.extend_from_slice(line.as_bytes());
-                        bytes.extend_from_slice(b"\r\n");
-                    } else {
-                        bytes.extend_from_slice(part.as_bytes());
-                    }
-                }
-            }
-        }
+        // Always write LF, including carriage returns introduced by pasted text.
+        bytes.extend(chunk.bytes().filter(|byte| *byte != b'\r'));
     }
     let relative = document
         .path

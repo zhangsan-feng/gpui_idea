@@ -4,6 +4,7 @@ use crate::gui::main_window::ui::*;
 use gpui_kit::base::Popover;
 
 mod lsp;
+mod path;
 
 impl BottomSidebar {
     pub(in crate::gui) fn render_status_bar(&self, cx: &Context<BottomSidebar>) -> Div {
@@ -106,26 +107,7 @@ impl BottomSidebar {
                 "statusBar.foreground",
                 crate::component::appearance::foreground(0x626a76),
             ))
-            .child(icon(IconName::Folder, 13., ACCENT))
-            .child(div().child(if DATA_CONTEXT.has_project() {
-                DATA_CONTEXT
-                    .project_root()
-                    .file_name()
-                    .unwrap_or_default()
-                    .to_string_lossy()
-                    .into_owned()
-            } else {
-                "未打开项目".to_owned()
-            }))
-            .child(icon(IconName::ChevronRight, 11., 0x9ca3ad))
-            .child(div().child(
-                if !self.peer_editor(cx).read(cx).state.open_files.is_empty() {
-                    self.peer_editor(cx).read(cx).state.selected_file.name()
-                } else {
-                    String::new()
-                },
-            ))
-            .child(div().flex_1())
+            .child(self.render_file_path(cx))
             .child(
                 Popover::new("language-server-popover")
                     .anchor(Anchor::BottomRight)

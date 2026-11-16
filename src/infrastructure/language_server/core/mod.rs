@@ -100,6 +100,7 @@ pub(super) struct Session {
     diagnosed: bool,
     runtime: runtime::Runtime,
     warmed: HashSet<PathBuf>,
+    watched_files: super::WatchedFiles,
 }
 
 fn uri(path: &Path) -> Result<String> {
@@ -319,6 +320,8 @@ impl Session {
     }
 
     async fn sync_document(&mut self, path: PathBuf, text: String, language: &str) -> Result<()> {
+        // Disk changes may have arrived while the previous request was busy.
+        self.flush_watched_files().await?;
         let document_uri = uri(&path)?;
         if let Some((version, previous)) = self.documents.get(&path) {
             if previous == &text {

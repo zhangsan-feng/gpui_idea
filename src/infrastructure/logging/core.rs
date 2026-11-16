@@ -8,10 +8,17 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
     let log_file = log_dir.join(format!("{}.log", chrono::Local::now().format(date_format)));
     let (stdout_writer, stdout_guard) = tracing_appender::non_blocking(std::io::stdout());
     let file = fern::log_file(&log_file).expect("open log file failed");
+    let _ = super::OUTPUT_FILE.set(log_file.canonicalize().expect("resolve log file failed"));
     let (file_writer, file_guard) = tracing_appender::non_blocking(file);
 
     let mut dispatch = fern::Dispatch::new()
         .level(log::LevelFilter::Warn)
+        .level_for(
+            "gpui_idea::infrastructure::filesystem::watcher",
+            log::LevelFilter::Info,
+        )
+        .level_for("gpui_idea::infrastructure::timer", log::LevelFilter::Info)
+        .level_for("gpui_idea::application::file_watch", log::LevelFilter::Info)
         .level_for(
             "gpui_idea::infrastructure::terminal::core",
             log::LevelFilter::Info,
@@ -21,6 +28,11 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
             log::LevelFilter::Info,
         )
         .level_for("gpui_idea::gui::code_search_window", log::LevelFilter::Info)
+        .level_for("gpui_idea::application::definition", log::LevelFilter::Info)
+        .level_for(
+            "gpui_idea::gui::main_window::content_area::editor::core::definition",
+            log::LevelFilter::Info,
+        )
         .level_for(
             "gpui_idea::gui::main_window::content_area::editor::core::markdown_drop",
             log::LevelFilter::Info,
@@ -43,6 +55,14 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
         )
         .level_for(
             "gpui_idea::infrastructure::language_server::inventory",
+            log::LevelFilter::Info,
+        )
+        .level_for(
+            "gpui_idea::infrastructure::language_server::core::sync",
+            log::LevelFilter::Info,
+        )
+        .level_for(
+            "gpui_idea::infrastructure::language_server::watched_files",
             log::LevelFilter::Info,
         );
     // Examples: RUST_LOG=debug or RUST_LOG=warn,gpui_idea=debug.

@@ -36,6 +36,13 @@ impl Editor {
                         "Ctrl+V",
                         Box::new(Paste),
                         capabilities.is_editable(),
+                    ))
+                    .item(context_action(
+                        "复制当前行",
+                        IconName::Copy,
+                        "Ctrl+D",
+                        Box::new(crate::component::code_editor::DuplicateLine),
+                        capabilities.is_editable(),
                     ));
             };
             let editor = view.read(cx);
@@ -65,6 +72,14 @@ impl Editor {
                 IconName::ClipboardPaste,
                 "Ctrl+V",
                 Box::new(Paste),
+                capabilities.is_editable(),
+            ))
+            .separator()
+            .item(context_action(
+                "复制当前行",
+                IconName::Copy,
+                "Ctrl+D",
+                Box::new(crate::component::code_editor::DuplicateLine),
                 capabilities.is_editable(),
             ))
             .separator()

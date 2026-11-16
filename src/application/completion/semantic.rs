@@ -71,6 +71,7 @@ pub(super) async fn complete(
             CompletionResponse::Array(items) => items,
             CompletionResponse::List(list) => list.items,
         };
+        let received = items.len();
         let prefix_bytes = prefix.len();
         let prefix = prefix.to_lowercase();
         items.retain_mut(|item| {
@@ -146,7 +147,12 @@ pub(super) async fn complete(
                 }
             }
         }
-        tracing::debug!(count = items.len(), "semantic code completions collected");
+        tracing::debug!(
+            language,
+            received,
+            count = items.len(),
+            "semantic code completions collected"
+        );
         Ok(CompletionResponse::Array(items))
     })
     .await?

@@ -2,7 +2,7 @@ use super::{FileChanges, FileSubscription, local_changes};
 use anyhow::{Context, Result};
 use notify::{Event, EventKind, RecursiveMode, Watcher};
 use std::{
-    path::{Component, Path, PathBuf},
+    path::PathBuf,
     sync::{Arc, Mutex},
 };
 
@@ -27,8 +27,14 @@ pub(super) fn start(root: PathBuf) -> Result<FileSubscription> {
                     .paths
                     .into_iter()
                     .filter_map(|path| {
+                        // Refresh diagnostics write here; observing that output would feed
+                        // each refresh back into the next batch when logs are not ignored.
+                        if crate::infrastructure::logging::is_output_file(&path) {
+                            return None;
+                        }
                         let relative = path.strip_prefix(&watched_root).ok()?;
-                        if ignored(relative) {
+                        if crate::infrastructure::INFRASTRUCTURE.filesystem.directory_filter().matches_path(relative) {
+                            tracing::debug!(path = %path.display(), "filesystem watcher ignored generated content");
                             None
                         } else if local_changes::excludes(&path) {
                             tracing::debug!(path = %path.display(), "filesystem watcher ignored local change");
@@ -78,17 +84,6 @@ pub(super) fn start(root: PathBuf) -> Result<FileSubscription> {
         _batch_timer: None,
         _watcher: watcher,
         pending,
-    })
-}
-
-fn ignored(path: &Path) -> bool {
-    path.components().any(|part| {
-        matches!(part,
-            Component::Normal(name) if matches!(name.to_str(), Some(
-                ".git" | "target" | "node_modules" | "dist" | "build" | "artifacts"
-                | "logs" | ".codex" | ".agents" | ".venv" | "__pycache__" | ".gpui-run"
-            ))
-        )
     })
 }
 

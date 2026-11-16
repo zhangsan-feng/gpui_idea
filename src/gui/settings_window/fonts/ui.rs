@@ -68,6 +68,13 @@ impl SettingsWindow {
                     .border_1()
                     .border_color(crate::component::appearance::border(0xe5e7eb))
                     .font_family(appearance.editor_font.clone())
+                    .font_features(crate::component::appearance::editor_font_features())
+                    .font_weight(FontWeight::NORMAL)
+                    .line_height(crate::component::appearance::editor_line_height(
+                        appearance.editor_font.clone().into(),
+                        px(appearance.editor_size as f32),
+                        cx,
+                    ))
                     .text_size(px(appearance.editor_size as f32))
                     .bg(crate::component::appearance::preview_color(
                         appearance,
@@ -89,7 +96,7 @@ impl SettingsWindow {
                         })
                         .into(),
                     ))
-                    .child("fn main() { println!(\"Hello, 世界 0123\"); }"),
+                    .child("if err != nil { return err }\nif a == b && c <= d || e >= f { x := y }\n// -> => === !==  Hello, 世界 0123"),
             )
     }
 

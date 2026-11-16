@@ -197,6 +197,11 @@ fn wrap_list(
         node.kind(),
         "argument_list"
             | "arguments"
+            | "parameter_list"
+            | "formal_parameters"
+            | "parameters"
+            | "inferred_parameters"
+            | "closure_parameters"
             | "literal_value"
             | "field_initializer_list"
             | "initializer_list"
@@ -218,19 +223,23 @@ fn wrap_list(
     };
     if !matches!(
         (&text[first.byte_range()], &text[last.byte_range()]),
-        ("{", "}") | ("[", "]") | ("(", ")")
+        ("{", "}") | ("[", "]") | ("(", ")") | ("|", "|")
     ) {
         return false;
     }
-    let items: Vec<_> = children.iter().filter(|child| child.is_named()).collect();
-    if items.is_empty()
+    if children.len() <= 2
         || children
             .iter()
             .any(|child| child.kind().contains("comment"))
     {
         return false;
     }
-    edits.push((first.end_byte()..items[0].start_byte(), continuation.into()));
+    // Parameter lists may start with unnamed syntax such as Python's `*` or
+    // `/`. Preserve every token, including separators and variadic markers.
+    edits.push((
+        first.end_byte()..children[1].start_byte(),
+        continuation.into(),
+    ));
     for child in &children {
         if child.kind() == "," {
             let next = children
@@ -252,6 +261,12 @@ fn wrap_list(
         previous.end_byte()..last.start_byte(),
         format!("{comma}{closing}"),
     ));
+    tracing::debug!(
+        %language,
+        container = node.kind(),
+        line = node.start_position().row + 1,
+        "long syntax list wrapping requested"
+    );
     true
 }
 
@@ -308,7 +323,7 @@ fn chain_breaks(node: Node<'_>, language: &str, continuation: &str, edits: &mut 
         )
 }
 
-fn signature(root: Node<'_>, text: &str) -> Vec<(String, String)> {
+pub(super) fn signature(root: Node<'_>, text: &str) -> Vec<(String, String)> {
     let mut result = Vec::new();
     let mut cursor = root.walk();
     loop {

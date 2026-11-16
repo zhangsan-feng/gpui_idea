@@ -5,17 +5,25 @@ use std::path::PathBuf;
 
 impl DocumentService {
     pub(super) async fn reveal_location_core(&self, path: PathBuf) -> Result<()> {
-        let document = DATA_CONTEXT
+        let scope_root = DATA_CONTEXT
             .documents
             .snapshot(&path)
-            .context("文档尚未打开")?;
+            .map(|document| document.scope_root.clone())
+            .or_else(|| {
+                if DATA_CONTEXT.has_project() && path.starts_with(DATA_CONTEXT.project_root()) {
+                    Some(DATA_CONTEXT.project_root().to_owned())
+                } else {
+                    path.parent().map(ToOwned::to_owned)
+                }
+            })
+            .context("文件没有所在目录")?;
         let relative = path
-            .strip_prefix(&document.scope_root)
+            .strip_prefix(&scope_root)
             .context("文件不在文档目录内")?
             .to_owned();
         INFRASTRUCTURE
             .filesystem
-            .reveal_entry(document.scope_root.clone(), relative)
+            .reveal_entry(scope_root, relative)
             .await
     }
 }

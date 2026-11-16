@@ -1,6 +1,26 @@
 use crate::domain::settings::{ContextMenuAction, ContextMenuStatus};
 use anyhow::Result;
 
+pub(super) fn file_associations(
+    action: crate::domain::settings::FileAssociationAction,
+) -> Result<crate::domain::settings::FileAssociationStatus> {
+    #[cfg(windows)]
+    {
+        super::file_associations::execute(action)
+    }
+    #[cfg(not(windows))]
+    {
+        anyhow::ensure!(
+            matches!(
+                action,
+                crate::domain::settings::FileAssociationAction::Refresh
+            ),
+            "当前系统暂不支持 Windows 文件关联"
+        );
+        Ok(crate::domain::settings::FileAssociationStatus::default())
+    }
+}
+
 #[cfg(windows)]
 pub(super) fn context_menu(action: ContextMenuAction) -> Result<ContextMenuStatus> {
     use super::registry;

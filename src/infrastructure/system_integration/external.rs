@@ -3,6 +3,13 @@ use crate::domain::settings::{ContextMenuAction, ContextMenuStatus};
 use anyhow::Result;
 
 impl SystemIntegration {
+    pub(crate) async fn file_associations(
+        &self,
+        action: crate::domain::settings::FileAssociationAction,
+    ) -> Result<crate::domain::settings::FileAssociationStatus> {
+        tokio::task::spawn_blocking(move || core::file_associations(action)).await?
+    }
+
     pub(crate) async fn context_menu(
         &self,
         action: ContextMenuAction,

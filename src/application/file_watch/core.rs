@@ -118,17 +118,23 @@ pub(super) async fn refresh(changes: &FileChanges) {
     };
 
     // Finish all IO first, then publish the batch without per-entry notifications.
+    let refreshed_directories = directory_updates.len();
     DATA_CONTEXT.apply_file_refresh(FileRefreshBatch {
         documents: document_updates,
         directories: directory_updates,
         statistics,
         image_updated,
     });
+    INFRASTRUCTURE
+        .language_servers
+        .files_changed(root, changes)
+        .await;
     crate::application::APPLICATION
         .project
         .schedule_file_run_refresh();
-    tracing::debug!(
+    tracing::info!(
         paths = changes.paths.len(),
+        refreshed_directories,
         raw_events = changes.event_count,
         rescan = changes.rescan,
         "filesystem changes applied"

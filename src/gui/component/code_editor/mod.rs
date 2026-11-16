@@ -5,6 +5,8 @@ mod drop_position;
 mod external;
 mod highlights;
 
+gpui_kit::actions!(code_editor, [DuplicateLine]);
+
 pub(crate) use external::offset_at_point;
 pub(crate) use external::{
     attach_completions, completion_dropdown, definition_pointer, dismiss_completions,

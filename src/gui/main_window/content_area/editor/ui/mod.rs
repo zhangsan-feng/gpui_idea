@@ -91,6 +91,18 @@ impl Editor {
                 );
             }
             crate::gui::component::code_editor::update_gutter(state, window, cx);
+            let editor_font = crate::component::appearance::editor_font();
+            let editor_size = px(DATA_CONTEXT
+                .settings
+                .snapshot()
+                .general
+                .appearance
+                .editor_size as f32);
+            let line_height = crate::component::appearance::editor_line_height(
+                editor_font.clone(),
+                editor_size,
+                cx,
+            );
             let started = std::time::Instant::now();
             let input = CodeEditor::new(state)
                 // Keep the input's caret/selection handling, render the shared popup below.
@@ -127,17 +139,15 @@ impl Editor {
                 )
                 .h(relative(1.))
                 .w_full()
-                .font_family(crate::component::appearance::editor_font())
+                .font_family(editor_font)
+                .font_features(crate::component::appearance::editor_font_features())
+                .font_weight(FontWeight::NORMAL)
+                .line_height(line_height)
                 .text_color(crate::component::appearance::themed(
                     "editor.foreground",
                     crate::component::appearance::foreground(TEXT),
                 ))
-                .text_size(px(DATA_CONTEXT
-                    .settings
-                    .snapshot()
-                    .general
-                    .appearance
-                    .editor_size as f32));
+                .text_size(editor_size);
             let source = div()
                 .h_full()
                 .relative()
@@ -231,6 +241,9 @@ impl Editor {
                 let supports_lsp =
                     crate::domain::language_server::language_for_path(file.relative_path())
                         .is_some();
+                let supports_links = supports_lsp
+                    || crate::component::code_editor::language_for_path(file.relative_path())
+                        == "markdown";
                 if supports_lsp {
                     crate::component::code_editor::definition_pointer(&state, &hitbox, window, cx);
                 }
@@ -238,7 +251,7 @@ impl Editor {
                 let click_hitbox = hitbox.clone();
                 window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
                     if phase != DispatchPhase::Capture
-                        || !supports_lsp
+                        || !supports_links
                         || event.button != MouseButton::Left
                         || !event.modifiers.control
                         || event.modifiers.alt
@@ -263,7 +276,7 @@ impl Editor {
                         let offset = state.cursor();
                         let _ = view.update(cx, |this, cx| {
                             if this.state.selected_file == file {
-                                this.go_to_definition(file, offset, window, cx);
+                                this.navigate_editor_link(file, offset, window, cx);
                             }
                         });
                     });

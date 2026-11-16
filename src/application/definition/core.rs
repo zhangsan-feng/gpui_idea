@@ -130,6 +130,8 @@ pub(super) async fn resolve(
     })
     .await??;
     let root = DATA_CONTEXT.project_root().to_owned();
+    tracing::info!(path = %path.display(), %symbol, line = position.line + 1,
+        column = position.character + 1, overlays = overlays.len(), "LSP definition requested");
     let locations = INFRASTRUCTURE
         .language_servers
         .definitions(
@@ -151,6 +153,8 @@ pub(super) async fn resolve(
             .to_file_path()
             .map_err(|_| anyhow::anyhow!("语言服务返回的源码地址暂不支持：{}", uri.scheme()))?;
         let target = align_target(target, &root, &known_paths);
+        tracing::info!(%symbol, path = %target.display(), line = location.range.start.line + 1,
+            column = location.range.start.character + 1, "LSP definition target received");
         if !buffers.contains_key(&target) {
             let buffer = if let Some(snapshot) = DATA_CONTEXT.documents.snapshot(&target) {
                 snapshot.text.clone()

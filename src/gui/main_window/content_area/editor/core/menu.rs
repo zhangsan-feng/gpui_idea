@@ -29,7 +29,16 @@ impl Editor {
         if self.state.open_files.is_empty() {
             return;
         }
-        let file = self.state.selected_file.path(DATA_CONTEXT.project_root());
+        self.copy_file_path(&self.state.selected_file, absolute, cx);
+    }
+
+    pub(in crate::gui::main_window::content_area::editor) fn copy_file_path(
+        &self,
+        file: &ProjectFile,
+        absolute: bool,
+        cx: &mut Context<Self>,
+    ) {
+        let file = file.path(DATA_CONTEXT.project_root());
         let path = if absolute {
             file.as_path()
         } else {
@@ -61,7 +70,34 @@ impl Editor {
         if self.state.open_files.is_empty() {
             return;
         }
-        let path = self.state.selected_file.path(DATA_CONTEXT.project_root());
+        self.reveal_file_location(&self.state.selected_file, cx);
+    }
+
+    pub(in crate::gui::main_window::content_area::editor) fn open_file_terminal(
+        &self,
+        file: &ProjectFile,
+    ) {
+        let path = file.path(DATA_CONTEXT.project_root());
+        let Ok(relative) = path.strip_prefix(DATA_CONTEXT.project_root()) else {
+            return;
+        };
+        if !DATA_CONTEXT.has_project() {
+            return;
+        }
+        let directory = relative.parent().unwrap_or(std::path::Path::new(""));
+        self.send(GuiEvent::BottomPanel(
+            crate::gui::main_window::content_area::bottom_panel::Event::OpenTerminal(
+                directory.to_owned(),
+            ),
+        ));
+    }
+
+    pub(in crate::gui::main_window::content_area::editor) fn reveal_file_location(
+        &self,
+        file: &ProjectFile,
+        cx: &mut Context<Self>,
+    ) {
+        let path = file.path(DATA_CONTEXT.project_root());
         cx.spawn(async move |this, cx| {
             let result =
                 run_application(async move { APPLICATION.documents.reveal_location(path).await })

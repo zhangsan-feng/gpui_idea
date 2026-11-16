@@ -21,7 +21,7 @@ pub(super) fn configure_gutter(
     // initial strip from the font metrics before the editor is laid out.
     state.set_gutter_decorations_width(gpui_kit::px(12.), cx);
     state.create_gutter_decorations_collection(vec![], cx);
-    tracing::info!(
+    tracing::debug!(
         total_width = 70,
         "editor gutter configured: compact numbers and fold controls without divider"
     );
@@ -87,6 +87,41 @@ pub(super) fn select_line_for_cut(
     if start < end {
         editor.set_selected_range(start..end, cx);
     }
+}
+
+pub(super) fn duplicate_line(
+    editor: &mut gpui_kit::component::input::EditorState,
+    window: &mut gpui_kit::Window,
+    cx: &mut gpui_kit::Context<gpui_kit::component::input::EditorState>,
+) {
+    use gpui_kit::component::input::RopeExt as _;
+
+    if !editor.is_editable() || editor.presentation().is_masked() {
+        return;
+    }
+    let text = editor.text();
+    let cursor = editor.cursor();
+    let row = text.offset_to_point(cursor).row;
+    let start = text.line_start_offset(row);
+    let end = text.line_start_offset(row + 1);
+    let line = text.slice(start..end).to_string();
+    let (insertion, duplicate_start) = if line.ends_with('\n') {
+        (line, end)
+    } else {
+        // The last line has no terminator; retain the document's line ending.
+        let first_line = text.slice(..text.line_start_offset(1)).to_string();
+        let newline = if first_line.ends_with("\r\n") {
+            "\r\n"
+        } else {
+            "\n"
+        };
+        (format!("{newline}{line}"), end + newline.len())
+    };
+    editor.set_selected_range(end..end, cx);
+    editor.insert(insertion, window, cx);
+    let caret = duplicate_start + cursor.saturating_sub(start);
+    editor.set_selected_range(caret..caret, cx);
+    tracing::debug!(row, "editor line duplicated");
 }
 
 pub(crate) fn language_for_path(path: &Path) -> &'static str {

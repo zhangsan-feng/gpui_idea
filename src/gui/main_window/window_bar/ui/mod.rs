@@ -129,8 +129,8 @@ impl WindowBar {
                     .h_full()
                     .flex_shrink_0()
                     .gap_0()
-                    .child(self.window_control("minimize", IconName::Minus, window, cx))
-                    .child(self.window_control("maximize", IconName::Square, window, cx))
+                    .child(self.window_control("minimize", window, cx))
+                    .child(self.window_control("maximize", window, cx))
                     .child(self.close_window_control(cx)),
             )
     }

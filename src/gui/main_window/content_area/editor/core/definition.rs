@@ -57,6 +57,14 @@ impl Editor {
                     {
                         return;
                     }
+                    tracing::info!(
+                        request,
+                        expected_offset = offset,
+                        cursor = state.cursor(),
+                        selected = !state.selected_range().is_empty(),
+                        focused = state.focus_handle(cx).is_focused(window),
+                        "go to definition cancelled after editor change"
+                    );
                     this.state.definition_request = this.state.definition_request.wrapping_add(1);
                     this.state.definition_observer = None;
                     {
@@ -109,6 +117,8 @@ impl Editor {
                         .map(|doc| doc.revision)
                         != revision
                 {
+                    tracing::info!(request, current_request = this.state.definition_request,
+                        path = %source_path.display(), "go to definition result discarded after editor change");
                     if this.state.definition_request == request {
                         this.send(crate::event_bus::gui_event::GuiEvent::BottomSidebar(
                             crate::gui::main_window::bottom_sidebar::Event::ClearNoticeIf(

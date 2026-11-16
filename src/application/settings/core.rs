@@ -8,6 +8,7 @@ impl SettingsService {
     pub(super) async fn load_core(&self) -> Result<()> {
         let _guard = self.io.lock().await;
         let mut value = INFRASTRUCTURE.settings.load().await?;
+        self.normalize_ignored_directories(&mut value.ignored_directories)?;
         let defaults = crate::domain::settings::AppearanceSettings::default();
         if value.appearance.font_defaults_version < defaults.font_defaults_version {
             if value.appearance.ui_font == "Inter Variable"
@@ -28,12 +29,18 @@ impl SettingsService {
         DATA_CONTEXT.settings.publish_fonts(fonts);
         INFRASTRUCTURE.proxy.validate(&value.lsp_proxy)?;
         INFRASTRUCTURE.proxy.set_lsp(value.lsp_proxy.clone());
+        INFRASTRUCTURE
+            .filesystem
+            .set_ignored_directories(value.ignored_directories.clone());
         DATA_CONTEXT.settings.publish_general(value);
         Ok(())
     }
 
     pub(super) async fn save_core(&self, mut value: GeneralSettings) -> Result<()> {
         let _guard = self.io.lock().await;
+        self.normalize_ignored_directories(&mut value.ignored_directories)?;
+        let filter_changed = DATA_CONTEXT.settings.snapshot().general.ignored_directories
+            != value.ignored_directories;
         value.lsp_proxy.url = value.lsp_proxy.url.trim().to_owned();
         value.appearance.ui_font = value.appearance.ui_font.trim().to_owned();
         value.appearance.editor_font = value.appearance.editor_font.trim().to_owned();
@@ -73,7 +80,20 @@ impl SettingsService {
         tracing::info!(ui_font = %value.appearance.ui_font, editor_font = %value.appearance.editor_font,
             ui_size = value.appearance.ui_size, editor_size = value.appearance.editor_size, dark = value.appearance.theme == crate::domain::settings::ColorTheme::Dark,
             "appearance settings saved");
+        INFRASTRUCTURE
+            .filesystem
+            .set_ignored_directories(value.ignored_directories.clone());
         DATA_CONTEXT.settings.publish_general(value);
+        if filter_changed && DATA_CONTEXT.has_project() {
+            crate::application::APPLICATION
+                .file_watch
+                .refresh_data_context(&crate::event_bus::FileChanges {
+                    rescan: true,
+                    event_count: 1,
+                    ..Default::default()
+                })
+                .await;
+        }
         Ok(())
     }
 }

@@ -3,10 +3,45 @@ use gpui_kit::component::{Theme, ThemeMode, highlighter::HighlightTheme};
 use gpui_kit::{App, Hsla};
 mod vscode;
 
+const EDITOR_LINE_SPACING: f32 = 1.2;
+
+/// GoLand applies line spacing to integer font metrics, not to the em size.
+/// At 13px JetBrains Mono has 14px ascent + 4px descent: 18 * 1.2 rounds to 22px.
+pub(crate) fn editor_line_height(
+    family: gpui_kit::SharedString,
+    size: gpui_kit::Pixels,
+    cx: &App,
+) -> gpui_kit::Pixels {
+    let text_system = cx.text_system();
+    let font_id = text_system.resolve_font(&gpui_kit::font(family));
+    let ascent = text_system.ascent(font_id, size).ceil();
+    // DirectWrite exposes descent below the baseline as a negative distance.
+    let descent = text_system.descent(font_id, size).abs().ceil();
+    ((ascent + descent) * EDITOR_LINE_SPACING).round()
+}
+
+/// Match GoLand's disabled editor ligatures, including fonts that use `liga`.
+pub(crate) fn editor_font_features() -> gpui_kit::FontFeatures {
+    gpui_kit::FontFeatures(std::sync::Arc::new(vec![
+        ("calt".into(), 0),
+        ("liga".into(), 0),
+        ("clig".into(), 0),
+        ("dlig".into(), 0),
+    ]))
+}
+
 pub(crate) fn apply(cx: &mut App) {
     let appearance = DATA_CONTEXT.settings.snapshot().general.appearance.clone();
+    let line_height = editor_line_height(
+        appearance.editor_font.clone().into(),
+        gpui_kit::px(appearance.editor_size as f32),
+        cx,
+    );
     tracing::info!(ui_font = %appearance.ui_font, ui_size = appearance.ui_size,
-        editor_font = %appearance.editor_font, editor_size = appearance.editor_size, "applying window and editor fonts");
+        editor_font = %appearance.editor_font, editor_size = appearance.editor_size,
+        editor_line_spacing = EDITOR_LINE_SPACING, editor_line_height_px = f32::from(line_height),
+        editor_ligatures = false,
+        "applying window and editor fonts");
     let dark = appearance.theme == ColorTheme::Dark;
     Theme::change(
         if dark {

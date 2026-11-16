@@ -1,5 +1,24 @@
 use serde::{Deserialize, Serialize};
 
+#[derive(Clone, Debug)]
+pub(crate) enum FileAssociationAction {
+    Refresh,
+    Configure(Vec<String>),
+    Register(Vec<String>),
+}
+
+#[derive(Clone, Default, PartialEq, Eq)]
+pub(crate) struct FileAssociationStatus {
+    pub(crate) registered: bool,
+    pub(crate) extensions: Vec<String>,
+    pub(crate) default_extensions: Vec<String>,
+}
+
+pub(crate) const EDITOR_FILE_EXTENSIONS: &[&str] = &[
+    ".txt", ".py", ".go", ".js", ".jsx", ".ts", ".tsx", ".rs", ".json", ".toml", ".md", ".yaml",
+    ".yml", ".html", ".css", ".java", ".php", ".xml", ".sh", ".sql",
+];
+
 #[derive(Clone, Copy, Debug)]
 pub(crate) enum ContextMenuAction {
     Refresh,
@@ -14,13 +33,47 @@ pub(crate) struct ContextMenuStatus {
     pub(crate) has_entries: bool,
 }
 
-#[derive(Clone, Default, PartialEq, Eq, Serialize, Deserialize)]
+#[derive(Clone, PartialEq, Eq, Serialize, Deserialize)]
 #[serde(default)]
 pub(crate) struct GeneralSettings {
     pub(crate) appearance: AppearanceSettings,
     pub(crate) auto_format: bool,
     pub(crate) soft_wrap: bool,
     pub(crate) lsp_proxy: ProxySettings,
+    #[serde(default = "default_ignored_directories")]
+    pub(crate) ignored_directories: Vec<String>,
+}
+
+impl Default for GeneralSettings {
+    fn default() -> Self {
+        Self {
+            appearance: Default::default(),
+            auto_format: false,
+            soft_wrap: false,
+            lsp_proxy: Default::default(),
+            ignored_directories: default_ignored_directories(),
+        }
+    }
+}
+
+pub(crate) fn default_ignored_directories() -> Vec<String> {
+    [
+        ".git",
+        ".idea",
+        "target",
+        "node_modules",
+        "dist",
+        "build",
+        "artifacts",
+        ".codex",
+        ".agents",
+        ".venv",
+        "__pycache__",
+        ".gpui-run",
+    ]
+    .into_iter()
+    .map(str::to_owned)
+    .collect()
 }
 
 /// Published settings state. GUI drafts remain separate from this snapshot.
@@ -28,6 +81,7 @@ pub(crate) struct GeneralSettings {
 pub(crate) struct SettingsDataContextSnapshot {
     pub(crate) general: std::sync::Arc<GeneralSettings>,
     pub(crate) context_menu: Option<ContextMenuStatus>,
+    pub(crate) file_associations: Option<FileAssociationStatus>,
     pub(crate) servers: std::sync::Arc<[crate::domain::language_server::ManagedServer]>,
     pub(crate) fonts: std::sync::Arc<[FontAsset]>,
 }

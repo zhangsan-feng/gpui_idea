@@ -11,8 +11,8 @@ struct TextDecoder {
     at_start: bool,
     bom: bool,
     pending_cr: bool,
-    saw_lf: bool,
-    saw_crlf: bool,
+    lf_count: usize,
+    crlf_count: usize,
     line_breaks: usize,
     has_tail: bool,
 }

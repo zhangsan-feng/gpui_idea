@@ -7,6 +7,7 @@ mod formatting;
 mod image_preview;
 mod markdown;
 mod markdown_drop;
+mod markdown_links;
 mod menu;
 mod navigation;
 mod reconcile;

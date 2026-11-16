@@ -92,7 +92,11 @@ impl LanguageServers {
         tracing::info!(workspace = %cell.root.display(), family, "Starting workspace LSP session");
         let result = self
             .start_session(&cell.root, family, cell.status.clone())
-            .await;
+            .await
+            .map(|mut session| {
+                session.set_watched_files(cell.watched_files.clone());
+                session
+            });
         *cell
             .failure
             .lock()

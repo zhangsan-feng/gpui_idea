@@ -39,6 +39,38 @@ fn edit_boundary(text: &str, byte: usize) -> bool {
 }
 
 impl super::Session {
+    pub(in crate::infrastructure::language_server) fn set_watched_files(
+        &mut self,
+        pending: super::super::WatchedFiles,
+    ) {
+        self.watched_files = pending;
+    }
+
+    pub(in crate::infrastructure::language_server) async fn flush_watched_files(
+        &self,
+    ) -> anyhow::Result<()> {
+        let pending = {
+            let mut pending = self
+                .watched_files
+                .lock()
+                .unwrap_or_else(|error| error.into_inner());
+            std::mem::take(&mut *pending)
+        };
+        if pending.is_empty() {
+            return Ok(());
+        }
+        let changes = pending
+            .into_iter()
+            .map(|(path, kind)| Ok(json!({"uri": super::uri(&path)?, "type": kind})))
+            .collect::<anyhow::Result<Vec<_>>>()?;
+        tracing::info!(paths = changes.len(), "LSP filesystem changes synchronized");
+        self.notify(
+            "workspace/didChangeWatchedFiles",
+            json!({"changes": changes}),
+        )
+        .await
+    }
+
     pub(super) async fn sync_documents(
         &mut self,
         path: &std::path::Path,

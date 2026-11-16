@@ -3,6 +3,26 @@ use crate::domain::settings::GeneralSettings;
 use anyhow::Result;
 
 impl SettingsService {
+    pub(crate) fn parse_ignored_directories(&self, input: &str) -> Vec<String> {
+        self.parse_ignored_directories_core(input)
+    }
+
+    pub(crate) async fn configure_file_associations(
+        &self,
+        input: String,
+        open_settings: bool,
+    ) -> Result<crate::domain::settings::FileAssociationStatus> {
+        self.configure_file_associations_core(input, open_settings)
+            .await
+    }
+
+    pub(crate) async fn file_associations(
+        &self,
+        action: crate::domain::settings::FileAssociationAction,
+    ) -> Result<crate::domain::settings::FileAssociationStatus> {
+        self.file_associations_core(action).await
+    }
+
     pub(crate) fn installed_theme_packages<'a>(
         &self,
         settings: &'a GeneralSettings,

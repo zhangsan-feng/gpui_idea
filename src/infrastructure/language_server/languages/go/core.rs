@@ -9,7 +9,11 @@ use std::{fs, path::PathBuf};
 use tokio::process::Command;
 
 pub(in crate::infrastructure::language_server) fn configuration(_section: &str) -> Value {
-    json!({"completeUnimported": false, "usePlaceholders": false})
+    // Import-path completion searches packages through goimports. The default
+    // budget can expire during cold package loading and silently return no
+    // candidates, even for import "fm". Let the client own cancellation and
+    // the request timeout rather than returning partial, empty package lists.
+    json!({"completeUnimported": false, "usePlaceholders": false, "completionBudget": "0s"})
 }
 pub(in crate::infrastructure::language_server) fn initialization_options(
     _root: &std::path::Path,

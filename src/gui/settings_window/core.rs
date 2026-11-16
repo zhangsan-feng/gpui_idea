@@ -59,6 +59,15 @@ impl SettingsWindow {
                 this.saving = false;
                 match result {
                     Ok(()) => {
+                        value.ignored_directories = crate::data_context::DATA_CONTEXT
+                            .settings
+                            .snapshot()
+                            .general
+                            .ignored_directories
+                            .clone();
+                        this.ignored_directories.update(cx, |input, cx| {
+                            input.set_value(value.ignored_directories.join("\n"), window, cx);
+                        });
                         this.draft = value.clone();
                         this.saved = value;
                         crate::component::appearance::apply(cx);

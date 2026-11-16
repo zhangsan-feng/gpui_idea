@@ -129,12 +129,16 @@ impl Editor {
         let target_file = file.clone();
         let tree_file = file.clone();
         let copy_file = file.clone();
+        let terminal_file = file.clone();
+        let reveal_file = file.clone();
+        let project_path_file = file.clone();
+        let absolute_path_file = file.clone();
         let view = cx.weak_entity();
-        let can_reveal = DATA_CONTEXT.has_project()
-            && !external_source
+        let in_project = DATA_CONTEXT.has_project()
             && file
                 .path(DATA_CONTEXT.project_root())
                 .starts_with(DATA_CONTEXT.project_root());
+        let can_reveal = in_project && !external_source;
         let label = self.editor_tab_label(file);
         let path = file.relative_path().to_string_lossy().into_owned();
         let tooltip_path = if external_source {
@@ -217,17 +221,42 @@ impl Editor {
             }))
             .context_menu(move |menu, _, _| crate::gui::component::menu::context_menu(menu)
                 .item(crate::gui::component::menu::context_view_item(
+                    "打开终端", IconName::Terminal, "", in_project, &view, {
+                        let file = terminal_file.clone();
+                        move |this, _, _| this.open_file_terminal(&file)
+                    },
+                ))
+                .item(crate::gui::component::menu::context_view_item(
+                    "打开文件所在目录", IconName::FolderOpen, "", true, &view, {
+                        let file = reveal_file.clone();
+                        move |this, _, cx| this.reveal_file_location(&file, cx)
+                    },
+                ))
+                .item(crate::gui::component::menu::context_view_item(
+                    "复制名称", IconName::Copy, "", true, &view, {
+                        let file = copy_file.clone();
+                        move |this, _, cx| this.copy_file_name(&file, cx)
+                    },
+                ))
+                .item(crate::gui::component::menu::context_view_item(
+                    "复制项目路径", IconName::Copy, "", in_project, &view, {
+                        let file = project_path_file.clone();
+                        move |this, _, cx| this.copy_file_path(&file, false, cx)
+                    },
+                ))
+                .item(crate::gui::component::menu::context_view_item(
+                    "复制全盘路径", IconName::Copy, "", true, &view, {
+                        let file = absolute_path_file.clone();
+                        move |this, _, cx| this.copy_file_path(&file, true, cx)
+                    },
+                ))
+                .separator()
+                .item(crate::gui::component::menu::context_view_item(
                     "打开文件树", IconName::FolderOpen, "", can_reveal, &view, {
                         let file = tree_file.clone();
                         move |this, _, _| this.send(crate::event_bus::gui_event::GuiEvent::FileTree(
                             crate::gui::main_window::content_area::file_tree::Event::RevealFile(file.clone()),
                         ))
-                    },
-                ))
-                .item(crate::gui::component::menu::context_view_item(
-                    "复制文件名", IconName::Copy, "", true, &view, {
-                        let file = copy_file.clone();
-                        move |this, _, cx| this.copy_file_name(&file, cx)
                     },
                 ))
                 .separator()

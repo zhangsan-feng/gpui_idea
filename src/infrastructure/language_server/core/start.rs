@@ -136,6 +136,7 @@ impl Session {
             diagnosed: false,
             runtime,
             warmed: HashSet::new(),
+            watched_files: Arc::default(),
         };
         let initialization_options = configuration::initialization_options(family, root);
         let initialized = session
@@ -146,7 +147,8 @@ impl Session {
                     "rootUri": root_uri, "workspaceFolders": workspace_folders,
                     "capabilities": {
                         "general":{"positionEncodings":["utf-16"]},
-                        "workspace":{"configuration":true,"workspaceFolders":true},
+                        "workspace":{"configuration":true,"workspaceFolders":true,
+                            "didChangeWatchedFiles":{"dynamicRegistration":true}},
                         "textDocument":{
                             "completion":{"completionItem":{"snippetSupport":true,"insertReplaceSupport":true}},
                             "definition":{"linkSupport":true},"synchronization":{"didSave":true},
