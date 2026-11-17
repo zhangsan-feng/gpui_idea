@@ -4,6 +4,19 @@ use anyhow::{Context, Result};
 use std::path::PathBuf;
 
 impl DocumentService {
+    pub(super) async fn last_modified_core(
+        &self,
+        path: PathBuf,
+    ) -> Result<Option<std::time::SystemTime>> {
+        let parent = path.parent().context("文件没有所在目录")?.to_owned();
+        let name = path.file_name().context("文件没有名称")?.into();
+        Ok(INFRASTRUCTURE
+            .filesystem
+            .metadata(parent, name)
+            .await?
+            .modified)
+    }
+
     pub(super) async fn reveal_location_core(&self, path: PathBuf) -> Result<()> {
         let scope_root = DATA_CONTEXT
             .documents

@@ -160,6 +160,18 @@ impl BottomSidebar {
             )
             .when(!image, |bar| bar.child(div().child(position)))
             .child(div().child(autosave_status))
+            .when(self.state.modified_file.is_some(), |bar| {
+                let time = self.state.modified_time.map(|time| {
+                    chrono::DateTime::<chrono::Local>::from(time)
+                        .format("%Y-%m-%d %H:%M:%S")
+                        .to_string()
+                });
+                bar.child(
+                    div()
+                        .flex_shrink_0()
+                        .child(format!("最近修改 {}", time.as_deref().unwrap_or("—"))),
+                )
+            })
             .when(!image, |bar| {
                 bar.child(div().child(line_ending))
                     .child(div().child("UTF-8"))

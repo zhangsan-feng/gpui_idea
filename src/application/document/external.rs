@@ -5,6 +5,13 @@ use std::path::{Path, PathBuf};
 use std::sync::Arc;
 
 impl DocumentService {
+    pub(crate) async fn last_modified(
+        &self,
+        path: PathBuf,
+    ) -> Result<Option<std::time::SystemTime>> {
+        self.last_modified_core(path).await
+    }
+
     pub(crate) async fn format(&self, path: PathBuf) -> Result<Option<(u64, String)>> {
         self.format_core(path).await
     }

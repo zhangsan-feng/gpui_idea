@@ -12,7 +12,7 @@ impl ProjectService {
         request: u64,
     ) -> Result<ContentSearchDataContextSnapshot> {
         let started = std::time::Instant::now();
-        tracing::info!(request, query_len = query.len(), "content search started");
+        tracing::debug!(request, query_len = query.len(), "content search started");
         if query.len() > 1024 {
             bail!("搜索文字过长");
         }
@@ -24,7 +24,7 @@ impl ProjectService {
         {
             Ok(mut snapshot) => {
                 snapshot.request = request;
-                tracing::info!(
+                tracing::debug!(
                     request,
                     matches = snapshot.matches.len(),
                     truncated = snapshot.truncated,

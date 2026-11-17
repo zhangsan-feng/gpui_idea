@@ -10,6 +10,7 @@ mod gutter;
 mod image_preview;
 mod markdown;
 mod menu;
+mod selection;
 mod tabs;
 
 const TAB_HEIGHT: f32 = WORKBENCH_HEADER_HEIGHT - TAB_SCROLLBAR_HEIGHT - 1.;

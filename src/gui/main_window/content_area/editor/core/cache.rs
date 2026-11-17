@@ -46,7 +46,7 @@ impl Editor {
             }
         }
         if released > 0 {
-            tracing::info!(
+            tracing::debug!(
                 released,
                 cached = self.state.editors.len(),
                 "closed clean editors released"

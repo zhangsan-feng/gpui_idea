@@ -57,7 +57,7 @@ impl DocumentContext {
             next.saved_revision = next.revision;
             next.formatted_revision = None;
             next.save_error = None;
-            tracing::info!(path = %loaded.path.display(), revision = next.revision,
+            tracing::debug!(path = %loaded.path.display(), revision = next.revision,
                 replaced_local_edits, "document automatically reloaded from disk");
             documents.insert(next.path.clone(), Arc::new(next));
         }
@@ -167,7 +167,7 @@ impl DocumentContext {
             if !doc.dirty() {
                 doc.saved_revision = doc.revision;
                 if was_dirty {
-                    tracing::info!(path = %path.display(), revision = doc.revision, saving = doc.saving, "document content restored to saved baseline; save not needed");
+                    tracing::debug!(path = %path.display(), revision = doc.revision, saving = doc.saving, "document content restored to saved baseline; save not needed");
                 }
             }
             Ok(())

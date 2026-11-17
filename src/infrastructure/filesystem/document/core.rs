@@ -127,7 +127,7 @@ pub(super) fn read(root: &Path, path: &Path) -> Result<LoadedFile> {
         line_ending: LineEnding::Lf,
     };
     if decoder.lf_count > 0 && decoder.crlf_count > 0 {
-        tracing::info!(path = %path.display(), lf = decoder.lf_count,
+        tracing::debug!(path = %path.display(), lf = decoder.lf_count,
             crlf = decoder.crlf_count, line_ending = ?format.line_ending,
             "mixed line endings normalized for editing");
     }

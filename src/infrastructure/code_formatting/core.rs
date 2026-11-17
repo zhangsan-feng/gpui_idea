@@ -1,6 +1,7 @@
 use gpui_kit::component::highlighter::LanguageRegistry;
 use std::ops::Range;
 use tree_sitter::{Node, Parser};
+use unicode_width::UnicodeWidthChar;
 
 const LINE_WIDTH: usize = 120;
 
@@ -66,50 +67,58 @@ pub(crate) fn wrap_long_lines(mut text: String, language: &str) -> String {
 
 type Edit = (Range<usize>, String);
 
+fn line_width_at(text: &str, byte: usize) -> usize {
+    let start = text[..byte].rfind('\n').map_or(0, |i| i + 1);
+    let end = text[byte..].find('\n').map_or(text.len(), |i| byte + i);
+    text[start..end].chars().fold(0, |column, ch| {
+        column
+            + if ch == '\t' {
+                4 - column % 4
+            } else {
+                ch.width().unwrap_or(0)
+            }
+    })
+}
+
 fn find_wrap(node: Node<'_>, text: &str, language: &str, newline: &str, edits: &mut Vec<Edit>) {
     // Literal and comment contents must never be reformatted by this pass.
     let kind = node.kind();
     if kind.contains("string") || kind.contains("comment") || kind.contains("template") {
         return;
     }
-    if node.start_position().row == node.end_position().row {
+    let single_line = node.start_position().row == node.end_position().row
+        && line_width_at(text, node.start_byte()) > LINE_WIDTH;
+    if single_line || is_list(kind) {
         let start = text[..node.start_byte()].rfind('\n').map_or(0, |i| i + 1);
-        let end = text[node.end_byte()..]
-            .find('\n')
-            .map_or(text.len(), |i| node.end_byte() + i);
-        let line = &text[start..end];
-        if line
+        let indent: String = text[start..]
             .chars()
-            .map(|ch| if ch == '\t' { 4 } else { 1 })
-            .sum::<usize>()
-            > LINE_WIDTH
-        {
-            let indent: String = line
-                .chars()
-                .take_while(|ch| *ch == ' ' || *ch == '\t')
-                .collect();
-            let unit = if indent.contains('\t') || language == "go" {
-                "\t"
-            } else {
-                "    "
-            };
-            let continuation = format!("{newline}{indent}{unit}");
+            .take_while(|ch| *ch == ' ' || *ch == '\t')
+            .collect();
+        let unit = if indent.contains('\t') || language == "go" {
+            "\t"
+        } else {
+            "    "
+        };
+        let continuation = format!("{newline}{indent}{unit}");
+        if single_line {
             if wrap_logical_expression(node, text, language, &continuation, edits) {
                 return;
             }
             if wrap_chain(node, language, &continuation, edits) {
                 return;
             }
-            if wrap_list(
-                node,
-                text,
-                language,
-                &continuation,
-                &format!("{newline}{indent}"),
-                edits,
-            ) {
-                return;
-            }
+        }
+        // Lists can already span multiple lines while still packing too many
+        // arguments on one line. Let the list pass inspect its separator gaps.
+        if wrap_list(
+            node,
+            text,
+            language,
+            &continuation,
+            &format!("{newline}{indent}"),
+            edits,
+        ) {
+            return;
         }
     }
     let mut cursor = node.walk();
@@ -185,16 +194,9 @@ fn logical_breaks(node: Node<'_>, text: &str, continuation: &str, edits: &mut Ve
     }
 }
 
-fn wrap_list(
-    node: Node<'_>,
-    text: &str,
-    language: &str,
-    continuation: &str,
-    closing: &str,
-    edits: &mut Vec<Edit>,
-) -> bool {
-    if !matches!(
-        node.kind(),
+fn is_list(kind: &str) -> bool {
+    matches!(
+        kind,
         "argument_list"
             | "arguments"
             | "parameter_list"
@@ -213,7 +215,18 @@ fn wrap_list(
             | "dictionary"
             | "set"
             | "tuple"
-    ) {
+    )
+}
+
+fn wrap_list(
+    node: Node<'_>,
+    text: &str,
+    language: &str,
+    continuation: &str,
+    closing: &str,
+    edits: &mut Vec<Edit>,
+) -> bool {
+    if !is_list(node.kind()) {
         return false;
     }
     let mut cursor = node.walk();
@@ -232,6 +245,21 @@ fn wrap_list(
             .iter()
             .any(|child| child.kind().contains("comment"))
     {
+        return false;
+    }
+    // Only expand when a breakable boundary still sits on an overlong
+    // physical line. A lone long literal on its own line is already exhausted.
+    // This also makes repeated formatting stable and lets nested lists proceed.
+    let needs_wrap = children.windows(2).any(|pair| {
+        let left = pair[0];
+        let right = pair[1];
+        let gap = &text[left.end_byte()..right.start_byte()];
+        (left.id() == first.id() || left.kind() == "," || right.id() == last.id())
+            && !gap.contains('\n')
+            && gap.chars().all(char::is_whitespace)
+            && line_width_at(text, left.end_byte()) > LINE_WIDTH
+    });
+    if !needs_wrap {
         return false;
     }
     // Parameter lists may start with unnamed syntax such as Python's `*` or

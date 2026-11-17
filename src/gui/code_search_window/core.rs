@@ -22,7 +22,7 @@ impl CodeSearchWindow {
         self.results.clear();
         self.truncated = false;
         self.error = None;
-        tracing::info!(
+        tracing::debug!(
             request,
             query_len = query.len(),
             "code search input changed"
@@ -58,7 +58,7 @@ impl CodeSearchWindow {
                         this.results = snapshot.matches;
                         this.truncated = snapshot.truncated;
                         this.error = snapshot.error;
-                        tracing::info!(
+                        tracing::debug!(
                             request,
                             matches = this.results.len(),
                             "code search results applied"

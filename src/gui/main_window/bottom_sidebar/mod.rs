@@ -1,3 +1,4 @@
+mod core;
 mod external;
 mod ui;
 use crate::gui::main_window::Workspace;
@@ -6,12 +7,16 @@ pub(in crate::gui) struct State {
     pub(in crate::gui) cursor_editor: Option<gpui_kit::EntityId>,
     pub(in crate::gui) cursor_subscription: Option<gpui_kit::Subscription>,
     pub(in crate::gui) notice: Option<String>,
+    modified_file: Option<std::path::PathBuf>,
+    modified_time: Option<std::time::SystemTime>,
+    modified_checked: Option<std::time::Instant>,
 }
 
 pub(crate) struct BottomSidebar {
     pub(in crate::gui) state: State,
     workspace: gpui_kit::WeakEntity<Workspace>,
     subscription: Option<gpui_kit::Task<()>>,
+    modified_task: Option<gpui_kit::Task<()>>,
 }
 
 pub(in crate::gui) fn init_component_data(
@@ -24,6 +29,9 @@ pub(in crate::gui) fn init_component_data(
         notice,
         cursor_editor: None,
         cursor_subscription: None,
+        modified_file: None,
+        modified_time: None,
+        modified_checked: None,
     }
 }
 
@@ -44,6 +52,7 @@ impl BottomSidebar {
             state: init_component_data(window, cx, &session, DATA_CONTEXT.startup().notice.clone()),
             workspace,
             subscription: None,
+            modified_task: None,
         };
         this.start_subscribe(window, cx);
         this
@@ -58,7 +67,9 @@ impl BottomSidebar {
         );
         self.subscription = Some(cx.spawn_in(window, async move |view, cx| {
             loop {
+                let timer = cx.background_executor().timer(std::time::Duration::from_secs(1));
                 let event = tokio::select! {
+                    _ = timer => { None }
                     changed = refresh.changed() => { if changed.is_err() { break; } None }
                     event = events.receiver.recv() => { let Some(event) = event else { break; }; Some(event) }
                 };
@@ -100,6 +111,7 @@ impl BottomSidebar {
 }
 impl Render for BottomSidebar {
     fn render(&mut self, _window: &mut Window, cx: &mut Context<Self>) -> impl IntoElement {
+        self.refresh_modified_time(cx);
         self.render_status_bar(cx)
     }
 }

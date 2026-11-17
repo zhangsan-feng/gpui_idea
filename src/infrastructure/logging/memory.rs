@@ -1,7 +1,7 @@
 // Compare working set and private committed memory at the same startup stages.
 // These counters are observational; do not trim working sets to hide allocations.
 pub(crate) fn log_memory(stage: &'static str) {
-    if !tracing::enabled!(tracing::Level::INFO) {
+    if !tracing::enabled!(tracing::Level::DEBUG) {
         return;
     }
     #[cfg(windows)]
@@ -27,7 +27,7 @@ pub(crate) fn log_memory(stage: &'static str) {
             )
         };
         match result {
-            Ok(()) => tracing::info!(
+            Ok(()) => tracing::debug!(
                 stage,
                 working_set_bytes = counters.WorkingSetSize,
                 private_bytes = counters.PrivateUsage,

@@ -78,7 +78,7 @@ impl Editor {
                                                 crate::gui::main_window::bottom_sidebar::Event::Notice(None),
                                             ));
                                         }
-                                        tracing::info!(path = %path.display(), revision, "editor synchronized with document snapshot");
+                                        tracing::debug!(path = %path.display(), revision, "editor synchronized with document snapshot");
                                     }
                                 }
                                 // A newer event may have arrived while this buffer was prepared.

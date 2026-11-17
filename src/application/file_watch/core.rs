@@ -132,7 +132,7 @@ pub(super) async fn refresh(changes: &FileChanges) {
     crate::application::APPLICATION
         .project
         .schedule_file_run_refresh();
-    tracing::info!(
+    tracing::debug!(
         paths = changes.paths.len(),
         refreshed_directories,
         raw_events = changes.event_count,

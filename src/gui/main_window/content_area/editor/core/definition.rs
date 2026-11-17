@@ -57,7 +57,7 @@ impl Editor {
                     {
                         return;
                     }
-                    tracing::info!(
+                    tracing::debug!(
                         request,
                         expected_offset = offset,
                         cursor = state.cursor(),
@@ -87,7 +87,7 @@ impl Editor {
                 "正在定位源码…首次启动语言服务可能需要索引项目".into(),
             )),
         ));
-        tracing::info!(file = %path.display(), offset, language, request, "go to definition requested");
+        tracing::debug!(file = %path.display(), offset, language, request, "go to definition requested");
         crate::event_bus::EVENT_BUS.refresh_gui.notify(&[
             crate::event_bus::refresh_gui::GuiComponent::Editor,
             crate::event_bus::refresh_gui::GuiComponent::BottomSidebar,
@@ -117,7 +117,7 @@ impl Editor {
                         .map(|doc| doc.revision)
                         != revision
                 {
-                    tracing::info!(request, current_request = this.state.definition_request,
+                    tracing::debug!(request, current_request = this.state.definition_request,
                         path = %source_path.display(), "go to definition result discarded after editor change");
                     if this.state.definition_request == request {
                         this.send(crate::event_bus::gui_event::GuiEvent::BottomSidebar(

@@ -1,5 +1,4 @@
 use super::*;
-use crate::domain::git::GitAction;
 use crate::gui::main_window::content_area::bottom_panel::BottomPanel;
 use gpui_kit::component::{
     Disableable,
@@ -9,28 +8,16 @@ use gpui_kit::component::{
 
 impl BottomPanel {
     pub(super) fn git_content_tabs(&self, cx: &mut Context<Self>) -> Div {
-        let snapshot = DATA_CONTEXT.project.git();
-        let can_push = snapshot.push_remote.is_some()
-            && !snapshot.is_detached
-            && !snapshot.commits.is_empty()
-            && (snapshot.ahead > 0 || snapshot.needs_upstream);
-        let pushing = self.state.git_commit_running && self.state.git_result_is_push;
+        let can_push = self.git_has_pending_push();
         let show_result =
             can_push || self.state.git_commit_running || self.state.git_commit_result.is_some();
-        let result_label = if pushing {
-            "正在推送…"
-        } else if can_push {
-            "推送到远程"
-        } else {
-            "提交结果"
-        };
         h_flex()
             .h(px(36.))
             .flex_shrink_0()
             .border_b_1()
             .border_color(crate::component::appearance::border(BORDER))
             .children(
-                [(false, "差异预览"), (true, result_label)]
+                [(false, "差异预览"), (true, "提交结果")]
                     .into_iter()
                     .filter(|(result, _)| !*result || show_result)
                     .map(|(result, label)| {
@@ -68,11 +55,7 @@ impl BottomPanel {
                                 if selected { ACCENT } else { MUTED },
                             ))
                             .child(label)
-                            .on_click(cx.listener(move |this, _, window, cx| {
-                                if result && can_push {
-                                    this.git_action(GitAction::Push, window, cx);
-                                    return;
-                                }
+                            .on_click(cx.listener(move |this, _, _, cx| {
                                 this.state.git_show_commit_result = result;
                                 cx.notify();
                             }))
@@ -81,6 +64,7 @@ impl BottomPanel {
     }
 
     pub(super) fn git_commit_result_view(&self, cx: &mut Context<Self>) -> Div {
+        let can_push = self.git_has_pending_push();
         let result = self.state.git_commit_result.clone();
         let title = match result.as_ref() {
             Some((true, _)) if self.state.git_result_is_push => "推送成功",
@@ -183,11 +167,13 @@ impl BottomPanel {
                     .min_h_0()
                     .min_w_0()
                     .overflow_hidden()
+                    .when(can_push, |view| view.flex_none().h(px(100.)))
                     .child(body)
                     .child(
                         Scrollbar::new(&self.state.git_commit_result_scroll)
                             .mode(ScrollbarMode::Always),
                     ),
             )
+            .when(can_push, |view| view.child(self.git_push_prompt(cx)))
     }
 }

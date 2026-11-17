@@ -96,7 +96,7 @@ impl Editor {
         }
         if let Some(editor) = self.state.editors.get(&file) {
             editor.update(cx, |state, cx| state.focus(window, cx));
-            tracing::info!(
+            tracing::debug!(
                 file = %file.relative_path().display(),
                 elapsed_us = activated.elapsed().as_micros(),
                 "document activated from editor cache"
@@ -217,7 +217,7 @@ impl Editor {
                         this.sync_documents(window, cx);
                         this.prune_editors();
                         let initialize_us = initialization.elapsed().as_micros();
-                        tracing::info!(file = %file.relative_path().display(), initialize_us, elapsed_ms = started.elapsed().as_millis(), "document editor ready");
+                        tracing::debug!(file = %file.relative_path().display(), initialize_us, elapsed_ms = started.elapsed().as_millis(), "document editor ready");
                         crate::infrastructure::logging::log_memory("document_editor_ready");
                         if initialize_us > 16_000 {
                             tracing::warn!(file = %file.relative_path().display(), initialize_us, "editor initialization exceeded frame budget");

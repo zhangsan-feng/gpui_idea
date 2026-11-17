@@ -15,4 +15,5 @@ mod git_ignore;
 
 mod git_history;
 
+mod git_push;
 mod git_result;

@@ -88,6 +88,7 @@ impl Editor {
                     }
                 }
                 let text_left = left + layout.overlay_width + px(24.);
+                super::selection::paint(state, &rows, viewport, text_left, line_height, window, cx);
                 super::guides::paint(state, &rows, viewport, text_left, line_height, window, cx);
                 window.with_content_mask(
                     Some(ContentMask {

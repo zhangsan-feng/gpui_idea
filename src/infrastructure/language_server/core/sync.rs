@@ -63,7 +63,7 @@ impl super::Session {
             .into_iter()
             .map(|(path, kind)| Ok(json!({"uri": super::uri(&path)?, "type": kind})))
             .collect::<anyhow::Result<Vec<_>>>()?;
-        tracing::info!(paths = changes.len(), "LSP filesystem changes synchronized");
+        tracing::debug!(paths = changes.len(), "LSP filesystem changes synchronized");
         self.notify(
             "workspace/didChangeWatchedFiles",
             json!({"changes": changes}),
