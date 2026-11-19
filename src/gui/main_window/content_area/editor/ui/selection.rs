@@ -10,7 +10,7 @@ use gpui_kit::{ContentMask, font};
 /// Only paint outside the native highlight to avoid translucent color overlap.
 pub(super) fn paint(
     state: &EditorState,
-    rows: &[(usize, Pixels, usize)],
+    rows: &[(usize, Pixels)],
     viewport: Bounds<Pixels>,
     text_left: Pixels,
     line_height: Pixels,
@@ -40,7 +40,7 @@ pub(super) fn paint(
         .layout_width(font_id, theme.mono_font_size, ' ');
     let body = Bounds::from_corners(point(text_left, viewport.top()), viewport.bottom_right());
     window.with_content_mask(Some(ContentMask { bounds: body }), |window| {
-        for &(row, _, _) in rows {
+        for &(row, _) in rows {
             if row < first || row > last {
                 continue;
             }

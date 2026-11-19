@@ -31,7 +31,7 @@ application 功能编排
 gui 交互层
 禁止在gui 层编写数据交互功能逻辑
 
-## 定位问题 定位问题优先看日志 没有日志添加debug日志排查  src\infrastructure\logging\core.rs 使用 level_for 或者filter 开启模块debug日志
+## 定位问题 定位问题优先看日志 没有日志添加debug日志排查  src\infrastructure\logging\core.rs 使用 level_for 开启模块debug日志
 ## 编写计划文档 plan.md
 当前完成的进度
 当前的计划

@@ -9,15 +9,9 @@ gpui_kit::actions!(code_editor, [DuplicateLine]);
 
 pub(crate) use external::offset_at_point;
 pub(crate) use external::{
-    attach_completions, completion_dropdown, definition_pointer, dismiss_completions,
-    gutter_layout, init, language_for_path, language_label, update_gutter,
+    attach_completions, completion_dropdown, definition_pointer, dismiss_completions, init,
+    language_for_path, language_label, update_gutter,
 };
-
-pub(crate) struct GutterLayout {
-    pub(crate) number_right: gpui_kit::Pixels,
-    pub(crate) overlay_width: gpui_kit::Pixels,
-    decorations_width: gpui_kit::Pixels,
-}
 
 struct EditorLanguage {
     name: &'static str,

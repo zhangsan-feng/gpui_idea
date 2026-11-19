@@ -11,7 +11,15 @@ pub fn open_workspace(cx: &mut App) -> Result<()> {
     crate::component::code_editor::init(cx)?;
     crate::component::appearance::apply(cx);
     crate::infrastructure::logging::log_memory("highlighting_initialized");
-    tracing::info!("main window opening: title=gpui_idea");
+    let root = DATA_CONTEXT.project_root();
+    let title = if root.as_os_str().is_empty() {
+        "gpui_idea".to_owned()
+    } else if let Some(name) = root.file_name() {
+        name.to_string_lossy().into_owned()
+    } else {
+        crate::gui::component::path::display_path(root)
+    };
+    tracing::info!(%title, "main window opening");
     let minimum_size = size(px(1200.), px(700.));
     let saved_view = DATA_CONTEXT
         .startup()
@@ -41,7 +49,7 @@ pub fn open_workspace(cx: &mut App) -> Result<()> {
         window_bounds: Some(window_bounds),
         window_min_size: Some(minimum_size),
         titlebar: Some(TitlebarOptions {
-            title: Some(SharedString::from("gpui_idea")),
+            title: Some(SharedString::from(title)),
             appears_transparent: true,
             traffic_light_position: None,
         }),

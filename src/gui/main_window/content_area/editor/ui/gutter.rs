@@ -2,6 +2,10 @@ use super::*;
 use gpui_kit::component::{ActiveTheme as _, input::RopeExt as _};
 use gpui_kit::{ContentMask, TextAlign, TextRun, font};
 
+const NUMBER_LEFT_PADDING: Pixels = px(8.);
+// The native editor reserves 18px for the fold controls and 6px before text.
+const FOLD_AND_TEXT_GAP: Pixels = px(24.);
+
 impl Editor {
     pub(super) fn gutter_separator(&self, state: &Entity<EditorState>) -> impl IntoElement {
         let state = state.clone();
@@ -13,6 +17,9 @@ impl Editor {
                     return;
                 };
                 let Some(line_height) = state.line_height() else {
+                    return;
+                };
+                let Some(text_origin_offset) = state.text_origin_offset() else {
                     return;
                 };
                 // Search/replace rows belong to the component above its text
@@ -28,38 +35,6 @@ impl Editor {
                         "editor search header excluded from gutter overlay"
                     );
                 }
-                let theme = cx.theme().clone();
-                let style = &theme.highlight_theme.style;
-                let font_size = theme.mono_font_size;
-                let font = font(theme.mono_font_family.clone());
-                let digits = (state.text().lines_len().max(1).ilog10() as usize + 1).clamp(3, 7);
-                let run = TextRun {
-                    len: digits,
-                    font,
-                    color: style.editor_line_number.unwrap_or(theme.muted_foreground),
-                    background_color: None,
-                    underline: None,
-                    strikethrough: None,
-                };
-                let layout = crate::gui::component::code_editor::gutter_layout(
-                    state.text().lines_len(),
-                    window,
-                    cx,
-                );
-                let left = state.input_bounds().left();
-                // Keep native numbers enabled for accessibility and active-line painting.
-                // Share the native editor's gutter sizing so fold hitboxes and
-                // the text origin stay aligned with our repainted number column.
-                let width = layout.overlay_width;
-                let gutter = Bounds::new(
-                    point(left, viewport.top()),
-                    size(width, viewport.size.height),
-                );
-                let background = style
-                    .editor_gutter_background
-                    .or(style.editor_background)
-                    .unwrap_or_else(|| theme.input_background());
-                let active = state.text().offset_to_point(state.cursor()).row;
                 // Enumerate displayed rows so a large folded block does not turn
                 // gutter painting into a scan over all of its hidden buffer lines.
                 let map = state.display_map();
@@ -80,53 +55,35 @@ impl Editor {
                     previous = Some(row);
                     let offset = state.text().line_start_offset(row);
                     if let Some(line_bounds) = state.range_to_bounds(&(offset..offset)) {
-                        rows.push((
-                            row,
-                            line_bounds.top(),
-                            map.visible_wrap_row_count_for_buffer_line(row),
-                        ));
+                        rows.push((row, line_bounds.top()));
                     }
                 }
-                let text_left = left + layout.overlay_width + px(24.);
+                let gutter_left = state.input_bounds().left();
+                let text_left = gutter_left + text_origin_offset;
                 super::selection::paint(state, &rows, viewport, text_left, line_height, window, cx);
                 super::guides::paint(state, &rows, viewport, text_left, line_height, window, cx);
-                window.with_content_mask(
-                    Some(ContentMask {
-                        bounds: gutter.intersect(&viewport),
-                    }),
-                    |window| {
-                        window.paint_quad(fill(gutter, background));
-                        for &(row, top, wrapped_rows) in &rows {
-                            if row == active {
-                                if let Some(color) = style.editor_active_line {
-                                    window.paint_quad(fill(
-                                        Bounds::new(
-                                            point(left, top),
-                                            size(width, line_height * wrapped_rows as f32),
-                                        ),
-                                        color,
-                                    ));
-                                }
-                            }
-                            let label = (row + 1).min(9_999_999).to_string();
-                            let mut run = run.clone();
-                            run.len = label.len();
-                            if row == active {
-                                run.color =
-                                    style.editor_active_line_number.unwrap_or(theme.foreground);
-                            }
-                            let line = window.text_system().shape_line(
-                                label.into(),
-                                font_size,
-                                &[run],
-                                None,
-                            );
-                            let origin = point(left + layout.number_right - line.width, top);
-                            let _ =
-                                line.paint(origin, line_height, TextAlign::Left, None, window, cx);
-                        }
-                    },
+                // Cover the native number column to the bottom of the editor,
+                // including the extra rows it lays out below the text viewport.
+                // Keep the fold controls outside this layer.
+                let numbers = Bounds::from_corners(
+                    point(gutter_left, viewport.top()),
+                    point(
+                        (text_left - FOLD_AND_TEXT_GAP).min(viewport.right()),
+                        bounds.bottom(),
+                    ),
                 );
+                if numbers.size.width > NUMBER_LEFT_PADDING {
+                    let active_row = state.text().offset_to_point(state.cursor()).row;
+                    let active_rows = map.visible_wrap_row_count_for_buffer_line(active_row);
+                    paint_line_numbers(
+                        &rows,
+                        (active_row, line_height * active_rows as f32),
+                        numbers,
+                        line_height,
+                        window,
+                        cx,
+                    );
+                }
                 // A fixed boundary sits 2px before the first code column.
                 // Paint it after row backgrounds so the active line cannot break it.
                 window.with_content_mask(Some(ContentMask { bounds: viewport }), |window| {
@@ -145,4 +102,61 @@ impl Editor {
         .left_0()
         .size_full()
     }
+}
+
+fn paint_line_numbers(
+    rows: &[(usize, Pixels)],
+    (active_row, active_height): (usize, Pixels),
+    bounds: Bounds<Pixels>,
+    line_height: Pixels,
+    window: &mut Window,
+    cx: &mut App,
+) {
+    let theme = cx.theme().clone();
+    let style = &theme.highlight_theme.style;
+    let mut background = style
+        .editor_gutter_background
+        .or(style.editor_background)
+        .unwrap_or_else(|| theme.input_background());
+    background.a = 1.;
+    let mut run = TextRun {
+        len: 0,
+        font: font(theme.mono_font_family.clone()),
+        color: theme.muted_foreground,
+        background_color: None,
+        underline: None,
+        strikethrough: None,
+    };
+    window.with_content_mask(Some(ContentMask { bounds }), |window| {
+        window.paint_layer(bounds, |window| {
+            window.paint_quad(fill(bounds, background));
+            for &(row, top) in rows {
+                let is_active = row == active_row;
+                if is_active && let Some(color) = style.editor_active_line {
+                    window.paint_quad(fill(
+                        Bounds::new(
+                            point(bounds.left(), top),
+                            size(bounds.size.width, active_height),
+                        ),
+                        color,
+                    ));
+                }
+                let label = (row + 1).min(9_999_999).to_string();
+                run.len = label.len();
+                run.color = if is_active {
+                    style.editor_active_line_number.unwrap_or(theme.foreground)
+                } else {
+                    style.editor_line_number.unwrap_or(theme.muted_foreground)
+                };
+                let line = window.text_system().shape_line(
+                    label.into(),
+                    theme.mono_font_size,
+                    std::slice::from_ref(&run),
+                    None,
+                );
+                let origin = point(bounds.left() + NUMBER_LEFT_PADDING, top);
+                let _ = line.paint(origin, line_height, TextAlign::Left, None, window, cx);
+            }
+        });
+    });
 }

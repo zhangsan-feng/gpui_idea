@@ -10,23 +10,15 @@ pub(crate) fn offset_at_point(
     super::drop_position::offset_at_point(editor, pointer)
 }
 
-pub(crate) fn gutter_layout(
-    lines: usize,
-    window: &mut gpui_kit::Window,
-    cx: &App,
-) -> super::GutterLayout {
-    core::gutter_layout(lines, window, cx)
-}
-
 pub(crate) fn update_gutter(
     editor: &gpui_kit::Entity<gpui_kit::component::input::EditorState>,
     window: &mut gpui_kit::Window,
     cx: &mut App,
 ) {
     use gpui_kit::component::input::RopeExt as _;
-    let layout = core::gutter_layout(editor.read(cx).text().lines_len(), window, cx);
+    let width = core::gutter_decorations_width(editor.read(cx).text().lines_len(), window, cx);
     editor.update(cx, |state, cx| {
-        state.set_gutter_decorations_width(layout.decorations_width, cx)
+        state.set_gutter_decorations_width(width, cx)
     });
 }
 

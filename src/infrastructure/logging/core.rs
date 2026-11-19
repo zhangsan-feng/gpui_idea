@@ -11,27 +11,21 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
     let _ = super::OUTPUT_FILE.set(log_file.canonicalize().expect("resolve log file failed"));
     let (file_writer, file_guard) = tracing_appender::non_blocking(file);
 
-    // Add module paths here to enable their debug logs (including submodules).
-    const DEBUG_MODULES: &[&str] = &[
-        "gpui_idea::infrastructure::code_formatting",
-        // "gpui_idea::infrastructure::filesystem::watcher",
-        // "gpui_idea::infrastructure::timer",
-        // "gpui_idea::application::file_watch",
-        // "gpui_idea::gui::main_window::content_area::editor",
-    ];
-
     fern::Dispatch::new()
-        .level(log::LevelFilter::Debug)
-        .filter(|metadata| {
-            metadata.level() <= log::Level::Warn
-                || DEBUG_MODULES.iter().any(|module| {
-                    metadata.target() == *module
-                        || metadata
-                            .target()
-                            .strip_prefix(module)
-                            .is_some_and(|suffix| suffix.starts_with("::"))
-                })
-        })
+        .level(log::LevelFilter::Warn)
+        .level_for("gpui_idea", log::LevelFilter::Info)
+        .level_for(
+            "gpui_idea::application::markdown::external",
+            log::LevelFilter::Debug,
+        )
+        .level_for(
+            "gpui_idea::infrastructure::code_formatting",
+            log::LevelFilter::Debug,
+        )
+        .level_for(
+            "gpui_idea::gui::main_window::bottom_sidebar",
+            log::LevelFilter::Debug,
+        )
         .format(|out, message, record| {
             let file = record.file().unwrap_or("<unknown>");
             let line = record.line().unwrap_or(0);

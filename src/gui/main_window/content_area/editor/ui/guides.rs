@@ -4,7 +4,7 @@ use gpui_kit::component::{ActiveTheme as _, input::RopeExt as _};
 /// Keep the inner indent guides; column zero belongs to the fixed gutter border.
 pub(super) fn paint(
     state: &EditorState,
-    rows: &[(usize, Pixels, usize)],
+    rows: &[(usize, Pixels)],
     viewport: Bounds<Pixels>,
     text_left: Pixels,
     line_height: Pixels,
@@ -31,7 +31,7 @@ pub(super) fn paint(
     let body = Bounds::from_corners(point(text_left, viewport.top()), viewport.bottom_right());
     let mut previous_indent = 0;
     window.with_content_mask(Some(ContentMask { bounds: body }), |window| {
-        for &(row, top, _) in rows {
+        for &(row, top) in rows {
             let line = state.text().slice_line(row);
             let mut indent = 0;
             for character in line.chars() {

@@ -8,7 +8,13 @@ pub(crate) async fn web_link_at_offset(
     offset: usize,
 ) -> Result<Option<String>> {
     tokio::task::spawn_blocking(move || {
-        super::links::web_link_at_offset(&buffer.to_string(), offset)
+        let target = super::links::web_link_at_offset(&buffer.to_string(), offset);
+        tracing::debug!(
+            offset,
+            found = target.is_some(),
+            "Markdown web link lookup completed"
+        );
+        target
     })
     .await
     .context("Markdown 网页链接解析任务失败")

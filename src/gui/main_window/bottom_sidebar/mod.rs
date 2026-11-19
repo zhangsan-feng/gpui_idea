@@ -3,12 +3,14 @@ mod external;
 mod ui;
 use crate::gui::main_window::Workspace;
 use crate::gui::main_window::ui::*;
+use std::{collections::HashMap, path::PathBuf, time::SystemTime};
+
 pub(in crate::gui) struct State {
     pub(in crate::gui) cursor_editor: Option<gpui_kit::EntityId>,
     pub(in crate::gui) cursor_subscription: Option<gpui_kit::Subscription>,
     pub(in crate::gui) notice: Option<String>,
-    modified_file: Option<std::path::PathBuf>,
-    modified_time: Option<std::time::SystemTime>,
+    modified_file: Option<PathBuf>,
+    modified_times: HashMap<PathBuf, SystemTime>,
     modified_checked: Option<std::time::Instant>,
 }
 
@@ -30,7 +32,7 @@ pub(in crate::gui) fn init_component_data(
         cursor_editor: None,
         cursor_subscription: None,
         modified_file: None,
-        modified_time: None,
+        modified_times: HashMap::new(),
         modified_checked: None,
     }
 }

@@ -21,17 +21,13 @@ pub(super) fn configure_gutter(
     // initial strip from the font metrics before the editor is laid out.
     state.set_gutter_decorations_width(gpui_kit::px(12.), cx);
     state.create_gutter_decorations_collection(vec![], cx);
-    tracing::debug!(
-        total_width = 70,
-        "editor gutter configured: compact numbers and fold controls without divider"
-    );
 }
 
-pub(super) fn gutter_layout(
+pub(super) fn gutter_decorations_width(
     lines: usize,
     window: &mut gpui_kit::Window,
     cx: &App,
-) -> super::GutterLayout {
+) -> gpui_kit::Pixels {
     use gpui_kit::component::ActiveTheme as _;
     let theme = cx.theme();
     let digits = (lines.max(1).ilog10() as usize + 1).clamp(3, 7);
@@ -53,14 +49,7 @@ pub(super) fn gutter_layout(
         .width;
     // IDEA's compact 70px gutter contains both the numbers and fold controls.
     // GPUI reserves 18px for folding, 6px before text and a 4px decoration gap.
-    let decorations_width =
-        (gpui_kit::px(70. - 18. - 6. - 4.) - number_width).max(gpui_kit::px(12.));
-    let overlay_width = number_width + decorations_width + gpui_kit::px(4.);
-    super::GutterLayout {
-        number_right: overlay_width - gpui_kit::px(16.),
-        overlay_width,
-        decorations_width,
-    }
+    (gpui_kit::px(70. - 18. - 6. - 4.) - number_width).max(gpui_kit::px(12.))
 }
 
 pub(super) fn select_line_for_cut(
