@@ -15,6 +15,10 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
         .level(log::LevelFilter::Warn)
         .level_for("gpui_idea", log::LevelFilter::Info)
         .level_for(
+            "gpui_idea::infrastructure::system_integration::file_associations",
+            log::LevelFilter::Debug,
+        )
+        .level_for(
             "gpui_idea::application::markdown::external",
             log::LevelFilter::Debug,
         )
@@ -24,6 +28,14 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
         )
         .level_for(
             "gpui_idea::gui::main_window::bottom_sidebar",
+            log::LevelFilter::Debug,
+        )
+        .level_for(
+            "gpui_idea::application::project::core::content_search",
+            log::LevelFilter::Debug,
+        )
+        .level_for(
+            "gpui_idea::infrastructure::filesystem::core::content_search",
             log::LevelFilter::Debug,
         )
         .format(|out, message, record| {

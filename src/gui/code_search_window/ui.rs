@@ -14,6 +14,8 @@ impl CodeSearchWindow {
             error.clone()
         } else if self.input.read(cx).value().is_empty() {
             "输入代码内容开始搜索 · 区分大小写".to_owned()
+        } else if self.results.is_empty() && self.truncated {
+            "已达到扫描上限，已扫描文件中没有匹配".to_owned()
         } else if self.results.is_empty() {
             "没有匹配的代码内容".to_owned()
         } else {

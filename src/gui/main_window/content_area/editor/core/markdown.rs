@@ -1,14 +1,12 @@
 use super::super::*;
 
 impl Editor {
-    pub(in crate::gui) fn markdown_mode(&self) -> Option<MarkdownMode> {
-        (crate::gui::component::code_editor::language_for_path(
-            self.state.selected_file.relative_path(),
-        ) == "markdown")
+    pub(in crate::gui) fn markdown_mode(&self, file: &ProjectFile) -> Option<MarkdownMode> {
+        (crate::gui::component::code_editor::language_for_path(file.relative_path()) == "markdown")
             .then(|| {
                 self.state
                     .markdown_modes
-                    .get(&self.state.selected_file)
+                    .get(file)
                     .copied()
                     .unwrap_or_default()
             })
@@ -16,29 +14,28 @@ impl Editor {
 
     pub(in crate::gui) fn set_markdown_mode(
         &mut self,
+        file: &ProjectFile,
         mode: MarkdownMode,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if self.markdown_mode().is_none() || self.markdown_mode() == Some(mode) {
+        let Some(current) = self.markdown_mode(file) else {
+            return;
+        };
+        if current == mode || !self.can_reposition_tab(file, cx) {
             return;
         }
-        self.state
-            .markdown_modes
-            .insert(self.state.selected_file.clone(), mode);
-        let path = self.state.selected_file.path(DATA_CONTEXT.project_root());
+        self.state.markdown_modes.insert(file.clone(), mode);
+        let path = file.path(DATA_CONTEXT.project_root());
         if let Some(view) = self.state.pending_file_views.get_mut(&path) {
             view.markdown_mode = mode;
         }
         self.send(crate::event_bus::gui_event::GuiEvent::WindowBar(
             crate::gui::main_window::window_bar::Event::ScheduleSave,
         ));
-        if mode != MarkdownMode::Rendered {
-            if let Some(editor) = self.state.editors.get(&self.state.selected_file) {
-                editor.update(cx, |state, cx| state.focus(window, cx));
-            }
-        }
-        tracing::debug!(file = %self.state.selected_file.relative_path().display(), ?mode, "markdown view changed");
+        self.activate_visible_file(file, cx);
+        self.focus_file(file, window, cx);
+        tracing::debug!(file = %file.relative_path().display(), ?mode, "markdown view changed");
         cx.notify();
     }
 }

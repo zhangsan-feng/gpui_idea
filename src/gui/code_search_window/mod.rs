@@ -15,6 +15,7 @@ struct CodeSearchWindow {
     parent_window: gpui_kit::AnyWindowHandle,
     input: Entity<InputState>,
     request: u64,
+    search_cancel: Option<tokio::sync::watch::Sender<()>>,
     loading: bool,
     results: Vec<ContentMatch>,
     truncated: bool,
@@ -31,7 +32,6 @@ impl CodeSearchWindow {
     ) -> Self {
         let input = cx.new(|cx| InputState::new(window, cx).placeholder("输入要搜索的代码内容…"));
         let subscriptions = vec![
-            cx.observe(&input, |_, _, cx| cx.notify()),
             cx.subscribe_in(&input, window, |this, _, event, window, cx| match event {
                 InputEvent::Change => this.search(cx),
                 InputEvent::PressEnter { .. } if !this.loading => {
@@ -48,6 +48,7 @@ impl CodeSearchWindow {
             parent_window,
             input,
             request: 0,
+            search_cancel: None,
             loading: false,
             results: Vec::new(),
             truncated: false,

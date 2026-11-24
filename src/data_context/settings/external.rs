@@ -4,9 +4,39 @@ use crate::domain::{
     settings::{ContextMenuStatus, GeneralSettings, SettingsDataContextSnapshot},
 };
 use crate::event_bus::refresh_gui::GuiComponent;
-use std::sync::Arc;
+use std::sync::{Arc, atomic::Ordering};
 
 impl SettingsContext {
+    pub(crate) fn editor_font_size(&self) -> u16 {
+        self.pending_editor_font_size()
+            .unwrap_or_else(|| self.snapshot().general.appearance.editor_size)
+    }
+
+    pub(crate) fn pending_editor_font_size(&self) -> Option<u16> {
+        let size = self.pending_editor_font_size.load(Ordering::Acquire);
+        (size != 0).then_some(size)
+    }
+
+    pub(crate) fn stage_editor_font_size(&self, size: u16) {
+        self.pending_editor_font_size.store(size, Ordering::Release);
+    }
+
+    pub(crate) fn clear_pending_editor_font_size(&self, size: u16) {
+        let _ = self.pending_editor_font_size.compare_exchange(
+            size,
+            0,
+            Ordering::AcqRel,
+            Ordering::Acquire,
+        );
+    }
+
+    pub(crate) fn publish_editor_font_size(&self, size: u16) {
+        self.replace(
+            |next| Arc::make_mut(&mut next.general).appearance.editor_size = size,
+            &[GuiComponent::SettingsWindow],
+        );
+    }
+
     pub(crate) fn publish_file_associations(
         &self,
         status: Option<crate::domain::settings::FileAssociationStatus>,

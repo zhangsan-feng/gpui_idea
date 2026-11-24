@@ -2,6 +2,10 @@ use super::*;
 use crate::gui::main_window::content_area::editor::Editor;
 use crate::gui::main_window::ui::*;
 use gpui_kit::component::{input::Editor as CodeEditor, menu::ContextMenuExt};
+use gpui_kit::component::{
+    resizable::{h_resizable, resizable_panel},
+    tooltip::Tooltip,
+};
 use std::cell::Cell;
 
 mod empty;
@@ -28,7 +32,7 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Editor>,
     ) -> Div {
-        let mut editor = v_flex()
+        let editor = v_flex()
             .size_full()
             .min_w_0()
             .min_h_0()
@@ -58,15 +62,125 @@ impl Editor {
                 .bg(crate::component::appearance::background(PANEL_BG))
                 .child(self.empty_editor());
         }
-        editor = editor.child(self.editor_tabs(cx));
-        if crate::domain::image_preview::PreviewImageFormat::for_path(
-            self.state.selected_file.relative_path(),
+        let left = self.render_editor_pane(EditorSide::Left, window, cx);
+        let Some(split) = &self.state.split else {
+            return editor.child(left);
+        };
+        let right = self.render_editor_pane(EditorSide::Right, window, cx);
+        editor.child(
+            div().flex_1().min_w_0().min_h_0().overflow_hidden().child(
+                h_resizable("editor-split-columns")
+                    .with_state(&split.resize)
+                    .child(
+                        resizable_panel()
+                            .size_range(px(140.)..Pixels::MAX)
+                            .child(left),
+                    )
+                    .child(
+                        resizable_panel()
+                            .size_range(px(140.)..Pixels::MAX)
+                            .child(right),
+                    ),
+            ),
         )
-        .is_some()
+    }
+
+    fn render_editor_pane(
+        &self,
+        side: EditorSide,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement + use<> {
+        let pane = v_flex()
+            .id(match side {
+                EditorSide::Left => "editor-left",
+                EditorSide::Right => "editor-right",
+            })
+            .size_full()
+            .min_w_0()
+            .min_h_0()
+            .overflow_hidden();
+        let Some(file) = self.selected_in(side) else {
+            return pane.child(self.empty_split_pane(side, cx));
+        };
+        let activate = file.clone();
+        let has_text_input = self.state.editors.contains_key(file)
+            && self.markdown_mode(file) != Some(MarkdownMode::Rendered);
+        pane.child(self.editor_tabs(side, file, cx))
+            .when(
+                self.state.split.is_some() && self.markdown_mode(file).is_some(),
+                |pane| pane.child(self.markdown_toolbar(file, true, cx)),
+            )
+            .child(
+                div()
+                    .id("editor-pane-content")
+                    .flex_1()
+                    .min_h_0()
+                    .min_w_0()
+                    .overflow_hidden()
+                    .when(!has_text_input, |content| {
+                        content.track_focus(self.pane_focus(side))
+                    })
+                    .capture_any_mouse_down(cx.listener(
+                        move |this, _: &MouseDownEvent, window, cx| {
+                            let switched_pane = this.state.selected_file != activate;
+                            this.activate_visible_file(&activate, cx);
+                            if switched_pane && this.state.selected_file == activate {
+                                this.focus_file(&activate, window, cx);
+                            }
+                        },
+                    ))
+                    .child(self.render_pane_document(side, file, window, cx)),
+            )
+    }
+
+    fn empty_split_pane(&self, side: EditorSide, cx: &Context<Self>) -> impl IntoElement {
+        v_flex()
+            .id("empty-editor-pane")
+            .flex_1()
+            .min_w_0()
+            .min_h_0()
+            .items_center()
+            .justify_center()
+            .gap_2()
+            .text_color(crate::component::appearance::foreground(MUTED))
+            .child("将标签拖到此处")
+            .child(
+                crate::gui::component::controls::icon_button("close-empty-editor-pane", 28., 26.)
+                    .rounded_sm()
+                    .cursor_pointer()
+                    .hover(|style| style.bg(crate::component::appearance::background(TAB_HOVER)))
+                    .tooltip(|window, cx| Tooltip::new("关闭空编辑栏").build(window, cx))
+                    .child(icon(IconName::X, 14., MUTED))
+                    .on_click(cx.listener(move |this, _, window, cx| {
+                        this.close_empty_pane(side, window, cx)
+                    })),
+            )
+            .drag_over::<DraggedEditorTab>(|style, _, _, _| {
+                style.bg(crate::component::appearance::background(TAB_HOVER))
+            })
+            .on_drop(
+                cx.listener(move |this, tab: &DraggedEditorTab, window, cx| {
+                    cx.stop_propagation();
+                    this.open_tab_on_side(&tab.file, side, window, cx);
+                }),
+            )
+    }
+
+    fn render_pane_document(
+        &self,
+        side: EditorSide,
+        file: &ProjectFile,
+        window: &mut Window,
+        cx: &mut Context<Self>,
+    ) -> Div {
+        let mut editor = v_flex().size_full().min_h_0().min_w_0().overflow_hidden();
+        if crate::domain::image_preview::PreviewImageFormat::for_path(file.relative_path())
+            .is_some()
         {
-            return editor.child(self.render_image_preview(cx));
+            return editor.child(self.render_image_preview(file, cx));
         }
-        if let Some(document) = self.active_document() {
+        if let Some(document) = self.document_for(file) {
             if let Some(error) = &document.save_error {
                 editor = editor.child(
                     div()
@@ -79,8 +193,8 @@ impl Editor {
                 );
             }
         }
-        if let Some(state) = self.state.editors.get(&self.state.selected_file) {
-            let mode = self.markdown_mode();
+        if let Some(state) = self.state.editors.get(file) {
+            let mode = self.markdown_mode(file);
             if mode == Some(MarkdownMode::Rendered) {
                 return editor.child(
                     h_flex()
@@ -88,17 +202,12 @@ impl Editor {
                         .min_h_0()
                         .min_w_0()
                         .overflow_hidden()
-                        .child(self.render_markdown(state, window, cx)),
+                        .child(self.render_markdown(file, state, window, cx)),
                 );
             }
             crate::gui::component::code_editor::update_gutter(state, window, cx);
             let editor_font = crate::component::appearance::editor_font();
-            let editor_size = px(DATA_CONTEXT
-                .settings
-                .snapshot()
-                .general
-                .appearance
-                .editor_size as f32);
+            let editor_size = crate::component::appearance::editor_font_size();
             let line_height = crate::component::appearance::editor_line_height(
                 editor_font.clone(),
                 editor_size,
@@ -108,21 +217,12 @@ impl Editor {
             let input = CodeEditor::new(state)
                 // Keep the input's caret/selection handling, render the shared popup below.
                 .context_menu(|_, _, _| gpui_kit::component::native_menu::NativeMenu::new())
-                .aria_label(
-                    self.state
-                        .selected_file
-                        .relative_path()
-                        .to_string_lossy()
-                        .into_owned(),
-                )
+                .aria_label(file.relative_path().to_string_lossy().into_owned())
                 .appearance(false)
                 .bordered(false)
                 .readonly(
                     self.peer_window_bar(cx).read(cx).state.closing
-                        || self
-                            .state
-                            .external_source_files
-                            .contains(&self.state.selected_file)
+                        || self.state.external_source_files.contains(file)
                         || self
                             .peer_file_tree(cx)
                             .read(cx)
@@ -134,9 +234,7 @@ impl Editor {
                             .state
                             .moving_path
                             .as_ref()
-                            .is_some_and(|source| {
-                                self.state.selected_file.relative_path().starts_with(source)
-                            }),
+                            .is_some_and(|source| file.relative_path().starts_with(source)),
                 )
                 .h(relative(1.))
                 .w_full()
@@ -175,25 +273,34 @@ impl Editor {
                     ),
                 )
                 .child(self.gutter_separator(state))
-                .child(self.editor_pointer_handler(state, cx))
+                .child(self.editor_pointer_handler(file, state, cx))
                 .when(mode.is_some(), |source| {
-                    self.markdown_drop_target(source, true, cx)
+                    self.markdown_drop_target(file, source, true, cx)
                 })
-                .context_menu(self.editor_context_menu(state, cx));
+                .context_menu(self.editor_context_menu(file, state, cx));
             if mode == Some(MarkdownMode::Preview) {
+                let resize = match (&self.state.split, side) {
+                    (Some(split), EditorSide::Right) => &split.right_markdown_resize,
+                    _ => &self.state.markdown_resize,
+                };
+                let minimum = if self.state.split.is_some() {
+                    px(64.)
+                } else {
+                    px(160.)
+                };
                 editor.child(
                     div().flex_1().min_h_0().min_w_0().overflow_hidden().child(
                         gpui_kit::component::resizable::h_resizable("markdown-preview-columns")
-                            .with_state(&self.state.markdown_resize)
+                            .with_state(resize)
                             .child(
                                 gpui_kit::component::resizable::resizable_panel()
-                                    .size_range(px(160.)..Pixels::MAX)
+                                    .size_range(minimum..Pixels::MAX)
                                     .child(source),
                             )
                             .child(
                                 gpui_kit::component::resizable::resizable_panel()
-                                    .size_range(px(160.)..Pixels::MAX)
-                                    .child(self.render_markdown(state, window, cx)),
+                                    .size_range(minimum..Pixels::MAX)
+                                    .child(self.render_markdown(file, state, window, cx)),
                             ),
                     ),
                 )
@@ -210,7 +317,7 @@ impl Editor {
                     .child(
                         self.state
                             .load_errors
-                            .get(&self.state.selected_file)
+                            .get(file)
                             .cloned()
                             .unwrap_or_else(|| "正在打开文件…".into()),
                     ),
@@ -220,12 +327,13 @@ impl Editor {
 
     fn editor_pointer_handler(
         &self,
+        file: &ProjectFile,
         state: &Entity<gpui_kit::component::input::EditorState>,
         cx: &Context<Editor>,
     ) -> impl IntoElement {
         let state = state.clone();
         let view = cx.weak_entity();
-        let file = self.state.selected_file.clone();
+        let file = file.clone();
         let hitbox_state = state.clone();
         canvas(
             move |bounds, window, cx| {
@@ -250,6 +358,7 @@ impl Editor {
                 }
                 let clicked_editor = state.clone();
                 let click_hitbox = hitbox.clone();
+                let click_view = view.clone();
                 window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
                     if phase != DispatchPhase::Capture
                         || !supports_links
@@ -263,7 +372,7 @@ impl Editor {
                         return;
                     }
                     let clicked_editor = clicked_editor.clone();
-                    let view = view.clone();
+                    let view = click_view.clone();
                     let file = file.clone();
                     // Let the editor place its caret with its own scroll/gutter
                     // geometry, then read that position after mouse dispatch.
@@ -285,6 +394,21 @@ impl Editor {
                 let pending_offset = Cell::new(state.read(cx).scroll_offset());
                 window.on_mouse_event(move |event: &ScrollEvent, phase, window, cx| {
                     if phase == DispatchPhase::Capture && hitbox.should_handle_scroll(window) {
+                        let modifiers = event.modifiers;
+                        if modifiers.control
+                            && !modifiers.alt
+                            && !modifiers.shift
+                            && !modifiers.platform
+                        {
+                            if let Some(lines) =
+                                crate::gui::component::scroll::vertical_wheel_lines(event)
+                            {
+                                cx.stop_propagation();
+                                let _ =
+                                    view.update(cx, |this, cx| this.zoom_code_font(lines > 0., cx));
+                                return;
+                            }
+                        }
                         Self::scroll_editor_lines(&state, event, &pending_offset, cx);
                     }
                 });

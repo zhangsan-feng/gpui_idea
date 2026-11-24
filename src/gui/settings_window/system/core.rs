@@ -1,5 +1,5 @@
 use super::super::*;
-use crate::domain::settings::ContextMenuAction;
+use crate::domain::settings::{ContextMenuAction, DefaultAppsPage};
 
 impl SettingsWindow {
     pub(in crate::gui) fn manage_context_menu(
@@ -85,12 +85,17 @@ impl SettingsWindow {
                 this.system_busy = false;
                 match result {
                     Ok(status) => {
+                        let message = match status.requested_settings_page {
+                            Some(DefaultAppsPage::Application) => {
+                                "已打开默认应用设置，请选择由 GPUI Editor 默认打开的文件类型。"
+                            }
+                            Some(DefaultAppsPage::Overview) => {
+                                "已打开默认应用总页，请在应用列表中选择 GPUI Editor。"
+                            }
+                            None => "已添加自定义文件类型，并保留默认支持的类型。",
+                        };
                         this.association_status = Some(status);
-                        this.association_message = Some(if open_settings {
-                            "已注册文件类型并打开 Windows 设置，请选择由 GPUI Editor 默认打开的文件类型。"
-                        } else {
-                            "已添加自定义文件类型，并保留默认支持的类型。"
-                        }.into());
+                        this.association_message = Some(message.into());
                     }
                     Err(error) => {
                         this.association_error = Some(format!("配置失败：{error:#}。可重试注册并打开设置。"));

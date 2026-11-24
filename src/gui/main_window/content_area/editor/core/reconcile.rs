@@ -84,6 +84,19 @@ impl Editor {
         for file in &mut self.state.open_files {
             file.0 = remap(&file.0);
         }
+        let selections = self.state.split.as_mut().map(|split| {
+            split.right_files = std::mem::take(&mut split.right_files)
+                .into_iter()
+                .map(|file| ProjectFile(remap(file.relative_path())))
+                .collect();
+            for file in [&mut split.left_selected, &mut split.right_selected]
+                .into_iter()
+                .flatten()
+            {
+                file.0 = remap(&file.0);
+            }
+            (split.left_selected.clone(), split.right_selected.clone())
+        });
         for file in &mut self.state.navigation {
             file.0 = remap(&file.0);
         }
@@ -94,6 +107,11 @@ impl Editor {
         for file in reopened {
             self.select_file(file, window, cx);
         }
+        if let (Some(split), Some((left, right))) = (&mut self.state.split, selections) {
+            split.left_selected = left;
+            split.right_selected = right;
+        }
+        self.repair_split(false);
         if self.state.open_files.contains(&new_selected) {
             self.select_file(new_selected, window, cx);
         }
@@ -117,6 +135,7 @@ impl Editor {
             .markdown_extensions
             .retain(|file, _| !file.relative_path().starts_with(source));
         let selected_removed = self.state.selected_file.relative_path().starts_with(source);
+        let side = self.side_for(&self.state.selected_file);
         self.state
             .markdown_modes
             .retain(|file, _| !file.relative_path().starts_with(source));
@@ -129,6 +148,8 @@ impl Editor {
         self.state
             .open_files
             .retain(|file| !file.relative_path().starts_with(source));
+        let was_split = self.state.split.is_some();
+        self.repair_split(true);
         self.state
             .editors
             .retain(|file, _| !file.relative_path().starts_with(source));
@@ -156,9 +177,17 @@ impl Editor {
             .min(self.state.navigation.len().saturating_sub(1));
 
         if selected_removed {
-            if let Some(file) = self.state.open_files.first().cloned() {
+            if let Some(file) = self
+                .selected_in(side)
+                .filter(|file| !file.relative_path().starts_with(source))
+                .or_else(|| self.state.open_files.first())
+                .cloned()
+            {
                 self.select_file(file, window, cx);
             }
+        } else if was_split && self.state.split.is_none() && !self.state.open_files.is_empty() {
+            self.reveal_editor_tab(&self.state.selected_file);
+            self.focus_file(&self.state.selected_file, window, cx);
         }
     }
 }

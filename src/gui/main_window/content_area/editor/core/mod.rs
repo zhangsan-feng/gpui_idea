@@ -15,6 +15,7 @@ mod run;
 mod save;
 mod scroll;
 mod search_target;
+mod split;
 mod tabs;
 
 pub(super) use markdown::parse_image_paragraph;

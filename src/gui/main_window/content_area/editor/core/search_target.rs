@@ -18,6 +18,12 @@ impl Editor {
             ),
         );
         self.select_file(file.clone(), window, cx);
+        if self.state.selected_file != file || !self.state.open_files.contains(&file) {
+            self.state
+                .pending_search_positions
+                .remove(&file.path(DATA_CONTEXT.project_root()));
+            return;
+        }
         if let Some(editor) = self.state.editors.get(&file) {
             self.state
                 .pending_search_positions
@@ -30,7 +36,8 @@ impl Editor {
                         .min(state.text().lines_len().saturating_sub(1) as u32),
                     result.column.saturating_sub(1),
                 );
-                state.set_cursor_position(position, window, cx);
+                let offset = state.text().position_to_offset(&position);
+                state.set_selected_range(offset..offset, cx);
             });
             Self::position_jump_viewport(editor, window, cx);
         }

@@ -106,7 +106,12 @@ impl SettingsWindow {
         } else {
             self.draft.appearance.ui_size
         };
-        let (minimum, maximum) = if editor { (9, 36) } else { (10, 24) };
+        let (minimum, maximum) = if editor {
+            let range = crate::domain::settings::EDITOR_FONT_SIZE_RANGE;
+            (*range.start(), *range.end())
+        } else {
+            (10, 24)
+        };
         let busy = self.saving;
         h_flex()
             .gap_3()

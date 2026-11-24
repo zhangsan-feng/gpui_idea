@@ -11,10 +11,11 @@ use std::sync::Arc;
 impl Editor {
     pub(in crate::gui::main_window::content_area::editor) fn zoom_image_preview(
         &mut self,
+        file: &ProjectFile,
         factor: Option<f32>,
         cx: &mut Context<Self>,
     ) {
-        let Some(view) = self.state.image_previews.get_mut(&self.state.selected_file) else {
+        let Some(view) = self.state.image_previews.get_mut(file) else {
             return;
         };
         if view.image.is_none() || view.error.is_some() {

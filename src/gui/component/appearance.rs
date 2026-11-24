@@ -32,13 +32,10 @@ pub(crate) fn editor_font_features() -> gpui_kit::FontFeatures {
 
 pub(crate) fn apply(cx: &mut App) {
     let appearance = DATA_CONTEXT.settings.snapshot().general.appearance.clone();
-    let line_height = editor_line_height(
-        appearance.editor_font.clone().into(),
-        gpui_kit::px(appearance.editor_size as f32),
-        cx,
-    );
+    let editor_size = editor_font_size();
+    let line_height = editor_line_height(appearance.editor_font.clone().into(), editor_size, cx);
     tracing::info!(ui_font = %appearance.ui_font, ui_size = appearance.ui_size,
-        editor_font = %appearance.editor_font, editor_size = appearance.editor_size,
+        editor_font = %appearance.editor_font, editor_size = %editor_size,
         editor_line_spacing = EDITOR_LINE_SPACING, editor_line_height_px = f32::from(line_height),
         editor_ligatures = false,
         "applying window and editor fonts");
@@ -76,8 +73,17 @@ pub(crate) fn apply(cx: &mut App) {
         // 16px rem at the default 13px UI size and scale the whole UI together.
         theme.font_size = gpui_kit::px(16. * appearance.ui_size as f32 / 13.);
         theme.mono_font_family = appearance.editor_font.into();
-        theme.mono_font_size = gpui_kit::px(appearance.editor_size as f32);
+        theme.mono_font_size = editor_size;
     });
+    cx.refresh_windows();
+}
+
+pub(crate) fn editor_font_size() -> gpui_kit::Pixels {
+    gpui_kit::px(DATA_CONTEXT.settings.editor_font_size() as f32)
+}
+
+pub(crate) fn apply_editor_font_size(cx: &mut App) {
+    Theme::update(cx, |theme| theme.mono_font_size = editor_font_size());
     cx.refresh_windows();
 }
 

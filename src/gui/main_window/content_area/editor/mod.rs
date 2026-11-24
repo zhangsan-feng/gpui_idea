@@ -24,6 +24,7 @@ use std::{
 };
 pub(in crate::gui) struct State {
     pub(in crate::gui) soft_wrap: bool,
+    font_size_save: Option<Task<()>>,
     pub(in crate::gui) markdown_resize: Entity<gpui_kit::component::ResizableState>,
     pub(in crate::gui) markdown_extensions:
         HashMap<ProjectFile, gpui_kit::base::text::MarkdownExtensions>,
@@ -45,6 +46,8 @@ pub(in crate::gui) struct State {
     pub(in crate::gui) editor_order: Vec<ProjectFile>,
     pub(in crate::gui) open_files: Vec<ProjectFile>,
     pub(in crate::gui) editor_tabs_scroll: ScrollHandle,
+    left_pane_focus: FocusHandle,
+    split: Option<SplitEditor>,
     pub(in crate::gui) loading_files: HashSet<ProjectFile>,
     pub(in crate::gui) formatting_files: HashSet<ProjectFile>,
     pub(in crate::gui) saving_files: HashSet<ProjectFile>,
@@ -66,6 +69,7 @@ pub(in crate::gui) fn init_component_data(
 ) -> State {
     State {
         soft_wrap: DATA_CONTEXT.settings.snapshot().general.soft_wrap,
+        font_size_save: None,
         markdown_modes: session
             .as_ref()
             .map(|saved| {
@@ -98,6 +102,8 @@ pub(in crate::gui) fn init_component_data(
         editor_order: Vec::new(),
         open_files: Vec::new(),
         editor_tabs_scroll: ScrollHandle::new(),
+        left_pane_focus: cx.focus_handle(),
+        split: None,
         loading_files: HashSet::new(),
         formatting_files: HashSet::new(),
         saving_files: HashSet::new(),
@@ -119,6 +125,22 @@ pub(in crate::gui) fn init_component_data(
 
 pub(super) struct MarkdownImages {
     document: PathBuf,
+}
+
+#[derive(Clone, Copy, PartialEq, Eq)]
+enum EditorSide {
+    Left,
+    Right,
+}
+
+struct SplitEditor {
+    right_files: HashSet<ProjectFile>,
+    left_selected: Option<ProjectFile>,
+    right_selected: Option<ProjectFile>,
+    right_scroll: ScrollHandle,
+    right_pane_focus: FocusHandle,
+    right_markdown_resize: Entity<gpui_kit::component::ResizableState>,
+    resize: Entity<gpui_kit::component::ResizableState>,
 }
 
 #[derive(Clone, Debug, Eq, Hash, PartialEq)]

@@ -7,7 +7,7 @@ pub(crate) mod window_bar;
 
 mod ui;
 
-use gpui_kit::{AppContext as _, Context, IntoElement, Render, Window};
+use gpui_kit::{AppContext as _, Context, IntoElement, Modifiers, Render, Subscription, Window};
 
 pub(super) use editor::{CloseAllDocuments, SaveDocument};
 
@@ -25,10 +25,33 @@ pub struct Workspace {
     pub(in crate::gui) bottom_panel: gpui_kit::Entity<bottom_panel::BottomPanel>,
     pub(in crate::gui) left_sidebar: gpui_kit::Entity<left_sidebar::LeftSidebar>,
     pub(in crate::gui) right_sidebar: gpui_kit::Entity<right_sidebar::RightSidebar>,
+    _search_shortcut: Subscription,
 }
 impl Workspace {
     pub fn new(window: &mut Window, cx: &mut Context<Self>) -> Self {
         let parent = cx.weak_entity();
+        let workspace_id = parent.entity_id();
+        let window_id = window.window_handle().window_id();
+        let search_modifiers = Modifiers {
+            control: true,
+            shift: true,
+            ..Modifiers::default()
+        };
+        // The workspace may have no focused view, for example before opening a file.
+        let search_shortcut = cx.intercept_keystrokes(move |event, window, cx| {
+            if window.window_handle().window_id() == window_id
+                && event.keystroke.key.eq_ignore_ascii_case("r")
+                && event.keystroke.modifiers == search_modifiers
+            {
+                cx.stop_propagation();
+                crate::event_bus::EVENT_BUS.gui_event.send(
+                    workspace_id,
+                    crate::event_bus::gui_event::GuiEvent::WindowBar(
+                        window_bar::Event::ToolbarAction(ToolbarAction::Search),
+                    ),
+                );
+            }
+        });
         let this = Self {
             editor: cx.new(|cx| editor::Editor::new(parent.clone(), window, cx)),
             file_tree: cx.new(|cx| file_tree::FileTree::new(parent.clone(), window, cx)),
@@ -39,6 +62,7 @@ impl Workspace {
             left_sidebar: cx.new(|cx| left_sidebar::LeftSidebar::new(parent.clone(), window, cx)),
             right_sidebar: cx
                 .new(|cx| right_sidebar::RightSidebar::new(parent.clone(), window, cx)),
+            _search_shortcut: search_shortcut,
         };
         crate::event_bus::EVENT_BUS.gui_event.send(
             cx.entity().entity_id(),

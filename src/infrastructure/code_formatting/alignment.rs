@@ -1,10 +1,6 @@
-use gpui_kit::component::highlighter::LanguageRegistry;
+use super::core::{LINE_WIDTH, columns, parser, signature};
 use std::ops::Range;
-use tree_sitter::{Node, Parser};
-use unicode_width::UnicodeWidthChar;
-
-const TAB_SIZE: usize = 4;
-const LINE_WIDTH: usize = 120;
+use tree_sitter::Node;
 
 struct Assignment {
     row: usize,
@@ -17,7 +13,7 @@ struct Assignment {
 }
 
 /// Align syntax-recognized assignments and Go keyed literal elements.
-pub(crate) fn align_assignments(text: String, language: &str) -> String {
+pub(super) fn align_assignments(text: String, language: &str) -> String {
     let Some(mut parser) = parser(language) else {
         return text;
     };
@@ -89,8 +85,7 @@ pub(crate) fn align_assignments(text: String, language: &str) -> String {
         return text;
     };
     if parsed.root_node().has_error()
-        || super::core::signature(tree.root_node(), &text)
-            != super::core::signature(parsed.root_node(), &candidate)
+        || signature(tree.root_node(), &text) != signature(parsed.root_node(), &candidate)
     {
         tracing::debug!(%language, "assignment alignment skipped: syntax would change");
         return text;
@@ -220,30 +215,6 @@ fn assignment(operator: Node<'_>, text: &str) -> Option<Assignment> {
         line_width: column + right_width,
         operator: text[operator.byte_range()].into(),
     })
-}
-
-pub(super) fn columns(text: &str) -> usize {
-    text.chars().fold(0, |column, ch| {
-        if ch == '\t' {
-            column + TAB_SIZE - column % TAB_SIZE
-        } else {
-            column + ch.width().unwrap_or(0)
-        }
-    })
-}
-
-pub(super) fn parser(language: &str) -> Option<Parser> {
-    let grammar_name = match language {
-        "javascriptreact" => "javascript",
-        "typescriptreact" => "tsx",
-        other => other,
-    };
-    let grammar = LanguageRegistry::singleton()
-        .language(grammar_name)?
-        .language?;
-    let mut parser = Parser::new();
-    parser.set_language(&grammar).ok()?;
-    Some(parser)
 }
 
 fn single_line(node: Node<'_>, text: &str, row: usize) -> bool {

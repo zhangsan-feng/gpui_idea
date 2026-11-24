@@ -1,4 +1,5 @@
 ## 语言支持
+语言提示跳转使用LSP server 定位
 Java 
 Python 
 Go 

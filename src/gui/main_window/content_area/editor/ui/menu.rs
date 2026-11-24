@@ -7,12 +7,13 @@ use gpui_kit::component::{
 impl Editor {
     pub(super) fn editor_context_menu(
         &self,
+        file: &ProjectFile,
         state: &Entity<EditorState>,
         cx: &Context<Self>,
     ) -> impl Fn(PopupMenu, &mut Window, &mut Context<PopupMenu>) -> PopupMenu + 'static {
         let state = state.clone();
         let view = cx.weak_entity();
-        let file = self.state.selected_file.clone();
+        let file = file.clone();
         move |menu, _, cx| {
             use crate::gui::component::menu::{context_action, context_menu};
             let menu = context_menu(menu).action_context(state.focus_handle(cx));

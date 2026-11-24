@@ -15,6 +15,7 @@ impl Editor {
             self.release_image_tab(&file);
         }
         self.state.open_files.clear();
+        self.state.split = None;
         // Dirty buffers stay alive until autosave completes; clean buffers release now.
         self.prune_editors();
         self.send(crate::event_bus::gui_event::GuiEvent::WindowBar(
@@ -30,13 +31,15 @@ impl Editor {
     }
 
     pub(in crate::gui) fn reveal_editor_tab(&self, file: &ProjectFile) {
+        let side = self.side_for(file);
         if let Some(index) = self
             .state
             .open_files
             .iter()
+            .filter(|opened| self.side_for(opened) == side)
             .position(|opened| opened == file)
         {
-            self.state.editor_tabs_scroll.scroll_to_item(index);
+            self.tab_scroll(side).scroll_to_item(index);
         }
     }
 
@@ -59,12 +62,26 @@ impl Editor {
         else {
             return;
         };
+        let side = self.side_for(file);
         self.state.open_files.remove(index);
         self.release_image_tab(file);
+        let was_split = self.state.split.is_some();
+        self.repair_split(true);
         // Keep unsaved buffers until autosave finishes; release clean closed editors.
         if self.state.selected_file == *file && !self.state.open_files.is_empty() {
-            let next = self.state.open_files[index.min(self.state.open_files.len() - 1)].clone();
+            let next = self
+                .state
+                .split
+                .as_ref()
+                .and_then(|_| self.selected_in(side))
+                .unwrap_or(&self.state.open_files[index.min(self.state.open_files.len() - 1)])
+                .clone();
             self.select_file(next, window, cx);
+        } else if !self.state.open_files.is_empty() {
+            self.reveal_editor_tab(&self.state.selected_file);
+            if was_split && self.state.split.is_none() {
+                self.focus_file(&self.state.selected_file, window, cx);
+            }
         }
         self.prune_editors();
         self.send(crate::event_bus::gui_event::GuiEvent::WindowBar(
@@ -86,10 +103,7 @@ impl Editor {
         window: &mut Window,
         cx: &mut Context<Editor>,
     ) {
-        if self.peer_window_bar(cx).read(cx).state.closing
-            || self.peer_window_bar(cx).read(cx).state.close_prompt_open
-            || file == target
-        {
+        if file == target || !self.can_select_file(file, cx) {
             return;
         }
         let Some(from) = self
@@ -108,18 +122,21 @@ impl Editor {
         else {
             return;
         };
-        let after = self
-            .state
-            .editor_tabs_scroll
-            .bounds_for_item(target_index)
-            .is_some_and(|bounds| {
-                window.mouse_position().x
-                    > bounds.center().x + self.state.editor_tabs_scroll.offset().x
-            });
+        let side = self.side_for(target);
+        let pane_index = self.state.open_files[..target_index]
+            .iter()
+            .filter(|file| self.side_for(file) == side)
+            .count();
+        let scroll = self.tab_scroll(side);
+        let after = scroll.bounds_for_item(pane_index).is_some_and(|bounds| {
+            window.mouse_position().x > bounds.center().x + scroll.offset().x
+        });
         let insertion = target_index + usize::from(after);
         let to = insertion - usize::from(from < insertion);
         let moved = self.state.open_files.remove(from);
         self.state.open_files.insert(to, moved);
+        self.assign_editor_side(file, side);
+        self.repair_split(false);
         tracing::info!(file = %file.relative_path().display(), from, to, "editor tab reordered");
         self.select_file(file.clone(), window, cx);
     }

@@ -117,7 +117,7 @@ impl WindowBar {
             .child(self.top_icon(
                 IconName::Search,
                 "search",
-                "代码内容搜索",
+                "代码内容搜索 (Ctrl+Shift+R)",
                 0xb9bdc5,
                 true,
                 ToolbarAction::Search,

@@ -1,6 +1,8 @@
 use super::SettingsService;
 use crate::{
-    data_context::DATA_CONTEXT, domain::settings::GeneralSettings, infrastructure::INFRASTRUCTURE,
+    data_context::DATA_CONTEXT,
+    domain::settings::{EDITOR_FONT_SIZE_RANGE, GeneralSettings},
+    infrastructure::INFRASTRUCTURE,
 };
 use anyhow::Result;
 
@@ -36,8 +38,13 @@ impl SettingsService {
         Ok(())
     }
 
-    pub(super) async fn save_core(&self, mut value: GeneralSettings) -> Result<()> {
+    pub(super) async fn save_core(
+        &self,
+        mut value: GeneralSettings,
+        editor_size_changed: bool,
+    ) -> Result<()> {
         let _guard = self.io.lock().await;
+        let pending_size = DATA_CONTEXT.settings.pending_editor_font_size();
         self.normalize_ignored_directories(&mut value.ignored_directories)?;
         let filter_changed = DATA_CONTEXT.settings.snapshot().general.ignored_directories
             != value.ignored_directories;
@@ -49,7 +56,7 @@ impl SettingsService {
             "字体名称不能为空"
         );
         anyhow::ensure!(
-            (9..=36).contains(&value.appearance.editor_size),
+            EDITOR_FONT_SIZE_RANGE.contains(&value.appearance.editor_size),
             "编辑器字号须在 9–36 之间"
         );
         anyhow::ensure!(
@@ -70,7 +77,10 @@ impl SettingsService {
                 crate::domain::settings::ColorTheme::Light
             };
         }
-        INFRASTRUCTURE.settings.save(value.clone()).await?;
+        let value = INFRASTRUCTURE
+            .settings
+            .save(value, !editor_size_changed)
+            .await?;
         INFRASTRUCTURE.proxy.set_lsp(value.lsp_proxy.clone());
         tracing::info!(
             auto_format = value.auto_format,
@@ -84,6 +94,11 @@ impl SettingsService {
             .filesystem
             .set_ignored_directories(value.ignored_directories.clone());
         DATA_CONTEXT.settings.publish_general(value);
+        if editor_size_changed {
+            if let Some(size) = pending_size {
+                DATA_CONTEXT.settings.clear_pending_editor_font_size(size);
+            }
+        }
         if filter_changed && DATA_CONTEXT.has_project() {
             crate::application::APPLICATION
                 .file_watch
@@ -94,6 +109,31 @@ impl SettingsService {
                 })
                 .await;
         }
+        Ok(())
+    }
+
+    pub(super) fn adjust_editor_font_size_core(&self, step: i16) -> bool {
+        let current = DATA_CONTEXT.settings.editor_font_size();
+        let size = current.saturating_add_signed(step).clamp(
+            *EDITOR_FONT_SIZE_RANGE.start(),
+            *EDITOR_FONT_SIZE_RANGE.end(),
+        );
+        if size == current {
+            return false;
+        }
+        DATA_CONTEXT.settings.stage_editor_font_size(size);
+        true
+    }
+
+    pub(super) async fn flush_editor_font_size_core(&self) -> Result<()> {
+        let _guard = self.io.lock().await;
+        let Some(size) = DATA_CONTEXT.settings.pending_editor_font_size() else {
+            return Ok(());
+        };
+        INFRASTRUCTURE.settings.save_editor_font_size(size).await?;
+        DATA_CONTEXT.settings.publish_editor_font_size(size);
+        DATA_CONTEXT.settings.clear_pending_editor_font_size(size);
+        tracing::info!(editor_size = size, "editor font size saved");
         Ok(())
     }
 }

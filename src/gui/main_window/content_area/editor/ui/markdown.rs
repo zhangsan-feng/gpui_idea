@@ -5,16 +5,25 @@ use gpui_kit::component::tooltip::Tooltip;
 impl Editor {
     pub(super) fn markdown_drop_target(
         &self,
+        file: &ProjectFile,
         content: Div,
         source: bool,
         cx: &mut Context<Self>,
     ) -> Div {
-        content.when(self.can_drop_markdown(cx), |content| {
+        content.when(self.can_drop_markdown(file, cx), |content| {
+            let external_file = file.clone();
+            let project_file = file.clone();
             content
                 .on_drop(cx.listener(move |this, paths: &ExternalPaths, window, cx| {
                     cx.stop_propagation();
                     let pointer = source.then(|| window.mouse_position());
-                    this.insert_markdown_files(paths.paths().to_vec(), pointer, window, cx);
+                    this.insert_markdown_files(
+                        external_file.clone(),
+                        paths.paths().to_vec(),
+                        pointer,
+                        window,
+                        cx,
+                    );
                 }))
                 .on_drop(cx.listener(
                     move |this, drag: &crate::gui::main_window::DraggedProjectEntry, window, cx| {
@@ -25,7 +34,13 @@ impl Editor {
                             .map(|path| DATA_CONTEXT.project_root().join(path))
                             .collect();
                         let pointer = source.then(|| window.mouse_position());
-                        this.insert_markdown_files(paths, pointer, window, cx);
+                        this.insert_markdown_files(
+                            project_file.clone(),
+                            paths,
+                            pointer,
+                            window,
+                            cx,
+                        );
                     },
                 ))
                 .drag_over::<ExternalPaths>(|style, _, _, _| {
@@ -43,11 +58,22 @@ impl Editor {
         })
     }
 
-    pub(super) fn markdown_toolbar(&self, cx: &mut Context<Self>) -> impl IntoElement {
-        let current = self.markdown_mode();
+    pub(super) fn markdown_toolbar(
+        &self,
+        file: &ProjectFile,
+        compact: bool,
+        cx: &mut Context<Self>,
+    ) -> impl IntoElement {
+        let current = self.markdown_mode(file);
         h_flex()
-            .mt(px(TAB_SCROLLBAR_HEIGHT))
-            .h(px(TAB_HEIGHT))
+            .when(compact, |bar| {
+                bar.h(px(30.))
+                    .border_b_1()
+                    .border_color(crate::component::appearance::border(0xeeeef2))
+            })
+            .when(!compact, |bar| {
+                bar.mt(px(TAB_SCROLLBAR_HEIGHT)).h(px(TAB_HEIGHT))
+            })
             .px_1()
             .gap_1()
             .flex_shrink_0()
@@ -74,6 +100,7 @@ impl Editor {
                 ]
                 .into_iter()
                 .map(|(mode, name, label, tooltip)| {
+                    let file = file.clone();
                     let active = current == Some(mode);
                     h_flex()
                         .id(SharedString::from(format!("markdown-mode-{mode:?}")))
@@ -94,9 +121,9 @@ impl Editor {
                         .hover(|style| style.bg(crate::component::appearance::background(0xe8eaf0)))
                         .tooltip(move |window, cx| Tooltip::new(tooltip).build(window, cx))
                         .child(icon(name, 14., if active { ACCENT } else { MUTED }))
-                        .child(label)
+                        .when(!compact, |button| button.child(label))
                         .on_click(cx.listener(move |this, _, window, cx| {
-                            this.set_markdown_mode(mode, window, cx)
+                            this.set_markdown_mode(&file, mode, window, cx)
                         }))
                 }),
             )
@@ -104,26 +131,22 @@ impl Editor {
 
     pub(super) fn render_markdown(
         &self,
+        file: &ProjectFile,
         state: &Entity<gpui_kit::component::input::EditorState>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) -> Div {
         let text = state.read(cx).text().to_string();
-        let document_path = self.state.selected_file.path(DATA_CONTEXT.project_root());
-        let path = self.state.selected_file.relative_path().to_string_lossy();
+        let document_path = file.path(DATA_CONTEXT.project_root());
+        let path = file.relative_path().to_string_lossy();
         let preview = window.use_keyed_state(
             SharedString::from(format!("markdown-preview-state-{path}")),
             cx,
             |_, cx| TextViewState::markdown("", cx),
         );
         preview.update(cx, |state, cx| state.set_text(&text, cx));
-        let line_height = px(DATA_CONTEXT
-            .settings
-            .snapshot()
-            .general
-            .appearance
-            .editor_size as f32
-            * 1.5);
+        let editor_size = crate::component::appearance::editor_font_size();
+        let line_height = editor_size * 1.5;
         let pointer_state = preview.clone();
         let style = TextViewStyle::default()
             .with_foreground(crate::component::appearance::foreground(TEXT))
@@ -140,12 +163,7 @@ impl Editor {
             .bg(crate::component::appearance::background(EDITOR_BG))
             .pl_5()
             .py_5()
-            .text_size(px(DATA_CONTEXT
-                .settings
-                .snapshot()
-                .general
-                .appearance
-                .editor_size as f32))
+            .text_size(editor_size)
             // Reserve a distinct rail at the pane edge. The TextView's own
             // scrollbar stays here while its content uses the padded viewport.
             .child(
@@ -162,9 +180,7 @@ impl Editor {
             .child(
                 TextView::new(&preview)
                     .when_some(
-                        self.state
-                            .markdown_extensions
-                            .get(&self.state.selected_file),
+                        self.state.markdown_extensions.get(file),
                         |view, extensions| view.markdown_extensions(extensions.clone()),
                     )
                     .image_source(move |uri| Self::markdown_image_source(&document_path, uri))
@@ -190,7 +206,7 @@ impl Editor {
                 .absolute()
                 .inset_0(),
             );
-        self.markdown_drop_target(content, false, cx)
+        self.markdown_drop_target(file, content, false, cx)
     }
 }
 

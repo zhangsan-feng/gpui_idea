@@ -2,12 +2,9 @@ use super::super::*;
 use crate::application::{lifecycle::run_application, markdown};
 
 impl Editor {
-    pub(in crate::gui) fn can_drop_markdown(&self, cx: &App) -> bool {
-        self.markdown_mode().is_some()
-            && !self
-                .state
-                .external_source_files
-                .contains(&self.state.selected_file)
+    pub(in crate::gui) fn can_drop_markdown(&self, file: &ProjectFile, cx: &App) -> bool {
+        self.markdown_mode(file).is_some()
+            && !self.state.external_source_files.contains(file)
             && !self.peer_window_bar(cx).read(cx).state.closing
             && !self.peer_window_bar(cx).read(cx).state.close_prompt_open
             && !self
@@ -19,21 +16,22 @@ impl Editor {
             && self
                 .state
                 .editors
-                .get(&self.state.selected_file)
+                .get(file)
                 .is_some_and(|editor| editor.read(cx).is_editable())
     }
 
     pub(in crate::gui) fn insert_markdown_files(
         &mut self,
+        file: ProjectFile,
         files: Vec<PathBuf>,
         pointer: Option<gpui_kit::Point<Pixels>>,
         window: &mut Window,
         cx: &mut Context<Self>,
     ) {
-        if !self.can_drop_markdown(cx) {
+        self.activate_visible_file(&file, cx);
+        if self.state.selected_file != file || !self.can_drop_markdown(&file, cx) {
             return;
         }
-        let file = self.state.selected_file.clone();
         let editor = self.state.editors[&file].clone();
         let text = editor.read(cx).text().clone();
         let cursor = editor.read(cx).cursor();
@@ -53,7 +51,7 @@ impl Editor {
         cx.spawn_in(window, async move |this, cx| {
             let result = run_application(markdown::file_references(path, files)).await;
             let _ = this.update_in(cx, |this, window, cx| {
-                let current = this.can_drop_markdown(cx)
+                let current = this.can_drop_markdown(&file, cx)
                     && this.state.selected_file == file
                     && this.state.editors.get(&file) == Some(&editor)
                     && *editor.read(cx).text() == text

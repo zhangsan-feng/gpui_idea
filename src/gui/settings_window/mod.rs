@@ -188,6 +188,7 @@ impl SettingsWindow {
                         this.servers = snapshot.servers.to_vec();
                         this.system_status = snapshot.context_menu.clone();
                         this.association_status = snapshot.file_associations.clone();
+                        this.sync_editor_font_size(snapshot.general.appearance.editor_size);
                         // Published background state must not overwrite the user's draft.
                         cx.notify();
                     })

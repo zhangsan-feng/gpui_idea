@@ -28,9 +28,11 @@ impl FileSystem {
         &self,
         root: PathBuf,
         query: String,
-    ) -> Result<crate::domain::project::ContentSearchDataContextSnapshot> {
+        cancel: tokio::sync::watch::Receiver<()>,
+    ) -> Result<Option<crate::domain::project::ContentSearchDataContextSnapshot>> {
+        let filter = self.directory_filter();
         core::run("content_search", PathBuf::new(), move || {
-            core::search_content(root, query)
+            core::search_content(root, query, &filter, &cancel)
         })
         .await
     }

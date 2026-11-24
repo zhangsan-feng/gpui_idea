@@ -1,5 +1,7 @@
 use serde::{Deserialize, Serialize};
 
+pub(crate) const EDITOR_FONT_SIZE_RANGE: std::ops::RangeInclusive<u16> = 9..=36;
+
 #[derive(Clone, Debug)]
 pub(crate) enum FileAssociationAction {
     Refresh,
@@ -12,6 +14,13 @@ pub(crate) struct FileAssociationStatus {
     pub(crate) registered: bool,
     pub(crate) extensions: Vec<String>,
     pub(crate) default_extensions: Vec<String>,
+    pub(crate) requested_settings_page: Option<DefaultAppsPage>,
+}
+
+#[derive(Clone, Copy, Debug, PartialEq, Eq)]
+pub(crate) enum DefaultAppsPage {
+    Application,
+    Overview,
 }
 
 pub(crate) const EDITOR_FILE_EXTENSIONS: &[&str] = &[

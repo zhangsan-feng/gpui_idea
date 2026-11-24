@@ -15,6 +15,7 @@ static NEXT_REQUEST: AtomicU64 = AtomicU64::new(1);
 
 impl CodeSearchWindow {
     pub(super) fn search(&mut self, cx: &mut Context<Self>) {
+        self.search_cancel.take();
         let request = NEXT_REQUEST.fetch_add(1, Ordering::Relaxed);
         self.request = request;
         let query = self.input.read(cx).value().to_string();
@@ -31,20 +32,22 @@ impl CodeSearchWindow {
         if !self.loading {
             return;
         }
+        // Dropping the sender cancels the scan when the query changes or the window closes.
+        let (sender, cancel) = tokio::sync::watch::channel(());
+        self.search_cancel = Some(sender);
         cx.spawn(async move |this, cx| {
             let result = async {
                 wait_timer("code-search-debounce", Duration::from_millis(180)).await?;
-                if this
-                    .update(cx, |this, _| this.request != request)
-                    .unwrap_or(true)
-                {
+                if cancel.has_changed().is_err() {
                     return Ok(None);
                 }
-                run_application(
-                    async move { APPLICATION.project.search_content(query, request).await },
-                )
+                run_application(async move {
+                    APPLICATION
+                        .project
+                        .search_content(query, request, cancel)
+                        .await
+                })
                 .await
-                .map(Some)
             }
             .await;
             let _ = this.update(cx, |this, cx| {
@@ -52,6 +55,7 @@ impl CodeSearchWindow {
                     tracing::debug!(request, "code search stale completion ignored");
                     return;
                 }
+                this.search_cancel.take();
                 this.loading = false;
                 match result {
                     Ok(Some(snapshot)) => {

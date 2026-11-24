@@ -77,11 +77,7 @@ impl DocumentService {
         tokio::task::spawn_blocking(move || {
             let formatted = apply_edits(text.clone(), edits)?;
             let formatted =
-                crate::infrastructure::code_formatting::wrap_long_lines(formatted, language);
-            let formatted =
-                crate::infrastructure::code_formatting::align_assignments(formatted, language);
-            let formatted =
-                crate::infrastructure::code_formatting::align_conditions(formatted, language);
+                crate::infrastructure::code_formatting::format_code(formatted, language);
             Ok((formatted != text).then(|| (revision, ropey::Rope::from(formatted.as_str()))))
         })
         .await?

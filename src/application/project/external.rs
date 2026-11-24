@@ -40,9 +40,10 @@ impl ProjectService {
         &self,
         query: String,
         request: u64,
-    ) -> Result<crate::domain::project::ContentSearchDataContextSnapshot> {
+        cancel: tokio::sync::watch::Receiver<()>,
+    ) -> Result<Option<crate::domain::project::ContentSearchDataContextSnapshot>> {
         crate::data_context::DATA_CONTEXT.require_project_root()?;
-        self.search_content_core(query, request).await
+        self.search_content_core(query, request, cancel).await
     }
     pub(crate) async fn file_tree_operation(
         &self,

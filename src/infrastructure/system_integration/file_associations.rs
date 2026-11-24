@@ -1,6 +1,6 @@
 use super::association_registry::Key;
 use crate::domain::settings::{
-    EDITOR_FILE_EXTENSIONS, FileAssociationAction, FileAssociationStatus,
+    DefaultAppsPage, EDITOR_FILE_EXTENSIONS, FileAssociationAction, FileAssociationStatus,
 };
 use anyhow::{Context as _, Result, ensure};
 use windows::{
@@ -10,6 +10,7 @@ use windows::{
     },
     core::{PCWSTR, w},
 };
+use windows_registry::LOCAL_MACHINE;
 
 const APP: &str = "GPUIIdea";
 const PROG_ID: &str = "GPUIIdea.Text.v1";
@@ -103,6 +104,7 @@ fn status(entries: &[(String, String, String)]) -> Result<FileAssociationStatus>
         registered,
         extensions,
         default_extensions,
+        requested_settings_page: None,
     })
 }
 
@@ -157,9 +159,31 @@ fn register(entries: &[(String, String, String)]) -> Result<()> {
     result
 }
 
-fn open_settings() -> Result<()> {
-    // Recent Windows 11 versions open this app's page; older versions show default apps.
-    let uri = w!("ms-settings:defaultapps?registeredAppUser=GPUIIdea");
+fn supports_application_page() -> Result<bool> {
+    let version = LOCAL_MACHINE.open(r"SOFTWARE\Microsoft\Windows NT\CurrentVersion")?;
+    let build: u32 = version.get_string("CurrentBuildNumber")?.parse()?;
+    // Windows 11 21H2 and 22H2 require the April 2023 cumulative update.
+    let supported = match build {
+        22000 => version.get_u32("UBR")? >= 1817,
+        22621 => version.get_u32("UBR")? >= 1555,
+        _ => build >= 22631,
+    };
+    tracing::debug!(build, supported, "Windows default apps deep link support");
+    Ok(supported)
+}
+
+fn open_settings_page(page: DefaultAppsPage) -> Result<()> {
+    let application_uri;
+    let uri = match page {
+        DefaultAppsPage::Application => {
+            application_uri = format!("ms-settings:defaultapps?registeredAppUser={APP}")
+                .encode_utf16()
+                .chain(Some(0))
+                .collect::<Vec<_>>();
+            PCWSTR(application_uri.as_ptr())
+        }
+        DefaultAppsPage::Overview => w!("ms-settings:defaultapps"),
+    };
     let result = unsafe {
         ShellExecuteW(
             None,
@@ -172,10 +196,27 @@ fn open_settings() -> Result<()> {
     };
     ensure!(
         result.0 as isize > 32,
-        "无法打开 Windows 默认应用设置（错误码 {}），请在系统设置中搜索 GPUI Editor",
+        "无法打开 Windows 默认应用设置（错误码 {}），请手动进入“设置 → 应用 → 默认应用”",
         result.0 as isize
     );
     Ok(())
+}
+
+fn open_settings() -> Result<DefaultAppsPage> {
+    let supports_application_page = supports_application_page().unwrap_or_else(|error| {
+        tracing::warn!(%error, "could not determine Windows build; opening default apps overview");
+        false
+    });
+    if supports_application_page {
+        match open_settings_page(DefaultAppsPage::Application) {
+            Ok(()) => return Ok(DefaultAppsPage::Application),
+            Err(error) => {
+                tracing::warn!(%error, "could not open app-specific default apps settings");
+            }
+        }
+    }
+    open_settings_page(DefaultAppsPage::Overview)?;
+    Ok(DefaultAppsPage::Overview)
 }
 
 pub(super) fn execute(action: FileAssociationAction) -> Result<FileAssociationStatus> {
@@ -200,17 +241,21 @@ pub(super) fn execute(action: FileAssociationAction) -> Result<FileAssociationSt
         }
     }
     let entries = entries(&path, &extensions);
-    if !matches!(action, FileAssociationAction::Refresh) {
+    let registering = !matches!(action, FileAssociationAction::Refresh);
+    if registering {
         register(&entries)?;
-        ensure!(status(&entries)?.registered, "文件关联注册不完整，请重试");
+    }
+    let mut status = status(&entries)?;
+    if registering {
+        ensure!(status.registered, "文件关联注册不完整，请重试");
     }
     if matches!(action, FileAssociationAction::Configure(_)) {
-        open_settings()?;
+        status.requested_settings_page = Some(open_settings()?);
     }
-    let status = status(&entries)?;
     tracing::info!(
         ?action,
         registered = status.registered,
+        requested_settings_page = ?status.requested_settings_page,
         "Windows file association operation completed"
     );
     Ok(status)

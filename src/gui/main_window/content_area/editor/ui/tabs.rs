@@ -6,13 +6,19 @@ use gpui_kit::component::scroll::Scrollbar;
 use gpui_kit::component::tooltip::Tooltip;
 
 impl Editor {
-    pub(super) fn editor_tabs(&self, cx: &mut Context<Editor>) -> Div {
-        let document = self.active_document();
+    pub(super) fn editor_tabs(
+        &self,
+        side: EditorSide,
+        selected: &ProjectFile,
+        cx: &mut Context<Editor>,
+    ) -> Div {
+        let document = self.document_for(selected);
         let dirty = document.as_ref().is_some_and(|doc| doc.dirty());
-        let image = crate::domain::image_preview::PreviewImageFormat::for_path(
-            self.state.selected_file.relative_path(),
-        )
-        .is_some();
+        let image =
+            crate::domain::image_preview::PreviewImageFormat::for_path(selected.relative_path())
+                .is_some();
+        let scroll = self.tab_scroll(side);
+        let save_file = selected.clone();
         h_flex()
             .h(px(TAB_HEIGHT + TAB_SCROLLBAR_HEIGHT + 1.))
             .min_w_0()
@@ -37,23 +43,21 @@ impl Editor {
                             .w_full()
                             .h(px(TAB_SCROLLBAR_HEIGHT))
                             .flex_shrink_0()
-                            .child(
-                                Scrollbar::horizontal(&self.state.editor_tabs_scroll)
-                                    .viewport_from_layout()
-                                    .styles(|styles| {
-                                        styles
-                                            .track(|track| track.width(px(TAB_SCROLLBAR_HEIGHT)))
-                                            .thumb(|thumb| {
-                                                thumb
-                                                    .width(px(TAB_SCROLLBAR_HEIGHT))
-                                                    .inset(px(0.))
-                                                    .radius(px(0.))
-                                                    .bg(crate::component::appearance::background(
-                                                        0x898989,
-                                                    ))
-                                            })
-                                    }),
-                            ),
+                            .child(Scrollbar::horizontal(scroll).viewport_from_layout().styles(
+                                |styles| {
+                                    styles
+                                        .track(|track| track.width(px(TAB_SCROLLBAR_HEIGHT)))
+                                        .thumb(|thumb| {
+                                            thumb
+                                                .width(px(TAB_SCROLLBAR_HEIGHT))
+                                                .inset(px(0.))
+                                                .radius(px(0.))
+                                                .bg(crate::component::appearance::background(
+                                                    0x898989,
+                                                ))
+                                        })
+                                },
+                            )),
                     )
                     .child(
                         h_flex()
@@ -64,18 +68,20 @@ impl Editor {
                             .min_w_0()
                             .items_center()
                             .overflow_x_scroll()
-                            .track_scroll(&self.state.editor_tabs_scroll)
+                            .track_scroll(scroll)
                             .children(
                                 self.state
                                     .open_files
                                     .iter()
-                                    .map(|file| self.editor_tab(file, cx)),
+                                    .filter(|file| self.side_for(file) == side)
+                                    .map(|file| self.editor_tab(file, file == selected, cx)),
                             ),
                     ),
             )
-            .when(self.markdown_mode().is_some(), |tabs| {
-                tabs.child(self.markdown_toolbar(cx))
-            })
+            .when(
+                self.state.split.is_none() && self.markdown_mode(selected).is_some(),
+                |tabs| tabs.child(self.markdown_toolbar(selected, false, cx)),
+            )
             .when(!image, |tabs| {
                 tabs.child(
                     div()
@@ -97,20 +103,23 @@ impl Editor {
                             16.,
                             if dirty { ACCENT } else { MUTED },
                         ))
-                        .on_click(cx.listener(|this, _, window, cx| this.save_current(window, cx))),
+                        .on_click(cx.listener(move |this, _, _, cx| {
+                            this.save_file(save_file.clone(), false, cx)
+                        })),
                 )
             })
     }
 
-    fn editor_tab(&self, file: &ProjectFile, cx: &mut Context<Editor>) -> AnyElement {
-        let active = self.state.selected_file == *file;
+    fn editor_tab(&self, file: &ProjectFile, active: bool, cx: &mut Context<Editor>) -> AnyElement {
         let external_source = self.state.external_source_files.contains(file);
         let text_color = if external_source {
             SOURCE_TAB_TEXT
         } else {
             TAB_TEXT
         };
-        let indicator_color = if external_source {
+        let indicator_color = if self.state.selected_file != *file {
+            BORDER
+        } else if external_source {
             SOURCE_TAB_TEXT
         } else {
             TAB_INDICATOR
@@ -133,6 +142,7 @@ impl Editor {
         let reveal_file = file.clone();
         let project_path_file = file.clone();
         let absolute_path_file = file.clone();
+        let split_file = file.clone();
         let view = cx.weak_entity();
         let in_project = DATA_CONTEXT.has_project()
             && file
@@ -149,6 +159,7 @@ impl Editor {
         let group_id = SharedString::from(format!("editor-tab-{path}"));
         let close_all_disabled = self.peer_window_bar(cx).read(cx).state.closing
             || self.peer_window_bar(cx).read(cx).state.close_prompt_open;
+        let split_enabled = self.can_reposition_tab(file, cx);
         h_flex()
             .id(group_id.clone())
             .group(group_id.clone())
@@ -257,6 +268,19 @@ impl Editor {
                         move |this, _, _| this.send(crate::event_bus::gui_event::GuiEvent::FileTree(
                             crate::gui::main_window::content_area::file_tree::Event::RevealFile(file.clone()),
                         ))
+                    },
+                ))
+                .separator()
+                .item(crate::gui::component::menu::context_view_item(
+                    "在左侧打开", IconName::ArrowLeft, "", split_enabled, &view, {
+                        let file = split_file.clone();
+                        move |this, window, cx| this.open_tab_on_side(&file, EditorSide::Left, window, cx)
+                    },
+                ))
+                .item(crate::gui::component::menu::context_view_item(
+                    "在右侧打开", IconName::ArrowRight, "", split_enabled, &view, {
+                        let file = split_file.clone();
+                        move |this, window, cx| this.open_tab_on_side(&file, EditorSide::Right, window, cx)
                     },
                 ))
                 .separator()

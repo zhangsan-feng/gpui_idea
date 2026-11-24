@@ -8,10 +8,10 @@ use tokio::{
 };
 
 pub(super) async fn run(mut events: mpsc::UnboundedReceiver<TimerEvent>) {
-    let mut scheduled = HashMap::<u64, Scheduled>::new();
-    let mut running = JoinSet::new();
+    let mut scheduled     = HashMap::<u64, Scheduled>::new();
+    let mut running       = JoinSet::new();
     let mut running_tasks = HashMap::<u64, AbortHandle>::new();
-    let mut task_ids = HashMap::new();
+    let mut task_ids      = HashMap::new();
     loop {
         let deadline = scheduled.values().map(|job| job.deadline).min();
         tokio::select! {
@@ -67,7 +67,14 @@ pub(super) async fn run(mut events: mpsc::UnboundedReceiver<TimerEvent>) {
                         }
                         ScheduledEvent::WatchFiles { root, pending, period } => {
                             if let Some(changes) = INFRASTRUCTURE.filesystem.take_watch_changes(&pending) {
-                                tracing::debug!(root = %root.display(), paths = changes.paths.len(), tree_paths = changes.tree_paths.len(), raw_events = changes.event_count, rescan = changes.rescan, "timer publishing filesystem refresh");
+                                tracing::debug!(
+                                    root = %root.display(),
+                                    paths = changes.paths.len(),
+                                    tree_paths = changes.tree_paths.len(),
+                                    raw_events = changes.event_count,
+                                    rescan = changes.rescan,
+                                    "timer publishing filesystem refresh"
+                                );
                                 EVENT_BUS.refresh_data_context(root.clone(), changes);
                             }
                             scheduled.insert(id, Scheduled {

@@ -1,8 +1,6 @@
-use super::alignment::{columns, parser};
+use super::core::{LINE_WIDTH, columns, parser, signature};
 use std::{collections::HashMap, ops::Range};
 use tree_sitter::Node;
-
-const LINE_WIDTH: usize = 120;
 
 struct Operator {
     row: usize,
@@ -14,7 +12,7 @@ struct Operator {
 
 /// Comparison columns are settled first, then trailing logical operators are
 /// aligned against the resulting text. No tokens or newlines are moved.
-pub(crate) fn align_conditions(text: String, language: &str) -> String {
+pub(super) fn align_conditions(text: String, language: &str) -> String {
     let text = align(text, language, false);
     align(text, language, true)
 }
@@ -77,8 +75,7 @@ fn align(text: String, language: &str, logical: bool) -> String {
         return text;
     };
     if parsed.root_node().has_error()
-        || super::core::signature(tree.root_node(), &text)
-            != super::core::signature(parsed.root_node(), &candidate)
+        || signature(tree.root_node(), &text) != signature(parsed.root_node(), &candidate)
     {
         tracing::debug!(%language, logical, "condition alignment skipped: syntax would change");
         return text;

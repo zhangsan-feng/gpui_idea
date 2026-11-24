@@ -23,6 +23,13 @@ pub(crate) fn warm_language_server_document(
 }
 
 pub async fn shutdown() {
+    if let Err(error) = crate::application::APPLICATION
+        .settings
+        .flush_editor_font_size()
+        .await
+    {
+        tracing::error!(%error, "failed to save editor font size on shutdown");
+    }
     INFRASTRUCTURE.language_servers.shutdown().await;
     crate::application::APPLICATION.file_watch.shutdown().await;
     INFRASTRUCTURE.terminal.shutdown().await;

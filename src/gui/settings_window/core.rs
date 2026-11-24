@@ -1,6 +1,13 @@
 use super::*;
 
 impl SettingsWindow {
+    pub(super) fn sync_editor_font_size(&mut self, size: u16) {
+        if self.draft.appearance.editor_size == self.saved.appearance.editor_size {
+            self.draft.appearance.editor_size = size;
+        }
+        self.saved.appearance.editor_size = size;
+    }
+
     pub(super) fn select_page(&mut self, page: SettingsPage, cx: &mut Context<Self>) {
         if self.page == page {
             return;
@@ -48,22 +55,24 @@ impl SettingsWindow {
         self.error = None;
         let mut value = self.draft.clone();
         value.lsp_proxy.url = value.lsp_proxy.url.trim().to_owned();
-        let pending = value.clone();
+        let editor_size_changed = value.appearance.editor_size != self.saved.appearance.editor_size;
         cx.notify();
         cx.spawn_in(window, async move |this, cx| {
             let result = crate::application::lifecycle::run_application(async move {
-                crate::application::APPLICATION.settings.save(pending).await
+                crate::application::APPLICATION
+                    .settings
+                    .save(value, editor_size_changed)
+                    .await
             })
             .await;
             let _ = this.update_in(cx, |this, window, cx| {
                 this.saving = false;
                 match result {
                     Ok(()) => {
-                        value.ignored_directories = crate::data_context::DATA_CONTEXT
+                        let value = (*crate::data_context::DATA_CONTEXT
                             .settings
                             .snapshot()
-                            .general
-                            .ignored_directories
+                            .general)
                             .clone();
                         this.ignored_directories.update(cx, |input, cx| {
                             input.set_value(value.ignored_directories.join("\n"), window, cx);

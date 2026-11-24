@@ -1,7 +1,6 @@
 mod alignment;
 mod conditions;
 mod core;
+mod wrapping;
 
-pub(crate) use alignment::align_assignments;
-pub(crate) use conditions::align_conditions;
-pub(crate) use core::wrap_long_lines;
+pub(crate) use core::format_code;

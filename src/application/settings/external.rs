@@ -97,7 +97,19 @@ impl SettingsService {
     pub(crate) async fn load(&self) -> Result<()> {
         self.load_core().await
     }
-    pub(crate) async fn save(&self, value: GeneralSettings) -> Result<()> {
-        self.save_core(value).await
+    pub(crate) async fn save(
+        &self,
+        value: GeneralSettings,
+        editor_size_changed: bool,
+    ) -> Result<()> {
+        self.save_core(value, editor_size_changed).await
+    }
+
+    pub(crate) fn adjust_editor_font_size(&self, step: i16) -> bool {
+        self.adjust_editor_font_size_core(step)
+    }
+
+    pub(crate) async fn flush_editor_font_size(&self) -> Result<()> {
+        self.flush_editor_font_size_core().await
     }
 }
