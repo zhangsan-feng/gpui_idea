@@ -1,5 +1,5 @@
 use super::super::*;
-use crate::application::{lifecycle::run_application, markdown};
+use crate::application::{editor::markdown, lifecycle::run_application};
 
 impl Editor {
     pub(in crate::gui) fn can_drop_markdown(&self, file: &ProjectFile, cx: &App) -> bool {

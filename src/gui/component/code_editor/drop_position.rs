@@ -6,9 +6,17 @@ use gpui_kit::{
 /// Resolve against painted caret bounds so scrolling, tabs, Unicode, wrapping
 /// and folded rows use the same geometry as the editor itself.
 pub(super) fn offset_at_point(editor: &EditorState, pointer: Point<Pixels>) -> Option<usize> {
+    point_offset(editor, pointer, false)
+}
+
+pub(super) fn glyph_offset_at_point(editor: &EditorState, pointer: Point<Pixels>) -> Option<usize> {
+    point_offset(editor, pointer, true)
+}
+
+fn point_offset(editor: &EditorState, pointer: Point<Pixels>, glyph_only: bool) -> Option<usize> {
     let text = editor.text();
     if text.len() == 0 {
-        return Some(0);
+        return (!glyph_only).then_some(0);
     }
     let geometry = editor.prepaint_caret_geometry()?;
     // Anchor to a visible line, since the old caret may be scrolled off screen.
@@ -47,7 +55,7 @@ pub(super) fn offset_at_point(editor: &EditorState, pointer: Point<Pixels>) -> O
         let middle = low + (high - low) / 2;
         let offset = start + slice.char_to_byte_idx(middle);
         let bounds = editor.range_to_bounds(&(offset..offset))?;
-        if bounds.left() < pointer.x {
+        if bounds.left() < pointer.x || (glyph_only && bounds.left() == pointer.x) {
             low = middle + 1;
         } else {
             high = middle;
@@ -55,7 +63,7 @@ pub(super) fn offset_at_point(editor: &EditorState, pointer: Point<Pixels>) -> O
     }
     let right = start + slice.char_to_byte_idx(low);
     if low == 0 {
-        return Some(right);
+        return (!glyph_only).then_some(right);
     }
     let left = start + slice.char_to_byte_idx(low - 1);
     let left_bounds = editor.range_to_bounds(&(left..left))?;
@@ -69,6 +77,13 @@ pub(super) fn offset_at_point(editor: &EditorState, pointer: Point<Pixels>) -> O
     } else {
         right_bounds.left()
     };
+    if glyph_only {
+        return (pointer.x >= left_bounds.left()
+            && pointer.x < right_x
+            && pointer.y >= left_bounds.top()
+            && pointer.y < left_bounds.bottom())
+        .then_some(left);
+    }
     Some(if pointer.x - left_bounds.left() < right_x - pointer.x {
         left
     } else {

@@ -1,11 +1,9 @@
 pub(crate) mod completion;
 pub(crate) mod definition;
-mod document;
+pub(crate) mod editor;
 mod file_watch;
-pub(crate) mod highlights;
 mod history;
 pub mod lifecycle;
-pub(crate) mod markdown;
 mod project;
 mod projects;
 mod settings;
@@ -20,7 +18,7 @@ pub(crate) struct Application {
     pub(crate) projects: projects::ProjectsService,
     pub(crate) file_watch: file_watch::FileWatchService,
     pub(crate) terminal: terminal::TerminalService,
-    pub(crate) documents: document::DocumentService,
+    pub(crate) documents: editor::document::DocumentService,
     pub(crate) project: project::ProjectService,
     pub(crate) history: history::HistoryService,
 }
@@ -32,7 +30,7 @@ impl Application {
             projects: projects::ProjectsService,
             file_watch: file_watch::FileWatchService::new(),
             terminal: terminal::TerminalService,
-            documents: document::DocumentService::new(),
+            documents: editor::document::DocumentService::new(),
             project: project::ProjectService::new(),
             history: history::HistoryService::new(),
         }

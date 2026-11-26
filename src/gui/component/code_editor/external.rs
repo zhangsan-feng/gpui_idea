@@ -10,6 +10,13 @@ pub(crate) fn offset_at_point(
     super::drop_position::offset_at_point(editor, pointer)
 }
 
+pub(crate) fn glyph_offset_at_point(
+    editor: &gpui_kit::component::input::EditorState,
+    pointer: gpui_kit::Point<gpui_kit::Pixels>,
+) -> Option<usize> {
+    super::drop_position::glyph_offset_at_point(editor, pointer)
+}
+
 pub(crate) fn update_gutter(
     editor: &gpui_kit::Entity<gpui_kit::component::input::EditorState>,
     window: &mut gpui_kit::Window,
@@ -64,10 +71,26 @@ pub(crate) fn completion_dropdown(
     cx: &App,
 ) -> gpui_kit::Div {
     use gpui_kit::InteractiveElement as _;
+    use gpui_kit::component::input::{Outdent, OutdentInline};
 
     let cut_editor = editor.clone();
     let duplicate_editor = editor.clone();
-    super::completion::wrap(editor, content, cx)
+    let outdent_editor = editor.clone();
+    let outdent_inline_editor = editor.clone();
+    let wrapper = super::completion::wrap(editor, content, cx);
+    #[cfg(windows)]
+    let wrapper = super::paste::capture(wrapper, editor);
+    wrapper
+        .capture_action(move |_: &OutdentInline, window, cx| {
+            if outdent_inline_editor.update(cx, |state, cx| core::outdent(state, window, cx)) {
+                cx.stop_propagation();
+            }
+        })
+        .capture_action(move |_: &Outdent, window, cx| {
+            if outdent_editor.update(cx, |state, cx| core::outdent(state, window, cx)) {
+                cx.stop_propagation();
+            }
+        })
         .capture_action(move |_: &gpui_kit::component::input::Cut, _, cx| {
             cut_editor.update(cx, core::select_line_for_cut);
             // Continue dispatching Cut to the component for clipboard and undo handling.

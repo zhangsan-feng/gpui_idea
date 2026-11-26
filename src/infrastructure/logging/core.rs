@@ -19,11 +19,11 @@ pub fn initialize(log_dir: impl AsRef<Path>, date_format: &str) -> [WorkerGuard;
             log::LevelFilter::Debug,
         )
         .level_for(
-            "gpui_idea::application::markdown::external",
+            "gpui_idea::application::editor::external",
             log::LevelFilter::Debug,
         )
         .level_for(
-            "gpui_idea::infrastructure::code_formatting",
+            "gpui_idea::application::editor::code_formatting",
             log::LevelFilter::Debug,
         )
         .level_for(

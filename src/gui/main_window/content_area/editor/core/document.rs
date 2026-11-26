@@ -169,7 +169,10 @@ impl Editor {
                             EditorState::new(window, cx)
                                 .language(crate::component::code_editor::language_for_path(file.relative_path()))
                                 .soft_wrap(DATA_CONTEXT.settings.snapshot().general.soft_wrap)
-                                .tab_size(TabSize { tab_size: 4, hard_tabs: false })
+                                .tab_size(TabSize {
+                                    tab_size: crate::application::editor::DOCUMENT_TAB_SIZE,
+                                    hard_tabs: false,
+                                })
                                 .default_value(opened.initial_text)
                         });
                         crate::component::code_editor::attach_completions(&editor, &opened.snapshot.path, window, cx);

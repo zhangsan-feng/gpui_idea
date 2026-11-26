@@ -52,6 +52,27 @@ pub(super) fn gutter_decorations_width(
     (gpui_kit::px(70. - 18. - 6. - 4.) - number_width).max(gpui_kit::px(12.))
 }
 
+pub(super) fn outdent(
+    state: &mut gpui_kit::component::input::EditorState,
+    window: &mut gpui_kit::Window,
+    cx: &mut gpui_kit::Context<gpui_kit::component::input::EditorState>,
+) -> bool {
+    use gpui_kit::EntityInputHandler as _;
+
+    if !state.is_editable() {
+        return false;
+    }
+    let text = state.text();
+    let Some(edit) = crate::application::editor::outdent_edit(text, state.selected_range()) else {
+        return false;
+    };
+    let range = text.byte_to_utf16_idx(edit.range.start)..text.byte_to_utf16_idx(edit.range.end);
+    let reversed = state.is_selection_reversed();
+    state.replace_text_in_range(Some(range), &edit.replacement, window, cx);
+    state.set_selected_range_with_direction(edit.selection, reversed, cx);
+    true
+}
+
 pub(super) fn select_line_for_cut(
     editor: &mut gpui_kit::component::input::EditorState,
     cx: &mut gpui_kit::Context<gpui_kit::component::input::EditorState>,

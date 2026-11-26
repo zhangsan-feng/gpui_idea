@@ -4,14 +4,16 @@ mod definition_cursor;
 mod drop_position;
 mod external;
 mod highlights;
+#[cfg(windows)]
+mod paste;
 
 gpui_kit::actions!(code_editor, [DuplicateLine]);
 
-pub(crate) use external::offset_at_point;
 pub(crate) use external::{
     attach_completions, completion_dropdown, definition_pointer, dismiss_completions, init,
     language_for_path, language_label, update_gutter,
 };
+pub(crate) use external::{glyph_offset_at_point, offset_at_point};
 
 struct EditorLanguage {
     name: &'static str,

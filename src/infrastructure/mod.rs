@@ -1,5 +1,6 @@
 pub(crate) mod assets;
-pub(crate) mod code_formatting;
+#[cfg(windows)]
+pub(crate) mod clipboard;
 mod external;
 mod git;
 mod history;

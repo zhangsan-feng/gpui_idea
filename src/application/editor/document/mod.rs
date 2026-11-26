@@ -8,7 +8,7 @@ use std::sync::Arc;
 
 pub struct DocumentService;
 impl DocumentService {
-    pub(super) fn new() -> Self {
+    pub(in crate::application) fn new() -> Self {
         Self
     }
 }

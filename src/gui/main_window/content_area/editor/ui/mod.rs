@@ -12,6 +12,7 @@ mod empty;
 mod guides;
 mod gutter;
 mod image_preview;
+mod link_cursor;
 mod markdown;
 mod menu;
 mod selection;
@@ -273,7 +274,7 @@ impl Editor {
                     ),
                 )
                 .child(self.gutter_separator(state))
-                .child(self.editor_pointer_handler(file, state, cx))
+                .child(self.editor_pointer_handler(file, state, window, cx))
                 .when(mode.is_some(), |source| {
                     self.markdown_drop_target(file, source, true, cx)
                 })
@@ -329,8 +330,17 @@ impl Editor {
         &self,
         file: &ProjectFile,
         state: &Entity<gpui_kit::component::input::EditorState>,
-        cx: &Context<Editor>,
+        window: &mut Window,
+        cx: &mut Context<Editor>,
     ) -> impl IntoElement {
+        let link_cursor = window.use_keyed_state(
+            ("editor-link-cursor", state.entity_id()),
+            cx,
+            |_, _| std::rc::Rc::new(link_cursor::LinkCursor::default()),
+        );
+        let link_cursor = link_cursor.read(cx).clone();
+        let is_markdown = crate::component::code_editor::language_for_path(file.relative_path())
+            == "markdown";
         let state = state.clone();
         let view = cx.weak_entity();
         let file = file.clone();
@@ -350,18 +360,15 @@ impl Editor {
                 let supports_lsp =
                     crate::domain::language_server::language_for_path(file.relative_path())
                         .is_some();
-                let supports_links = supports_lsp
-                    || crate::component::code_editor::language_for_path(file.relative_path())
-                        == "markdown";
                 if supports_lsp {
                     crate::component::code_editor::definition_pointer(&state, &hitbox, window, cx);
                 }
+                link_cursor.install(&state, &hitbox, is_markdown, window, cx);
                 let clicked_editor = state.clone();
                 let click_hitbox = hitbox.clone();
                 let click_view = view.clone();
                 window.on_mouse_event(move |event: &MouseDownEvent, phase, window, cx| {
                     if phase != DispatchPhase::Capture
-                        || !supports_links
                         || event.button != MouseButton::Left
                         || !event.modifiers.control
                         || event.modifiers.alt
@@ -386,7 +393,7 @@ impl Editor {
                         let offset = state.cursor();
                         let _ = view.update(cx, |this, cx| {
                             if this.state.selected_file == file {
-                                this.navigate_editor_link(file, offset, window, cx);
+                                this.navigate_editor_link(file, offset, supports_lsp, window, cx);
                             }
                         });
                     });

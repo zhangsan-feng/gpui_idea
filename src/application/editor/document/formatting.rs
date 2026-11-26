@@ -1,4 +1,5 @@
 use super::DocumentService;
+use crate::application::editor::code_formatting::format_code;
 use crate::{data_context::DATA_CONTEXT, infrastructure::INFRASTRUCTURE};
 use anyhow::{Result, bail, ensure};
 use lsp_types::{Position, TextEdit};
@@ -76,8 +77,7 @@ impl DocumentService {
             .await?;
         tokio::task::spawn_blocking(move || {
             let formatted = apply_edits(text.clone(), edits)?;
-            let formatted =
-                crate::infrastructure::code_formatting::format_code(formatted, language);
+            let formatted = format_code(formatted, language);
             Ok((formatted != text).then(|| (revision, ropey::Rope::from(formatted.as_str()))))
         })
         .await?

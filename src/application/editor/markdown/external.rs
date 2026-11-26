@@ -3,23 +3,6 @@ use crate::infrastructure::INFRASTRUCTURE;
 use anyhow::{Context, Result, ensure};
 use std::path::PathBuf;
 
-pub(crate) async fn web_link_at_offset(
-    buffer: ropey::Rope,
-    offset: usize,
-) -> Result<Option<String>> {
-    tokio::task::spawn_blocking(move || {
-        let target = super::links::web_link_at_offset(&buffer.to_string(), offset);
-        tracing::debug!(
-            offset,
-            found = target.is_some(),
-            "Markdown web link lookup completed"
-        );
-        target
-    })
-    .await
-    .context("Markdown 网页链接解析任务失败")
-}
-
 pub(crate) async fn file_references(document: PathBuf, files: Vec<PathBuf>) -> Result<String> {
     ensure!(files.len() <= 16, "一次最多插入 16 个文件引用");
     let mut references = Vec::new();

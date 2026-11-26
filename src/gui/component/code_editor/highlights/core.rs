@@ -1,5 +1,5 @@
 use super::{Highlights, Snapshot};
-use crate::application::{highlights, lifecycle::run_application};
+use crate::application::{editor::highlights, lifecycle::run_application};
 use gpui_kit::{
     Context, Focusable as _, Window,
     component::input::{RangeDecoration, RangeDecorationStyle},
